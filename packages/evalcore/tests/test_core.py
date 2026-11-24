@@ -3,7 +3,6 @@ import textwrap
 from typing import Any
 
 import pytest
-from helpers import mk
 from evalcore import (
     AdmissionPolicy,
     BootstrapPolicy,
@@ -40,6 +39,7 @@ from evalcore.runner import RunContext
 from evalcore.taxonomy import TAXONOMY, classify_failure
 from evalcore.tracing import TraceRecorder
 from evalcore.trajectory import diff_trajectories, trajectory_checks
+from helpers import mk
 
 YAML = textwrap.dedent("""
     name: demo

@@ -1,7 +1,7 @@
 import pytest
-from helpers import mk
 from evalcore.assertions import ASSERTION_TYPES, evaluate_assertion
 from evalcore.models import AssertionSpec, Layer
+from helpers import mk
 
 
 def ev(case, result, **spec):

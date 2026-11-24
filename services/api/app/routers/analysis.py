@@ -259,8 +259,8 @@ def failures(
         "total_labels": total,
         "clusters": items,
         "summary": summary,
-        "note": "Clusters are deterministic counts over stored assertion evidence. LLM-written clusters (if enabled) are descriptive only "
-        "and never gate.",
+        "note": "Clusters are deterministic counts over stored assertion evidence. "
+        "LLM-written clusters (if enabled) are descriptive only and never gate.",
     }
 
 

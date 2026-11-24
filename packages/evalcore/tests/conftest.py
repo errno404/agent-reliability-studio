@@ -1,5 +1,4 @@
 import pytest
-
 from evalcore.models import Case
 
 
