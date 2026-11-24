@@ -1,0 +1,2 @@
+{"agent": "support", "version": "v2", "role": "candidate", "created": "2026-06-10", "parent": "v1",
+ "notes": "Policy-first: eligibility check before refunds, clarification instead of guessing, retrieves policy, refuses extraction. KNOWN REGRESSION: address parser mishandles units (apt/unit/suite)."}

@@ -1,0 +1,2 @@
+{"agent": "support", "version": "v1", "role": "baseline", "created": "2026-06-01",
+ "notes": "Fast but sloppy: redundant lookups, skips eligibility checks, guesses missing information, answers policy from memory, trusts claimed authority."}

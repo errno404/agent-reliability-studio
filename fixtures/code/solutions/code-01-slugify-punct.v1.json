@@ -1,0 +1,9 @@
+{
+  "reads": [
+    "textkit/text.py"
+  ],
+  "repo": "textkit",
+  "writes": {
+    "textkit/text.py": "\"\"\"Tiny text helpers (synthetic fixture repository).\"\"\"\nimport re\n\n\ndef slugify(text: str) -> str:\n    cleaned = re.sub(r\"[^a-z0-9\\s-]\", \"\", text.lower())\n    return re.sub(r\"\\s+\", \"-\", cleaned.strip())\n\n\ndef truncate(text: str, limit: int) -> str:\n    \"\"\"Return text cut to `limit` characters INCLUDING a trailing ellipsis when truncated.\"\"\"\n    if len(text) <= limit:\n        return text\n    return text[:limit] + \"...\"\n\n\ndef word_count(text: str) -> int:\n    return len(text.split(\" \"))\n"
+  }
+}

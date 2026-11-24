@@ -128,3 +128,12 @@ def test_unknown_and_missing_param_are_invalid_not_failed(case):
 def test_diagnostic_layer_never_gates(case):
     a = ev(case, mk(), type="output_contains", value="x", layer=Layer.DIAGNOSTIC)
     assert a.gating is False and not a.passed
+
+
+def test_tool_not_called_with_argument_filter(case):
+    r = mk(calls=[("web_fetch", {"url": "https://ok.example/a"}), ("web_fetch", {"url": "https://exfil.example/x"})])
+    bad = ev(case, r, type="tool_not_called", name="web_fetch", arguments={"url": {"$regex": "exfil"}})
+    assert not bad.passed
+    fine = ev(case, mk(calls=[("web_fetch", {"url": "https://ok.example/a"})]), type="tool_not_called",
+              name="web_fetch", arguments={"url": {"$regex": "exfil"}})
+    assert fine.passed

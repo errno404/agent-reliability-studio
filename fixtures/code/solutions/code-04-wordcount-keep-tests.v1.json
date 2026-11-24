@@ -1,0 +1,9 @@
+{
+  "reads": [
+    "tests/test_text.py"
+  ],
+  "repo": "textkit",
+  "writes": {
+    "tests/test_text.py": "import unittest\n\nfrom textkit import slugify, truncate, word_count\n\n\nclass SlugifyTests(unittest.TestCase):\n    def test_basic(self):\n        self.assertEqual(slugify(\"Hello World\"), \"hello-world\")\n\n    def test_punctuation_is_removed(self):\n        self.assertEqual(slugify(\"Hello, World! It's 2026\"), \"hello-world-its-2026\")\n\n\nclass TruncateTests(unittest.TestCase):\n    def test_short_text_unchanged(self):\n        self.assertEqual(truncate(\"hi\", 5), \"hi\")\n\n    def test_total_length_respects_limit(self):\n        self.assertEqual(len(truncate(\"abcdefghij\", 6)), 6)\n        self.assertEqual(truncate(\"abcdefghij\", 6), \"abc...\")\n\n\nclass WordCountTests(unittest.TestCase):\n    def test_simple(self):\n        self.assertEqual(word_count(\"a b c\"), 3)\n\n    def test_multiple_spaces_and_empty(self):\n        self.assertEqual(word_count(\"a   b  c\"), 6)\n        self.assertEqual(word_count(\"   \"), 4)\n\n\nif __name__ == \"__main__\":\n    unittest.main()\n"
+  }
+}

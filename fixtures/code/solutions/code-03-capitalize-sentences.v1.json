@@ -1,0 +1,10 @@
+{
+  "reads": [
+    "textkit/text.py"
+  ],
+  "repo": "textkit",
+  "writes": {
+    "textkit/__init__.py": "from .text import capitalize_sentences, slugify, truncate, word_count\n\n__all__ = [\"capitalize_sentences\", \"slugify\", \"truncate\", \"word_count\"]\n",
+    "textkit/text.py": "\"\"\"Tiny text helpers (synthetic fixture repository).\"\"\"\nimport re\n\n\ndef slugify(text: str) -> str:\n    return text.lower().replace(\" \", \"-\")\n\n\ndef truncate(text: str, limit: int) -> str:\n    \"\"\"Return text cut to `limit` characters INCLUDING a trailing ellipsis when truncated.\"\"\"\n    if len(text) <= limit:\n        return text\n    return text[:limit] + \"...\"\n\n\ndef word_count(text: str) -> int:\n    return len(text.split(\" \"))\n\n\ndef capitalize_sentences(text: str) -> str:\n    \"\"\"Upper-case the first letter of each sentence (split on . ! ?).\"\"\"\n    return re.sub(r\"(^|[.!?]\\s+)([a-z])\", lambda m: m.group(1) + m.group(2).upper(), text)\n"
+  }
+}

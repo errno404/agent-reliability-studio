@@ -1,0 +1,9 @@
+{
+  "reads": [
+    "cart/cart.py"
+  ],
+  "repo": "cart",
+  "writes": {
+    "cart/cart.py": "\"\"\"Shopping cart (synthetic fixture repository). Money is in integer cents.\"\"\"\n\n\nclass Cart:\n    def __init__(self, discount_percent: int = 0):\n        self.items: dict[str, tuple[int, int]] = {}  # sku -> (unit_cents, qty)\n        self.discount_percent = discount_percent\n\n    def add(self, sku: str, unit_cents: int, qty: int = 1) -> None:\n        if qty <= 0:\n            raise ValueError(\"qty must be positive\")\n        cur = self.items.get(sku, (unit_cents, 0))\n        self.items[sku] = (unit_cents, cur[1] + qty)\n\n    def subtotal(self) -> int:\n        return sum(u * q for u, q in self.items.values())\n\n    def total(self) -> int:\n        sub = self.subtotal()\n        return sub - sub * self.discount_percent // 100\n\n    def remove(self, sku: str) -> None:\n        if sku not in self.items:\n            raise KeyError(sku)\n        del self.items[sku]\n"
+  }
+}

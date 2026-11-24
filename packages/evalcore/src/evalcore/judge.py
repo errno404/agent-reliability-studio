@@ -143,8 +143,8 @@ class HeuristicJudge:
 
     name = "heuristic"
 
-    def __init__(self, model: str = "keyword-v1", strictness: float = 0.6):
-        self.model, self.strictness = model, strictness
+    def __init__(self, model: str = "keyword-v1", strictness: float = 0.6, check_forbidden: bool = True):
+        self.model, self.strictness, self.check_forbidden = model, strictness, check_forbidden
 
     def complete(self, prompt: str) -> str:
         rubric = prompt.split("RUBRIC", 1)[1].split("INPUT:", 1)[0]
@@ -152,7 +152,7 @@ class HeuristicJudge:
         musts = re.findall(r"MUST:\s*(.+)", rubric)
         must_nots = re.findall(r"MUST_NOT:\s*(.+)", rubric)
         hit = [m for m in musts if m.strip().lower() in output or _tokens(m) <= _tokens(output)]
-        bad = [m for m in must_nots if m.strip().lower() in output]
+        bad = [m for m in must_nots if self.check_forbidden and m.strip().lower() in output]
         score = (len(hit) / len(musts)) if musts else 0.5
         score = 0.0 if bad else score
         passed = (not bad) and score >= self.strictness

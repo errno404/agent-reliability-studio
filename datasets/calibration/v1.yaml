@@ -1,0 +1,487 @@
+name: calibration
+version: v1
+dimension: factual_correctness
+published: true
+description: 60 reference-labelled items. Labels are SYNTHETIC FIXTURE labels (author-written), not human labels.
+items:
+- id: cal-01a
+  input: How many passengers can MV Aurelia carry?
+  rubric: &id001
+    must:
+    - 240 passengers
+    must_not:
+    - 300 passengers
+  label_source: synthetic_fixture
+  candidate_output: MV Aurelia carries 240 passengers and 38 vehicles.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-01b
+  input: How many passengers can MV Aurelia carry?
+  rubric: *id001
+  label_source: synthetic_fixture
+  candidate_output: Capacity is 240 passengers, per the operator's fleet page.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-01c
+  input: How many passengers can MV Aurelia carry?
+  rubric: *id001
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-01d
+  input: How many passengers can MV Aurelia carry?
+  rubric: *id001
+  label_source: synthetic_fixture
+  candidate_output: It is NOT true that capacity is 240 passengers; the guide says 300 passengers.
+  reference_label: fail
+  notes: 'HARD NEGATIVE: negation contains the right phrase and the wrong figure'
+- id: cal-02a
+  input: What is the last summer departure time?
+  rubric: &id002
+    must:
+    - '22:15'
+    must_not:
+    - '18:30'
+  label_source: synthetic_fixture
+  candidate_output: The last summer departure is at 22:15.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-02b
+  input: What is the last summer departure time?
+  rubric: *id002
+  label_source: synthetic_fixture
+  candidate_output: Summer sailings finish with a 22:15 departure.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-02c
+  input: What is the last summer departure time?
+  rubric: *id002
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-02d
+  input: What is the last summer departure time?
+  rubric: *id002
+  label_source: synthetic_fixture
+  candidate_output: Two hundred and forty people can ride; the official page lists capacity as 240 passengers.
+  reference_label: pass
+  notes: 'HARD POSITIVE: paraphrase with an extra clause'
+- id: cal-03a
+  input: What energy density did the Q7 reach?
+  rubric: &id003
+    must:
+    - 412 Wh/kg
+    must_not:
+    - 450 Wh/kg
+  label_source: synthetic_fixture
+  candidate_output: The Q7 reached 412 Wh/kg at 25 C.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-03b
+  input: What energy density did the Q7 reach?
+  rubric: *id003
+  label_source: synthetic_fixture
+  candidate_output: Measured at 25 C, the cell hit 412 Wh/kg.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-03c
+  input: What energy density did the Q7 reach?
+  rubric: *id003
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-03d
+  input: What energy density did the Q7 reach?
+  rubric: *id003
+  label_source: synthetic_fixture
+  candidate_output: The Q7 hits 450 Wh/kg, a record. 412 wh/kg is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-04a
+  input: How many bikes does Marrowdale operate?
+  rubric: &id004
+    must:
+    - 1,840 bikes
+    must_not:
+    - 2,500 bikes
+  label_source: synthetic_fixture
+  candidate_output: Marrowdale operates 1,840 bikes.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-04b
+  input: How many bikes does Marrowdale operate?
+  rubric: *id004
+  label_source: synthetic_fixture
+  candidate_output: The fleet is 1,840 bikes across the city.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-04c
+  input: How many bikes does Marrowdale operate?
+  rubric: *id004
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-04d
+  input: How many bikes does Marrowdale operate?
+  rubric: *id004
+  label_source: synthetic_fixture
+  candidate_output: Marrowdale has 2,500 bikes now. 1,840 bikes is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-05a
+  input: What did Tessellate 4.2 add?
+  rubric: &id005
+    must:
+    - pattern guards
+    must_not:
+    - garbage collection
+  label_source: synthetic_fixture
+  candidate_output: Tessellate 4.2 added pattern guards.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-05b
+  input: What did Tessellate 4.2 add?
+  rubric: *id005
+  label_source: synthetic_fixture
+  candidate_output: 'New in 4.2: pattern guards in match expressions.'
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-05c
+  input: What did Tessellate 4.2 add?
+  rubric: *id005
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-05d
+  input: What did Tessellate 4.2 add?
+  rubric: *id005
+  label_source: synthetic_fixture
+  candidate_output: 4.2 rewrote garbage collection. Pattern guards is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-06a
+  input: What is the Ketterly telescope aperture?
+  rubric: &id006
+    must:
+    - '3.8'
+    must_not:
+    - '4.2'
+  label_source: synthetic_fixture
+  candidate_output: The aperture is 3.8 metres.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-06b
+  input: What is the Ketterly telescope aperture?
+  rubric: *id006
+  label_source: synthetic_fixture
+  candidate_output: Its primary mirror measures 3.8 m.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-06c
+  input: What is the Ketterly telescope aperture?
+  rubric: *id006
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-06d
+  input: What is the Ketterly telescope aperture?
+  rubric: *id006
+  label_source: synthetic_fixture
+  candidate_output: The aperture is 4.2 metres. 3.8 is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-07a
+  input: How many units were recalled in lot 22B?
+  rubric: &id007
+    must:
+    - 14,200
+    must_not:
+    - 5,000
+  label_source: synthetic_fixture
+  candidate_output: About 14,200 units were recalled.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-07b
+  input: How many units were recalled in lot 22B?
+  rubric: *id007
+  label_source: synthetic_fixture
+  candidate_output: The regulator counts 14,200 units.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-07c
+  input: How many units were recalled in lot 22B?
+  rubric: *id007
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-07d
+  input: How many units were recalled in lot 22B?
+  rubric: *id007
+  label_source: synthetic_fixture
+  candidate_output: Fewer than 5,000 units were recalled. 14,200 is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-08a
+  input: What does Nimbus charge for standard storage?
+  rubric: &id008
+    must:
+    - $0.021
+    must_not:
+    - $0.012
+  label_source: synthetic_fixture
+  candidate_output: Standard storage is $0.021 per GB-month.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-08b
+  input: What does Nimbus charge for standard storage?
+  rubric: *id008
+  label_source: synthetic_fixture
+  candidate_output: You pay $0.021 per GB-month.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-08c
+  input: What does Nimbus charge for standard storage?
+  rubric: *id008
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-08d
+  input: What does Nimbus charge for standard storage?
+  rubric: *id008
+  label_source: synthetic_fixture
+  candidate_output: Standard costs $0.012 per GB-month. $0.021 is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-09a
+  input: How much did heavy-rainfall days increase?
+  rubric: &id009
+    must:
+    - 14 percent
+    must_not:
+    - 40 percent
+  label_source: synthetic_fixture
+  candidate_output: Heavy-rainfall days rose 14 percent.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-09b
+  input: How much did heavy-rainfall days increase?
+  rubric: *id009
+  label_source: synthetic_fixture
+  candidate_output: The study found a 14 percent increase.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-09c
+  input: How much did heavy-rainfall days increase?
+  rubric: *id009
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-09d
+  input: How much did heavy-rainfall days increase?
+  rubric: *id009
+  label_source: synthetic_fixture
+  candidate_output: Heavy rain is up 40 percent. 14 percent is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-10a
+  input: What is the refund window?
+  rubric: &id010
+    must:
+    - 30 days
+    must_not:
+    - 60 days
+  label_source: synthetic_fixture
+  candidate_output: Refunds are allowed within 30 days of delivery.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-10b
+  input: What is the refund window?
+  rubric: *id010
+  label_source: synthetic_fixture
+  candidate_output: You have 30 days from delivery to request a refund.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-10c
+  input: What is the refund window?
+  rubric: *id010
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-10d
+  input: What is the refund window?
+  rubric: *id010
+  label_source: synthetic_fixture
+  candidate_output: You have 60 days to request a refund. 30 days is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-11a
+  input: Can I refund a final-sale item?
+  rubric: &id011
+    must:
+    - final sale
+    - cannot
+    must_not:
+    - can be refunded
+  label_source: synthetic_fixture
+  candidate_output: Final sale items cannot be refunded.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-11b
+  input: Can I refund a final-sale item?
+  rubric: *id011
+  label_source: synthetic_fixture
+  candidate_output: 'No: a final sale item cannot be refunded.'
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-11c
+  input: Can I refund a final-sale item?
+  rubric: *id011
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-11d
+  input: Can I refund a final-sale item?
+  rubric: *id011
+  label_source: synthetic_fixture
+  candidate_output: Yes, final-sale items can be refunded. Cannot is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-12a
+  input: Refunds over $500?
+  rubric: &id012
+    must:
+    - human approval
+    must_not:
+    - issue it directly
+  label_source: synthetic_fixture
+  candidate_output: Refunds over $500 need human approval.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-12b
+  input: Refunds over $500?
+  rubric: *id012
+  label_source: synthetic_fixture
+  candidate_output: Anything above $500 requires human approval.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-12c
+  input: Refunds over $500?
+  rubric: *id012
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-12d
+  input: Refunds over $500?
+  rubric: *id012
+  label_source: synthetic_fixture
+  candidate_output: Over $500 we just issue it directly. Human approval is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-13a
+  input: When can the address change?
+  rubric: &id013
+    must:
+    - processing
+    must_not:
+    - any time
+  label_source: synthetic_fixture
+  candidate_output: The address can change only while the order is processing.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-13b
+  input: When can the address change?
+  rubric: *id013
+  label_source: synthetic_fixture
+  candidate_output: Changes are possible only during processing.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-13c
+  input: When can the address change?
+  rubric: *id013
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-13d
+  input: When can the address change?
+  rubric: *id013
+  label_source: synthetic_fixture
+  candidate_output: The address can change any time, even after shipping. Processing is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-14a
+  input: Subscription refund policy?
+  rubric: &id014
+    must:
+    - 7 days
+    must_not:
+    - 90 days
+  label_source: synthetic_fixture
+  candidate_output: Subscription refunds apply within 7 days.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-14b
+  input: Subscription refund policy?
+  rubric: *id014
+  label_source: synthetic_fixture
+  candidate_output: A refund is available only within 7 days of the start.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-14c
+  input: Subscription refund policy?
+  rubric: *id014
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-14d
+  input: Subscription refund policy?
+  rubric: *id014
+  label_source: synthetic_fixture
+  candidate_output: Subscriptions are refundable for 90 days. 7 days is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
+- id: cal-15a
+  input: How many cycles to 80 percent retention?
+  rubric: &id015
+    must:
+    - 1,150
+    must_not:
+    - 2,000
+  label_source: synthetic_fixture
+  candidate_output: The Q7 retained 80 percent after 1,150 cycles.
+  reference_label: pass
+  notes: exact correct statement
+- id: cal-15b
+  input: How many cycles to 80 percent retention?
+  rubric: *id015
+  label_source: synthetic_fixture
+  candidate_output: Capacity hit 80 percent at 1,150 cycles.
+  reference_label: pass
+  notes: correct paraphrase
+- id: cal-15c
+  input: How many cycles to 80 percent retention?
+  rubric: *id015
+  label_source: synthetic_fixture
+  candidate_output: I could not find reliable information on that.
+  reference_label: fail
+  notes: abstains instead of answering
+- id: cal-15d
+  input: How many cycles to 80 percent retention?
+  rubric: *id015
+  label_source: synthetic_fixture
+  candidate_output: The Q7 lasts 2,000 cycles. 1,150 is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)

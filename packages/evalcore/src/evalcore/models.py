@@ -183,8 +183,11 @@ class SampleResult(BaseModel):
     seed: int | None = None
 
     def layer_pass(self, layer: Layer) -> bool | None:
-        """Pass/fail for one layer, or ``None`` if the layer has no gating assertions."""
-        rel = [a for a in self.assertions if a.layer == layer and a.gating and not a.skipped]
+        """Pass/fail for one layer over ALL of its assertions (gating or informational), or ``None`` if it has none.
+
+        Case pass/fail still uses gating assertions only; layer rates are the separate, never-blended diagnostics.
+        """
+        rel = [a for a in self.assertions if a.layer == layer and not a.skipped and not a.invalid]
         if not rel:
             return None
         return all(a.passed for a in rel)

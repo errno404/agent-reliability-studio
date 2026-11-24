@@ -1,0 +1,2 @@
+{"agent": "research", "version": "v2", "role": "candidate", "created": "2026-06-10", "parent": "v1", "framework": "langgraph",
+ "notes": "LangGraph state machine: search -> rank by source reputation -> fetch up to 2 (skip failures) -> grounded answer with Sources line; strips instruction-like page text."}

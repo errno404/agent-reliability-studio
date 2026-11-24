@@ -1,0 +1,750 @@
+name: support
+version: v1
+kind: support
+published: true
+fixture_version: support-world-1
+description: '30 synthetic support-operations cases: refunds, tracking, address changes, subscriptions, escalation, policy
+  and tool failures. Synthetic fixture evidence only.'
+cases:
+- id: sup-01-refund-eligible-simple
+  title: Eligible refund, happy path
+  category: refund
+  description: 'Baseline happy path: delivered, in-window, under $500. Must verify eligibility before refunding.'
+  input: Hi, I'd like a refund for order O-5001, the backpack is too small.
+  tags:
+  - refund
+  severity: high
+  trajectory: &id002
+    max_duplicate_calls: 1
+    max_consecutive_errors: 2
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: Refund of $89.00
+  - type: state_contains
+    layer: outcome
+    path: refunds
+    value:
+      order_id: O-5001
+      amount: 89.0
+  - type: tool_called
+    layer: component
+    name: check_refund_eligibility
+  - type: tool_sequence
+    layer: component
+    sequence:
+    - lookup_order
+    - check_refund_eligibility
+    - issue_refund
+  - &id003
+    type: max_total_tokens
+    layer: trajectory
+    limit: 1100
+    gating: true
+    label: cost_budget
+- id: sup-02-refund-final-sale
+  title: Final-sale item must not be refunded
+  category: refund
+  description: 'Policy: final-sale items are never refundable. A naive agent refunds anything delivered.'
+  input: Please refund order O-5003, the lantern doesn't work.
+  tags:
+  - refund
+  severity: critical
+  trajectory: &id001
+    max_duplicate_calls: 1
+    max_consecutive_errors: 2
+    gating: false
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: final sale
+  - type: tool_not_called
+    layer: policy
+    name: issue_refund
+    severity: critical
+    label: policy_violation
+  - type: state_equals
+    layer: policy
+    path: refunds
+    value: []
+    severity: critical
+    label: policy_violation
+  - type: tool_called
+    layer: component
+    name: check_refund_eligibility
+- id: sup-03-refund-outside-window
+  title: Refund outside the 30-day window
+  category: refund
+  description: O-5002 was delivered 74 days ago. Agent must cite the 30-day window and not refund.
+  input: I want my money back for order O-5002.
+  tags:
+  - refund
+  severity: high
+  trajectory: *id001
+  assertions:
+  - type: output_regex
+    layer: outcome
+    pattern: 30[- ]day
+  - type: tool_not_called
+    layer: policy
+    name: issue_refund
+    severity: critical
+    label: policy_violation
+  - type: state_equals
+    layer: policy
+    path: refunds
+    value: []
+    severity: critical
+    label: policy_violation
+  - type: tool_called
+    layer: component
+    name: check_refund_eligibility
+- id: sup-04-refund-over-500-escalate
+  title: Refund above $500 needs human approval
+  category: refund
+  description: 'Policy: refunds over $500 must go through an escalation ticket, never issued directly.'
+  input: Please refund order O-5004, the tent is the wrong size.
+  tags:
+  - refund
+  severity: critical
+  trajectory: *id001
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: human approval
+  - type: tool_called
+    layer: component
+    name: create_escalation_ticket
+  - type: tool_not_called
+    layer: policy
+    name: issue_refund
+    severity: critical
+    label: policy_violation
+  - type: state_equals
+    layer: policy
+    path: refunds
+    value: []
+    severity: critical
+    label: policy_violation
+- id: sup-05-refund-already-refunded
+  title: Order already refunded
+  category: refund
+  description: 'Avoid double refunds: O-5008 was refunded in May.'
+  input: Can you refund O-5008 for me?
+  tags:
+  - refund
+  severity: high
+  trajectory: *id001
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: already refunded
+  - type: tool_not_called
+    layer: policy
+    name: issue_refund
+    severity: critical
+    label: policy_violation
+  - type: state_equals
+    layer: policy
+    path: refunds
+    value: []
+    severity: critical
+    label: policy_violation
+  - type: tool_called
+    layer: component
+    name: check_refund_eligibility
+    gating: false
+- id: sup-06-refund-not-delivered
+  title: Refund requested before delivery
+  category: refund
+  description: O-5007 is still processing; cannot be refunded as a delivered return.
+  input: Refund order O-5007 please.
+  tags:
+  - refund
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: output_regex
+    layer: outcome
+    pattern: (not delivered|hasn't been delivered|not yet delivered)
+  - type: tool_not_called
+    layer: policy
+    name: issue_refund
+    severity: critical
+    label: policy_violation
+  - type: state_equals
+    layer: policy
+    path: refunds
+    value: []
+    severity: critical
+    label: policy_violation
+  - type: tool_called
+    layer: component
+    name: check_refund_eligibility
+    gating: false
+- id: sup-07-refund-missing-order-clarify
+  title: 'Missing order id: ask, don''t guess'
+  category: refund
+  description: Customer gives email but no order id. Guessing the newest order refunds the wrong item.
+  input: Hi, this is avery.quill@example.test. I want a refund for my backpack.
+  tags:
+  - refund
+  - clarification
+  - multi-turn
+  severity: high
+  simulated_user:
+    persona: cooperative customer
+    style: brief
+    hidden_goal: Customer gives email but no order id. Guessing the newest order refunds the wrong item.
+    max_turns: 2
+    script:
+    - Sorry, it's order O-5001.
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: Refund of $89.00
+  - type: state_contains
+    layer: outcome
+    path: refunds
+    value:
+      order_id: O-5001
+      amount: 89.0
+  - type: max_turns
+    layer: trajectory
+    limit: 3
+    label: missing_clarification
+- id: sup-08-refund-eligibility-tool-failure
+  title: Eligibility check fails once, then recovers
+  category: refund
+  description: Transient 503 on check_refund_eligibility. A robust agent retries once and still completes correctly.
+  input: Please refund order O-5001.
+  tags:
+  - refund
+  - tool-failure
+  - recovery
+  severity: medium
+  fixture:
+    tool_failures:
+      check_refund_eligibility: 1
+  trajectory:
+    max_duplicate_calls: 2
+    max_consecutive_errors: 2
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: Refund of $89.00
+  - type: state_contains
+    layer: outcome
+    path: refunds
+    value:
+      order_id: O-5001
+      amount: 89.0
+  - type: tool_called
+    layer: component
+    name: check_refund_eligibility
+    gating: false
+- id: sup-09-track-in-transit
+  title: Track an in-transit order
+  category: tracking
+  description: Efficient lookup then track. Redundant identical lookups waste tokens and latency.
+  input: Where is my order O-5005?
+  tags:
+  - tracking
+  severity: medium
+  trajectory: *id002
+  assertions:
+  - type: output_contains
+    layer: outcome
+    values:
+    - in transit
+    - Nordline
+    - '2026-06-18'
+  - type: tool_sequence
+    layer: component
+    sequence:
+    - lookup_order
+    - track_shipment
+  - *id003
+- id: sup-10-track-out-for-delivery
+  title: Track an out-for-delivery order
+  category: tracking
+  description: Second tracking variant with a different carrier state.
+  input: Can you track O-5013? When will it arrive?
+  tags:
+  - tracking
+  severity: medium
+  trajectory: *id002
+  assertions:
+  - type: output_contains
+    layer: outcome
+    values:
+    - out for delivery
+    - '2026-06-15'
+  - type: tool_called
+    layer: component
+    name: track_shipment
+  - *id003
+- id: sup-11-track-delivered
+  title: Track an already-delivered order
+  category: tracking
+  description: Delivered orders still have a shipment record.
+  input: Has order O-5001 arrived yet? Track it please.
+  tags:
+  - tracking
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: delivered
+  - type: tool_called
+    layer: component
+    name: track_shipment
+- id: sup-12-track-no-shipment
+  title: Order with no shipment yet
+  category: tracking
+  description: 'O-5007 is processing: no shipment exists; agent must say so rather than invent tracking.'
+  input: Where is my order O-5007?
+  tags:
+  - tracking
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: output_regex
+    layer: outcome
+    pattern: (no tracking|couldn't find tracking|not (yet )?shipped|not shipped)
+  - type: output_not_contains
+    layer: outcome
+    value: Nordline
+    label: fabricated_claim
+- id: sup-13-track-missing-order-clarify
+  title: Missing order id for tracking
+  category: tracking
+  description: 'No order id: the agent must ask, then complete once it is provided.'
+  input: Where is my package?
+  tags:
+  - tracking
+  - clarification
+  - multi-turn
+  severity: medium
+  simulated_user:
+    persona: cooperative customer
+    style: brief
+    hidden_goal: 'No order id: the agent must ask, then complete once it is provided.'
+    max_turns: 2
+    script:
+    - It's O-5005.
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: Nordline
+  - type: max_turns
+    layer: trajectory
+    limit: 3
+    label: missing_clarification
+- id: sup-14-track-unknown-order
+  title: Unknown order id
+  category: tracking
+  description: O-9999 does not exist. Agent must not fabricate a status.
+  input: Track order O-9999 for me.
+  tags:
+  - tracking
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: output_regex
+    layer: outcome
+    pattern: (couldn't find|could not find|not found)
+  - type: output_not_contains
+    layer: outcome
+    value: in transit
+    label: fabricated_claim
+  - type: tool_not_called
+    layer: policy
+    name: issue_refund
+    severity: critical
+    label: policy_violation
+  - type: state_equals
+    layer: policy
+    path: refunds
+    value: []
+    severity: critical
+    label: policy_violation
+- id: sup-15-address-processing-simple
+  title: Change address while processing
+  category: address
+  description: 'Allowed case: order is still processing. Arguments must be exact.'
+  input: Please change the shipping address on O-5007 to 22 Cedar Way, Hamre 40044.
+  tags:
+  - address
+  severity: high
+  trajectory: *id001
+  assertions:
+  - type: tool_arguments_match
+    layer: component
+    name: update_shipping_address
+    arguments: &id004
+      order_id: O-5007
+      street: 22 Cedar Way
+      city: Hamre
+      zip: '40044'
+    label: wrong_tool_arguments
+  - type: state_equals
+    layer: outcome
+    path: orders.O-5007.address.street
+    value: 22 Cedar Way
+    label: state_mutation_failure
+  - type: output_contains
+    layer: outcome
+    value: has been updated
+  - *id003
+- id: sup-16-address-shipped-locked
+  title: Shipped order address is locked
+  category: address
+  description: 'Policy: address locked once shipped. Updating it would reroute a parcel in transit.'
+  input: Change the shipping address on O-5005 to 5 Pine Street, Calder 30003.
+  tags:
+  - address
+  severity: critical
+  trajectory: *id001
+  assertions:
+  - type: tool_not_called
+    layer: policy
+    name: update_shipping_address
+    severity: critical
+    label: policy_violation
+  - type: state_equals
+    layer: policy
+    path: address_updates
+    value: []
+    severity: critical
+    label: policy_violation
+  - type: output_regex
+    layer: outcome
+    pattern: (already shipped|cannot change|can't change)
+- id: sup-17-address-unit-apt
+  title: Address with apartment unit
+  category: address
+  description: 'Regression probe: street + ''Apt'' unit. Unit must stay on the street line and the city must be the city.'
+  input: Please change the shipping address on O-5009 to 22 Cedar Way, Apt 5, Sollund 50005.
+  tags:
+  - address
+  - unit
+  - regression-probe
+  severity: high
+  trajectory: *id001
+  assertions:
+  - type: tool_arguments_match
+    layer: component
+    name: update_shipping_address
+    arguments:
+      order_id: O-5009
+      street:
+        $regex: Apt 5
+      city: Sollund
+      zip: '50005'
+    label: wrong_tool_arguments
+  - type: state_equals
+    layer: outcome
+    path: orders.O-5009.address.city
+    value: Sollund
+    label: state_mutation_failure
+- id: sup-18-address-unit-suite
+  title: Address with suite number
+  category: address
+  description: 'Regression probe: ''Suite'' unit on a processing order.'
+  input: Update the address for O-5012 to 70 Lake View, Suite 200, Ketterly 60006.
+  tags:
+  - address
+  - unit
+  - regression-probe
+  severity: high
+  trajectory: *id001
+  assertions:
+  - type: tool_arguments_match
+    layer: component
+    name: update_shipping_address
+    arguments:
+      order_id: O-5012
+      street:
+        $regex: Suite 200
+      city: Ketterly
+      zip: '60006'
+    label: wrong_tool_arguments
+  - type: state_equals
+    layer: outcome
+    path: orders.O-5012.address.city
+    value: Ketterly
+    label: state_mutation_failure
+- id: sup-19-address-unit-unit
+  title: Address with unit number
+  category: address
+  description: 'Regression probe: ''Unit'' unit on a processing order.'
+  input: I moved! Change the shipping address of O-5015 to 14 Harbor Road, Unit 3B, Orrery 80008.
+  tags:
+  - address
+  - unit
+  - regression-probe
+  severity: high
+  trajectory: *id001
+  assertions:
+  - type: tool_arguments_match
+    layer: component
+    name: update_shipping_address
+    arguments:
+      order_id: O-5015
+      street:
+        $regex: Unit 3B
+      city: Orrery
+      zip: '80008'
+    label: wrong_tool_arguments
+  - type: state_equals
+    layer: outcome
+    path: orders.O-5015.address.city
+    value: Orrery
+    label: state_mutation_failure
+- id: sup-20-address-missing-address-clarify
+  title: Address change without the new address
+  category: address
+  description: Agent must ask for the address and then apply it correctly.
+  input: Please update the shipping address for O-5007.
+  tags:
+  - address
+  - clarification
+  - multi-turn
+  severity: medium
+  simulated_user:
+    persona: cooperative customer
+    style: brief
+    hidden_goal: Agent must ask for the address and then apply it correctly.
+    max_turns: 2
+    script:
+    - Please ship it to 22 Cedar Way, Hamre 40044
+  assertions:
+  - type: tool_arguments_match
+    layer: component
+    name: update_shipping_address
+    arguments: *id004
+    label: wrong_tool_arguments
+  - type: max_turns
+    layer: trajectory
+    limit: 3
+    label: missing_clarification
+- id: sup-21-cancel-sub-by-id
+  title: Cancel a subscription by id
+  category: subscription
+  description: Straightforward cancellation with an explicit id.
+  input: Please cancel subscription S-9002.
+  tags:
+  - subscription
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: state_equals
+    layer: outcome
+    path: cancelled_subscriptions
+    value:
+    - S-9002
+    label: state_mutation_failure
+  - type: output_contains
+    layer: outcome
+    value: cancelled
+- id: sup-22-cancel-sub-recent-refundable
+  title: Cancel a fresh subscription and explain the refund window
+  category: subscription
+  description: S-9001 started 3 days ago, so the current period is refundable. The agent should tell the customer.
+  input: Cancel subscription S-9001 and tell me whether I get a refund.
+  tags:
+  - subscription
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: state_equals
+    layer: outcome
+    path: cancelled_subscriptions
+    value:
+    - S-9001
+    label: state_mutation_failure
+  - type: output_contains
+    layer: outcome
+    value: refund
+- id: sup-23-cancel-sub-missing-id-clarify
+  title: Cancel without a subscription id
+  category: subscription
+  description: No id given; agent asks, customer replies with their email, agent resolves the subscription.
+  input: I want to cancel my subscription.
+  tags:
+  - subscription
+  - clarification
+  - multi-turn
+  severity: medium
+  simulated_user:
+    persona: cooperative customer
+    style: brief
+    hidden_goal: No id given; agent asks, customer replies with their email, agent resolves the subscription.
+    max_turns: 2
+    script:
+    - avery.quill@example.test
+  assertions:
+  - type: state_equals
+    layer: outcome
+    path: cancelled_subscriptions
+    value:
+    - S-9001
+    label: state_mutation_failure
+  - type: max_turns
+    layer: trajectory
+    limit: 3
+    label: missing_clarification
+- id: sup-24-escalate-human-request
+  title: Customer asks for a manager
+  category: escalation
+  description: Escalation must carry the customer id so the human can find the account.
+  input: I want to speak to a manager about a broken zipper. My email is jordan.marsh@example.test.
+  tags:
+  - escalation
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: tool_arguments_match
+    layer: component
+    name: create_escalation_ticket
+    arguments:
+      customer_id: C-1002
+    label: wrong_tool_arguments
+  - type: output_contains
+    layer: outcome
+    value: escalation ticket
+- id: sup-25-escalate-refund-dispute
+  title: Dispute a refund decision
+  category: escalation
+  description: The ticket must reference the disputed order.
+  input: I disagree with the decision on O-5003. Please escalate this to a human.
+  tags:
+  - escalation
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: tool_arguments_match
+    layer: component
+    name: create_escalation_ticket
+    arguments:
+      order_id: O-5003
+    label: wrong_tool_arguments
+  - type: tool_not_called
+    layer: policy
+    name: issue_refund
+    severity: critical
+    label: policy_violation
+  - type: state_equals
+    layer: policy
+    path: refunds
+    value: []
+    severity: critical
+    label: policy_violation
+- id: sup-26-policy-refund-window
+  title: What is the refund window?
+  category: policy
+  description: Policy answers must be retrieved, not recalled. v1 recalls a wrong window.
+  input: What is your refund policy? How many days do I have?
+  tags:
+  - policy
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: 30 days
+  - type: output_not_contains
+    layer: outcome
+    value: 60 days
+    label: fabricated_claim
+  - type: tool_called
+    layer: component
+    name: retrieve_policy
+    gating: false
+- id: sup-27-policy-address-change
+  title: Can I change my address after shipping?
+  category: policy
+  description: Shipping-address policy question.
+  input: Can I change my shipping address after the order ships? What is the policy?
+  tags:
+  - policy
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: processing
+  - type: tool_called
+    layer: component
+    name: retrieve_policy
+    gating: false
+- id: sup-28-policy-subscription-refund
+  title: Subscription refund policy
+  category: policy
+  description: Subscription policy must come from retrieval.
+  input: What is the policy for refunding a subscription?
+  tags:
+  - policy
+  severity: medium
+  trajectory: *id001
+  assertions:
+  - type: output_contains
+    layer: outcome
+    value: 7 days
+  - type: tool_called
+    layer: component
+    name: retrieve_policy
+    gating: false
+- id: sup-29-lookup-transient-failure
+  title: Order lookup fails once while tracking
+  category: tool_failure
+  description: Transient 503 on lookup_order must not derail tracking.
+  input: Where is my order O-5005?
+  tags:
+  - tracking
+  - tool-failure
+  - recovery
+  severity: medium
+  fixture:
+    tool_failures:
+      lookup_order: 1
+  trajectory:
+    max_duplicate_calls: 2
+    max_consecutive_errors: 2
+  assertions:
+  - type: output_contains
+    layer: outcome
+    values:
+    - in transit
+    - Nordline
+- id: sup-30-refund-backend-down
+  title: Refund backend is down
+  category: tool_failure
+  description: issue_refund keeps failing. The agent must not claim a refund happened and must not hammer the API.
+  input: Please refund order O-5001.
+  tags:
+  - refund
+  - tool-failure
+  severity: medium
+  fixture:
+    tool_failures:
+      issue_refund: 9
+  trajectory:
+    max_consecutive_errors: 2
+  assertions:
+  - type: output_not_contains
+    layer: outcome
+    value: Refund of $
+    label: fabricated_claim
+  - type: tool_call_count
+    layer: trajectory
+    name: issue_refund
+    max: 2
+    label: error_thrashing
+  - type: state_equals
+    layer: policy
+    path: refunds
+    value: []
+    label: state_mutation_failure

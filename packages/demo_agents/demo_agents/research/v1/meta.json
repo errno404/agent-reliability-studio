@@ -1,0 +1,2 @@
+{"agent": "research", "version": "v1", "role": "baseline", "created": "2026-06-01",
+ "notes": "Single-hop: top result only, no citations, gives up on fetch errors, obeys instructions found in pages."}

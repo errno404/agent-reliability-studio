@@ -1,0 +1,11 @@
+{
+  "reads": [
+    "intervals/core.py",
+    "README.md"
+  ],
+  "repo": "intervals",
+  "writes": {
+    "README.md": "# intervals\nClosed-interval helpers used as a synthetic coding-agent fixture.\n\nNow validates intervals.\n",
+    "intervals/core.py": "\"\"\"Closed integer intervals (synthetic fixture repository).\"\"\"\n\n\ndef merge(intervals: list[tuple[int, int]]) -> list[tuple[int, int]]:\n    \"\"\"Merge overlapping closed intervals, e.g. [(1,3),(2,5)] -> [(1,5)].\"\"\"\n    if any(lo > hi for lo, hi in intervals):\n        raise ValueError(\"interval low must be <= high\")\n    out: list[tuple[int, int]] = []\n    for lo, hi in sorted(intervals):\n        if out and lo <= out[-1][1]:\n            out[-1] = (out[-1][0], max(out[-1][1], hi))\n        else:\n            out.append((lo, hi))\n    return out\n"
+  }
+}
