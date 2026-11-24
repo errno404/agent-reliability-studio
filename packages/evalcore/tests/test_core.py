@@ -337,6 +337,7 @@ def man(**kw) -> RunManifest:
         judge_backend="heuristic",
         judge_model="k",
         judge_prompt_hash="p",
+        evaluator_hash="e1",
     )
     base.update(kw)
     return RunManifest(**base)
@@ -407,20 +408,20 @@ def test_end_to_end_compare_and_gate():
     bm, cm = man(case_ids=ids), man(case_ids=ids, agent_version="v2")
     pol = BootstrapPolicy(min_cases=50, n_boot=2000, margin=0.05)
     reg = compare_runs(bm, many(60, lambda i, j: True), cm, many(60, lambda i, j: i >= 30), pol)
-    assert reg.decision == Decision.SIGNIFICANT_REGRESSION and not gate(reg).passed
+    assert reg.decision == Decision.SIGNIFICANT_REGRESSION and not gate(reg, judge_ok=True).passed
     assert len(reg.case_changes) == 30 and "regression" in reg.explanation.lower()
     imp = compare_runs(bm, many(60, lambda i, j: i >= 30), cm, many(60, lambda i, j: True), pol)
-    assert imp.decision == Decision.SIGNIFICANT_IMPROVEMENT and gate(imp).passed
+    assert imp.decision == Decision.SIGNIFICANT_IMPROVEMENT and gate(imp, judge_ok=True).passed
     inv = compare_runs(
         bm, many(60, lambda i, j: True), man(case_ids=ids, dataset_hash="zz"), many(60, lambda i, j: True), pol
     )
-    assert inv.decision == Decision.INVALID and not gate(inv).passed and "INVALID" in inv.explanation
+    assert inv.decision == Decision.INVALID and not gate(inv, judge_ok=True).passed and "INVALID" in inv.explanation
     small_ids = ids[:10]
     inc = compare_runs(
         man(case_ids=small_ids), many(10, lambda i, j: True), man(case_ids=small_ids), many(10, lambda i, j: True), pol
     )
-    assert inc.decision == Decision.INCONCLUSIVE and not gate(inc, conservative=True).passed
-    assert gate(inc, conservative=False).passed
+    assert inc.decision == Decision.INCONCLUSIVE and not gate(inc, judge_ok=True).passed
+    assert not gate(inc, judge_ok=True, release=False).authorizes_release
     assert not gate(imp, judge_ok=False).passed  # uncalibrated judge blocks gating
 
 

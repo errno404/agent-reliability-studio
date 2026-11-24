@@ -76,6 +76,24 @@ def score_result(
     judge_record: dict[str, Any] | None = None
     judge_uncertain = False
     spec = case.rubric.get("judge") if case.rubric else None
+    if spec and spec.get("required") and not result.error and (judge is None or not judge_admitted):
+        # A REQUIRED semantic check may not silently disappear. Without an admitted judge the sample is INVALID
+        # (unavailable evidence): never "passed" and never quietly skipped.
+        assertions.append(
+            AssertionResult(
+                name="judge:required",
+                type="llm_judge",
+                layer=Layer.OUTCOME,
+                gating=True,
+                passed=False,
+                invalid=True,
+                expected="an admitted judge",
+                actual="none" if judge is None else "judge not admitted",
+                evidence="required judge criterion cannot be evaluated: no admitted judge is configured",
+                severity=Severity.HIGH,
+                label="evaluator_uncertainty",
+            )
+        )
     if judge is not None and spec and not result.error:
         rubric_text = "\n".join(
             [f"MUST: {m}" for m in spec.get("must", [])] + [f"MUST_NOT: {m}" for m in spec.get("must_not", [])]

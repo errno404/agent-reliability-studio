@@ -23,9 +23,11 @@ def _rate(samples: Sequence[SampleResult], layer: Layer | None) -> dict[str, Any
     return {"rate": (k / n) if n else None, "n": n, "passed": k, "ci_low": lo, "ci_high": hi}
 
 
-def summarize(samples: Sequence[SampleResult]) -> dict[str, Any]:
+def summarize(
+    samples: Sequence[SampleResult], intended_k: int | None = None, case_ids: Sequence[str] | None = None
+) -> dict[str, Any]:
     quality = [s for s in samples if s.counts_for_quality]
-    rr = repeated_run_stats(list(samples))
+    rr = repeated_run_stats(list(samples), intended_k, case_ids)
     lat = [s.result.latency_ms for s in quality]
     costs = [s.result.cost_usd for s in quality]
     cost_known = bool(costs) and all(c is not None for c in costs)
@@ -51,8 +53,26 @@ def summarize(samples: Sequence[SampleResult]) -> dict[str, Any]:
         "pass_hat_k": rr.pass_hat_k,
         "pass_at_k": rr.pass_at_k,
         "k": rr.k,
-        "single_run_pass_rate": rr.single_run_pass_rate,
-        "single_run_ci": list(rr.single_run_ci),
+        "intended_k": rr.intended_k,
+        "eligible_cases": rr.eligible_cases,
+        "excluded_cases": rr.n_excluded,
+        "exclusion_reasons": {reason: len(ids) for reason, ids in rr.excluded.items()},
+        "excluded_case_ids": {reason: ids[:10] for reason, ids in rr.excluded.items()},
+        # mean of individual trials (NOT a single run's pass rate); Wilson CI treats trials as independent => optimistic
+        "mean_trial_pass_rate": rr.mean_trial_pass_rate,
+        "mean_trial_ci": list(rr.mean_trial_ci),
+        "mean_trial_ci_method": rr.ci_method,
+        "single_run_pass_rate": rr.mean_trial_pass_rate,  # deprecated alias
+        "single_run_ci": list(rr.mean_trial_ci),  # deprecated alias
+        # operational reliability is reported SEPARATELY from agent quality
+        "execution_success_rate": (
+            1
+            - ((sum(1 for s in samples if s.status == SampleStatus.EXECUTION_ERROR) / len(samples)) if samples else 0.0)
+        ),
+        "conditional_quality_rate": _rate(samples, None)["rate"],  # pass rate among samples that executed
+        "end_to_end_success_rate": (sum(1 for s in samples if s.status == SampleStatus.PASSED) / len(samples))
+        if samples
+        else 0.0,
         "flaky_cases": rr.flaky_cases,
         "flips_by_category": rr.flips_by_category,
         "failure_labels": dict(Counter(lab for s in samples for lab in s.failure_labels)),

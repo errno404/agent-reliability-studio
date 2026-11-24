@@ -96,7 +96,11 @@ class AdmissionPolicy:
     min_per_class: int = 10
     min_kappa: float = 0.60
     max_fpr: float = 0.05
-    version: str = "adm-1"
+    # RELEASE scope: the point estimate above is not enough on a small set (0 false positives on 30 negatives is still
+    # consistent with a true FPR near 11%), so release eligibility also bounds the Wilson upper limit of the FPR.
+    max_fpr_upper: float = 0.10
+    min_trusted_items: int = 50  # labels from humans/adjudication required for RELEASE admission
+    version: str = "adm-2"
 
     def to_dict(self) -> dict[str, float | int | str]:
         return asdict(self)
@@ -130,9 +134,13 @@ def admit(metrics: CalibrationMetrics, policy: AdmissionPolicy | None = None) ->
     return AdmissionDecision(not why, why, metrics, pol)
 
 
-def judge_identity(backend: str, model: str, prompt_hash: str) -> str:
-    """A judge configuration is identified by (backend, model, prompt hash). Any change => recalibrate."""
-    return hash_obj({"backend": backend, "model": model, "prompt_hash": prompt_hash}, 16)
+def judge_identity(backend: str, model: str, prompt_hash: str, config_hash: str = "") -> str:
+    """Identity of a judge = everything that can change its verdicts.
+
+    ``config_hash`` must cover generation settings (temperature, ...), rubric contents/version, parser/scoring version and,
+    where the provider reports it, the resolved model. Any change => a NEW identity => a new calibration is required, so a
+    materially different configuration can never inherit an admission."""
+    return hash_obj({"backend": backend, "model": model, "prompt_hash": prompt_hash, "config": config_hash}, 16)
 
 
 def mean_pairwise_kappa(annotations: dict[str, dict[str, bool]]) -> tuple[float | None, int]:
@@ -165,3 +173,50 @@ def find_disagreements(annotations: dict[str, dict[str, bool]]) -> dict[str, dic
         for item, lab in labels.items():
             by_item[item][who] = lab
     return {i: v for i, v in by_item.items() if len(v) >= 2 and len(set(v.values())) > 1}
+
+
+TRUSTED_SOURCES = ("human", "adjudicated")
+
+
+def fpr_upper_bound(metrics: CalibrationMetrics) -> float:
+    """95% Wilson upper bound on the false-positive rate."""
+    from .stats import wilson_interval
+
+    n_neg = metrics.fp + metrics.tn
+    return wilson_interval(metrics.fp, n_neg)[1] if n_neg else 1.0
+
+
+@dataclass(frozen=True)
+class ReleaseEligibility:
+    eligible: bool
+    scope: str  # "release" | "demonstration" | "diagnostic"
+    reasons: list[str]
+    fpr_upper: float
+
+
+def release_eligibility(
+    decision_admitted: bool, metrics: CalibrationMetrics, sources: dict[str, int], policy: AdmissionPolicy | None = None
+) -> ReleaseEligibility:
+    """Is this calibration strong enough to authorise RELEASE decisions?
+
+    Requires: the standard admission, enough TRUSTED (human/adjudicated) labels, and a confidence bound on false positives.
+    ``synthetic_fixture`` labels can demonstrate the workflow ("demonstration") but never authorise a release.
+    """
+    pol = policy or AdmissionPolicy()
+    ub = fpr_upper_bound(metrics)
+    trusted = sum(sources.get(k, 0) for k in TRUSTED_SOURCES)
+    why: list[str] = []
+    if not decision_admitted:
+        why.append("judge is not admitted by the standard policy")
+    if trusted < pol.min_trusted_items:
+        why.append(
+            f"only {trusted} human/adjudicated reference labels (release needs >= {pol.min_trusted_items}); "
+            f"{sources.get('synthetic_fixture', 0)} labels are synthetic fixtures"
+        )
+    if ub > pol.max_fpr_upper:
+        why.append(
+            f"95% upper bound on the false-positive rate is {ub:.1%} (release needs <= {pol.max_fpr_upper:.0%}); "
+            f"a low point estimate on {metrics.fp + metrics.tn} negatives is weak evidence"
+        )
+    scope = "release" if not why else ("demonstration" if decision_admitted else "diagnostic")
+    return ReleaseEligibility(not why, scope, why, ub)
