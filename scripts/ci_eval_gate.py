@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """CI regression gate: baseline (target-branch code) vs candidate (PR code), SAME evaluator for both.
+(Smoke-test PR: this docstring-only change exists to trigger the eval-gate workflow.)
 
 * baseline agent code is imported from ``--baseline-src`` (a checkout/worktree of the target branch);
   evalcore, the API/service layer, datasets and fixtures always come from THIS checkout, so the evaluator is identical.
