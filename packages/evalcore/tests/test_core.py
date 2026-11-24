@@ -316,7 +316,9 @@ def test_judge_failure_is_not_agent_failure():
     case = case_with({"type": "output_contains", "value": "x"}, rubric={"judge": {"must": ["a"]}})
     j = Judge(ScriptedBackend(["bad"] * 3), JudgeConfig(backend="s", model="m"))
     s = score_result(case, mk(final_output="x"), judge=j, judge_admitted=True)
-    assert s.judge and s.status == SampleStatus.PASSED and s.judge["error"].startswith("malformed_output")
+    assert (
+        s.judge and s.status == SampleStatus.EXECUTION_ERROR and s.judge["error"]
+    )  # gating + admitted + outage.startswith("malformed_output")
 
 
 # ------------------------------------------------- manifest / comparison --
@@ -509,3 +511,71 @@ def test_litellm_backend_with_injected_completion():
 
     out = Judge(LiteLLMBackend("m", completion=fake), JudgeConfig(backend="litellm", model="m")).evaluate("r", "q", "a")
     assert out.ok
+
+
+def test_non_gating_judge_outage_does_not_affect_status():
+    case = case_with({"type": "output_contains", "value": "x"}, rubric={"judge": {"must": ["a"]}})
+    j = Judge(ScriptedBackend(["bad"] * 3), JudgeConfig(backend="s", model="m"))
+    assert score_result(case, mk(final_output="x"), judge=j, judge_admitted=False).status == SampleStatus.PASSED
+
+
+def test_candidate_only_drops_make_the_comparison_inconclusive():
+    from evalcore.stats import paired_cluster_bootstrap
+
+    base = [samp(f"c{i}", 0, P) for i in range(60)]
+    cand = [samp(f"c{i}", 0, P) for i in range(40)] + [samp(f"c{i}", 0, E) for i in range(40, 60)]
+    r = paired_cluster_bootstrap(base, cand, BootstrapPolicy(min_cases=20, n_boot=500))
+    assert r.decision == Decision.INCONCLUSIVE and "no usable samples" in r.reason
+
+
+def test_samples_outside_manifest_are_flagged():
+    rep = validate_pair(man(), man(), good_set(), good_set() + [samp("zzz", 0, P)])
+    assert any("unexpected_samples" in r for r in rep.reasons)
+
+
+def test_pass_hat_k_only_uses_cases_with_complete_samples():
+    from evalcore.stats import repeated_run_stats
+
+    r = repeated_run_stats([samp("a", 0, P), samp("a", 1, P), samp("b", 0, P)])
+    assert r.k == 2 and r.pass_hat_k == 1.0
+
+
+def test_policy_parameters_are_validated():
+    with pytest.raises(ValueError):
+        BootstrapPolicy(n_boot=0)
+    with pytest.raises(ValueError):
+        BootstrapPolicy(alpha=1.5)
+
+
+def test_redactor_catches_key_variants_patterns_and_odd_types():
+    r = Redactor()
+    out = r.apply(
+        {
+            "x-api-key": "a",
+            "openai_api_key": "b",
+            "passwordHash": "c",
+            "Authorization": "Bearer abcdefghijklmnop",
+            "note": "jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcd1234 and sk_live_abcdefgh1234 and postgres://u:pw@host/db",
+            ("tuple", "key"): "v",
+            "raw": b"DEMO_SECRET_DO_NOT_REVEAL_7F2A",
+            "set": {"xoxb-1234567890-abc"},
+        }
+    )
+    blob = str(out)
+    for leaked in (
+        "abcdefghijklmnop",
+        "eyJhbGci",
+        "sk_live_abcdefgh1234",
+        "u:pw@",
+        "DEMO_SECRET_DO_NOT",
+        "xoxb-1234567890",
+    ):
+        assert leaked not in blob, leaked
+    assert out["x-api-key"] == REDACTED and out["openai_api_key"] == REDACTED and out["passwordHash"] == REDACTED
+
+
+def test_redactor_does_not_destroy_usage_counters_or_short_key_lookalikes():
+    out = Redactor().apply({"input_tokens": 12, "total_tokens": 30, "business": "acme", "ssn": "123"})
+    assert (
+        out["input_tokens"] == 12 and out["total_tokens"] == 30 and out["business"] == "acme" and out["ssn"] == REDACTED
+    )

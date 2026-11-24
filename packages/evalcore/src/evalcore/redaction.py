@@ -30,6 +30,12 @@ DEFAULT_SENSITIVE_KEYS = frozenset(
 )
 
 DEFAULT_PATTERNS = (
+    r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{4,}",  # JWTs
+    r"\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{8,}",  # Stripe-style keys
+    r"xox[abprs]-[A-Za-z0-9-]{10,}",  # Slack tokens
+    r"AIza[0-9A-Za-z_-]{20,}",  # Google API keys
+    r"\b[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@",  # URLs with embedded credentials
+    r"Basic\s+[A-Za-z0-9+/=]{12,}",  # Basic auth
     r"sk-[A-Za-z0-9_-]{16,}",  # provider-style API keys
     r"AKIA[0-9A-Z]{16}",  # AWS access key ids
     r"gh[pousr]_[A-Za-z0-9]{20,}",  # GitHub tokens
@@ -61,11 +67,24 @@ class Redactor:
             value = value[: self.max_text] + f"…[truncated {len(value) - self.max_text} chars]"
         return value
 
+    def _sensitive_key(self, key: Any) -> bool:
+        """Substring match on a normalised key, so x-api-key, openai_api_key and passwordHash are all caught."""
+        k = str(key).lower().replace("-", "").replace("_", "")
+        if k.endswith("tokens"):  # usage counters (input_tokens, total_tokens) are numbers, not credentials
+            return False
+        for sk in self.sensitive_keys:
+            n = sk.replace("-", "").replace("_", "")
+            if (n == k) if len(n) <= 4 else (n in k):  # short names must match exactly ("ssn" must not hit "business")
+                return True
+        return False
+
     def apply(self, obj: Any) -> Any:
         if isinstance(obj, str):
             return self.text(obj)
         if isinstance(obj, dict):
-            return {k: (REDACTED if str(k).lower() in self.sensitive_keys else self.apply(v)) for k, v in obj.items()}
-        if isinstance(obj, (list, tuple)):
+            return {self.text(str(k)): (REDACTED if self._sensitive_key(k) else self.apply(v)) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple, set, frozenset)):
             return [self.apply(v) for v in obj]
-        return obj
+        if obj is None or isinstance(obj, (bool, int, float)):
+            return obj
+        return self.text(str(obj))  # bytes / arbitrary objects are stringified, then redacted

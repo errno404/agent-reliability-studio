@@ -1,0 +1,77 @@
+name: Agent eval gate
+# Blocks a PR that changes agent behaviour unless a fair, statistically defensible comparison says it is not a regression.
+# The bundled deterministic suites need NO model credentials. Live-LLM gates could be added with repository secrets,
+# but this workflow never depends on them and never exposes secrets to PR code.
+on:
+  pull_request:
+    paths:
+      - "packages/demo_agents/**"
+      - "packages/evalcore/**"
+      - "datasets/**"
+      - "fixtures/**"
+      - "mcp/fixture_web/**"
+      - "scripts/ci_eval_gate.py"
+      - "scripts/check_pins.py"
+      - "services/api/**"
+      - ".github/**"
+permissions: { contents: read }
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { suite: support, dataset: "support:v1", policy: demo-20 }
+          - { suite: research, dataset: "research:v1", policy: demo-15 }
+    env:
+      BASE_REF: ${{ github.base_ref }}   # never interpolate github.* directly into shell
+      SUITE: ${{ matrix.suite }}
+      DATASET: ${{ matrix.dataset }}
+      POLICY: ${{ matrix.policy }}
+    steps:
+      - uses: actions/checkout@v4          # candidate = the PR head
+        with: { fetch-depth: 0, path: candidate }
+      - uses: actions/checkout@v4          # baseline agent code = the target branch
+        with: { ref: "${{ github.base_ref }}", path: baseline }
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --python 3.13 --frozen
+        working-directory: candidate
+      - name: Pin check (frozen versions must not change; behaviour change needs a PINS.md entry)
+        working-directory: candidate
+        run: uv run python scripts/check_pins.py && uv run python scripts/check_pins.py --base "origin/$BASE_REF"
+      - name: Resolve latest pinned version on each side
+        id: v
+        working-directory: candidate
+        run: |
+          latest() {
+            python3 - "$1" "$SUITE" <<'PY'
+          import json, re, sys
+          t = open(f"{sys.argv[1]}/packages/demo_agents/demo_agents/{sys.argv[2]}/PINS.md").read()
+          v = sorted(json.loads(re.search(r"```json ars-pins\n(.*?)\n```", t, re.S).group(1)), key=lambda x: int(x[1:]))
+          print(v[-1])
+          PY
+          }
+          echo "base=$SUITE:$(latest ../baseline)" >> "$GITHUB_OUTPUT"
+          echo "cand=$SUITE:$(latest .)" >> "$GITHUB_OUTPUT"
+      - name: Gate (same evaluator for both sides)
+        working-directory: candidate
+        env:
+          BASE_SPEC: ${{ steps.v.outputs.base }}
+          CAND_SPEC: ${{ steps.v.outputs.cand }}
+        run: |
+          mkdir -p gate-out
+          if [ "$BASE_SPEC" = "$CAND_SPEC" ]; then
+            echo "No new agent version in this PR: nothing to compare (the pin check already guards edits)." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          uv run python scripts/ci_eval_gate.py --baseline-spec "$BASE_SPEC" --candidate-spec "$CAND_SPEC" \
+            --dataset "$DATASET" --baseline-src ../baseline --samples 3 --policy "$POLICY" --out-dir gate-out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-gate-${{ matrix.suite }}
+          path: candidate/gate-out     # comparison.json, report.md, junit.xml, trace-diff.txt, gate.db (synthetic data only)
+          retention-days: 14

@@ -76,6 +76,12 @@ price the UI shows tokens only. Claude Code subscription runs are never presente
 
 ## 6. Limitations (read these)
 
+- **Execution errors can hide a regression** if they concentrate on hard cases. Mitigations: errors above 20% of samples invalidate a comparison, and if the candidate has no usable samples for more than 5% of baseline cases the verdict is forced to INCONCLUSIVE. A smaller asymmetric skew is still only visible as a warning.
+- A gating judge that cannot answer makes the sample an *execution error* (never a silent pass).
+- Judge identity hashes (backend, model, prompt template+dimension+rubric version); it does **not** hash temperature or per-case rubric text, so bump `rubric_version` when rubrics change.
+- Admission uses point estimates of κ and FPR; with ~50 items these are noisy (a κ of 0.60 has a wide interval). Treat admission as a minimum bar, not proof.
+- Descriptive Wilson intervals on pooled samples ignore within-case correlation and are optimistic with repeats; the **comparison** CI (case-level bootstrap) is the one that gates. `pass^k` is computed over cases with a complete set of usable samples.
+
 - The demo systems are **scripted**; their results demonstrate the machinery, not model quality.
 - Small datasets ⇒ wide intervals. The bootstrap treats cases as exchangeable draws; it cannot detect dataset bias or contamination.
 - A keyword judge is crude; it passes only because the calibration set is mostly lexical.

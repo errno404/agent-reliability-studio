@@ -16,7 +16,7 @@ Read this file, `docs/BUILD_STATE.md`, `docs/adr/`, then `git status`. Update `B
 
 ## Commands (run `source scripts/env.sh` first — it sets PYTHONPATH; macOS can hide editable `.pth` files)
 `make test` · `make lint` · `make typecheck` · `make pins` · `make e2e` · `make verify` · `make demo` · `make screenshots` · `make gen-types`.
-Web needs **Node >= 22** (`.nvmrc`). Python 3.13 via `uv`. Dev servers: open the app at `http://localhost:3000` (not 127.0.0.1).
+Web needs **Node >= 22** (`apps/web/.nvmrc`, `engines`). Python 3.13 via `uv`. Dev servers: open the app at `http://localhost:3000` (not 127.0.0.1).
 
 ## Evaluation-science rules (non-negotiable)
 1. **Never collapse quality into one number.** Outcome, trajectory, component, policy are separate layers. Case pass = all *gating* assertions pass.

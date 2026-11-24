@@ -14,6 +14,7 @@ from evalcore import RunManifest, SampleResult, SampleStatus, execute_sample, su
 from evalcore.hashing import hash_obj
 from evalcore.models import AgentResult, AssertionResult, Case, Dataset
 from evalcore.pricing import SYNTHETIC_PRICES
+from evalcore.redaction import Redactor
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -141,7 +142,12 @@ def create_run(
     return run
 
 
+_REDACTOR = Redactor(max_text=20_000)
+
+
 def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample:
+    """Persist one sample. Everything free-form is redacted BEFORE it reaches the database."""
+    rd = _REDACTOR
     res = smp.result
     trace_id = res.spans[0].trace_id if res.spans else ""
     row = Sample(
@@ -151,8 +157,8 @@ def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample
         sample_index=smp.sample_index,
         status=smp.status.value,
         error_kind=res.error_kind,
-        input_text=input_text,
-        final_output=res.final_output,
+        input_text=rd.text(input_text),
+        final_output=rd.text(res.final_output),
         tool_sequence=res.tool_names,
         latency_ms=res.latency_ms,
         input_tokens=res.input_tokens,
@@ -160,7 +166,7 @@ def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample
         cost_usd=res.cost_usd,
         turns=res.turns,
         steps=res.steps,
-        result=json.loads(res.model_dump_json(exclude={"spans"})),
+        result=rd.apply(json.loads(res.model_dump_json(exclude={"spans"}))),
         judge=smp.judge,
         seed=smp.seed,
         trace_id=trace_id,
@@ -179,9 +185,9 @@ def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample
                 skipped=a.skipped,
                 invalid=a.invalid,
                 severity=a.severity.value,
-                expected=a.expected,
-                actual=a.actual,
-                evidence=a.evidence,
+                expected=rd.apply(a.expected),
+                actual=rd.apply(a.actual),
+                evidence=rd.text(a.evidence),
                 label=a.label,
             )
         )

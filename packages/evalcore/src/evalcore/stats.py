@@ -70,7 +70,9 @@ def repeated_run_stats(samples: Sequence[SampleResult]) -> RepeatedRunStats:
         return RepeatedRunStats(0, 0, 0, 0.0, (0.0, 1.0), 0.0, 0.0)
     n_samples = sum(len(v) for v in outs.values())
     passes = sum(sum(v) for v in outs.values())
-    pass_all = sum(1 for v in outs.values() if all(v))
+    full = max(len(v) for v in outs.values())
+    complete = {c: v for c, v in outs.items() if len(v) == full}  # pass^k needs the same k for every case
+    pass_all = sum(1 for v in complete.values() if all(v))
     pass_any = sum(1 for v in outs.values() if any(v))
     flaky = sorted(c for c, v in outs.items() if any(v) and not all(v))
     flips: dict[str, int] = defaultdict(int)
@@ -79,10 +81,10 @@ def repeated_run_stats(samples: Sequence[SampleResult]) -> RepeatedRunStats:
     return RepeatedRunStats(
         n_cases,
         n_samples,
-        min(len(v) for v in outs.values()),
+        full,
         passes / n_samples,
         wilson_interval(passes, n_samples),
-        pass_all / n_cases,
+        pass_all / len(complete),
         pass_any / n_cases,
         flaky,
         dict(flips),
@@ -108,6 +110,11 @@ class BootstrapPolicy:
     n_boot: int = 10_000
     margin: float = 0.05  # practical non-inferiority margin (absolute pass-rate points)
     seed: int = 20260101
+    max_candidate_only_drop: float = 0.05  # candidate-only dropped cases (errors) above this share => inconclusive
+
+    def __post_init__(self) -> None:
+        if self.n_boot < 100 or not 0 < self.alpha < 1 or self.margin < 0 or self.min_cases < 1:
+            raise ValueError("invalid BootstrapPolicy (n_boot >= 100, 0 < alpha < 1, margin >= 0, min_cases >= 1)")
 
 
 @dataclass(frozen=True)
@@ -175,6 +182,23 @@ def paired_cluster_bootstrap(
     lo_i = int(math.floor((pol.alpha / 2) * pol.n_boot))
     hi_i = int(math.ceil((1 - pol.alpha / 2) * pol.n_boot)) - 1
     lo, hi = means[max(0, lo_i)], means[min(pol.n_boot - 1, hi_i)]
+    lost_in_candidate = set(b) - set(c)  # cases the candidate has no quality samples for (e.g. it crashed on them)
+    if b and len(lost_in_candidate) / len(b) > pol.max_candidate_only_drop:
+        return BootstrapResult(
+            Decision.INCONCLUSIVE,
+            delta,
+            lo,
+            hi,
+            n,
+            imp,
+            reg,
+            n - imp - reg,
+            brate,
+            crate,
+            f"candidate has no usable samples for {len(lost_in_candidate)} of {len(b)} baseline cases "
+            "(execution errors); the matched cases may be the easy ones",
+            pol,
+        )
     if n < pol.min_cases:
         return BootstrapResult(
             Decision.INCONCLUSIVE,

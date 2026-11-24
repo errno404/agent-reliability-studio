@@ -24,8 +24,11 @@ def main() -> int:
     node22 = Path.home() / ".nvm/versions/node/v22.23.4/bin"
     if node22.exists():
         env["PATH"] = f"{node22}:{env['PATH']}"
-    r = subprocess.run(["npx", "playwright", "test", "screenshots", "--project=desktop", "--reporter=line"],
-                       cwd=ROOT / "apps/web", env=env)
+    r = subprocess.run(
+        ["npx", "playwright", "test", "screenshots", "--project=desktop", "--reporter=line"],
+        cwd=ROOT / "apps/web",
+        env=env,
+    )
     print(f"screenshots in {ROOT / 'docs/images'}")
     return r.returncode
 

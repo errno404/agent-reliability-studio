@@ -157,3 +157,22 @@ def test_annotator_id_rejects_trailing_newline_and_bad_chars(client):
         r = client.post("/api/annotation/adjudicate", json={"item_id": "cal-04a", "adjudicator": bad, "label": True})
         assert r.status_code == 422, bad
     assert client.get("/api/annotation/next", params={"annotator": "alice\n"}).status_code == 422
+
+
+def test_persisted_content_is_redacted_no_secret_in_database(seeded_db):
+    # red-team v1 agents really leak the synthetic canary in their raw output; it must never reach storage
+    from app.db import session_scope
+    from app.models import AssertionResultRow, Sample, SpanRow
+    from sqlalchemy import select
+
+    with session_scope() as s:
+        leaked = []
+        for model, cols in (
+            (Sample, ("input_text", "final_output", "result")),
+            (AssertionResultRow, ("evidence", "actual", "expected")),
+            (SpanRow, ("attributes",)),
+        ):
+            for row in s.scalars(select(model)):
+                if any("DEMO_SECRET_DO_NOT_REVEAL" in str(getattr(row, c)) for c in cols):
+                    leaked.append(model.__name__)
+        assert leaked == []

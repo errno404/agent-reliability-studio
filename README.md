@@ -51,9 +51,9 @@ make demo            # installs, migrates, seeds the synthetic demo, runs invari
 - **Statistics engine** — Wilson intervals, clustered paired bootstrap over *cases*, McNemar (diagnostic), `pass^k` (reliability) vs `pass@k` (capability), flaky-case detection, practical non-inferiority margin.
 - **Five verdicts** — improvement · no meaningful regression · regression · **inconclusive** · **invalid comparison** (manifest/provenance mismatch).
 - **LLM-judge calibration** — judge identity = (backend, model, prompt hash); admission policy (≥50 items, ≥10/class, κ ≥ 0.6, FPR ≤ 5%) stored with each calibration; the gate refuses non-admitted judges.
-- **Human annotation UI** — blind items, pass/fail/skip, progress, inter-annotator agreement, disagreement queue, adjudication; labels are append-only.
+- **Human annotation UI** (demo labels are synthetic) — blind items, pass/fail/skip, progress, inter-annotator agreement, disagreement queue, adjudication; labels are append-only.
 - **OpenTelemetry traces** (current GenAI semantic conventions behind one mapping module), redaction before storage/export, optional OTLP → Phoenix.
-- **Three reference systems under test** — support operations, research (v2 is a real **LangGraph** agent over a **frozen MCP web**), coding (real isolated sandbox + real unit tests) — plus a 15-case red-team suite.
+- **Three reference systems under test** — support operations, research (v2 is scripted nodes inside a real **LangGraph** graph, over a **frozen MCP web**; no LLM), coding (real isolated sandbox + real unit tests) — plus a 15-case red-team suite.
 - **Frozen, pinned agent versions** and **published (hashed) datasets**; CI fails if a published version changes.
 - **Trace → case distillation**, failure taxonomy (19 root causes), deterministic failure clustering.
 - **Job queue on Postgres** (no Redis), idempotent seeding, health/readiness, structured logs, typed OpenAPI.
@@ -66,6 +66,8 @@ make demo            # installs, migrates, seeds the synthetic demo, runs invari
 Source: [`docs/architecture.mmd`](docs/architecture.mmd) · details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## The demo story (synthetic fixture evidence, seed `20260601`, 3 samples/case)
+
+n = non-error samples (cases × 3 minus execution errors).
 
 | Suite | Cases | v1 task success | v2 task success | Gate |
 |---|---|---|---|---|
@@ -88,7 +90,7 @@ make demo            # seed + run
 
 - **Zero-key demo:** no environment variables needed. `DEMO_MODE=true` makes the app read-only.
 - **Local with live runs:** `cp .env.example .env`, set `DEMO_MODE=false` and `ADMIN_TOKEN`, run `ars worker` beside `ars serve`, then `POST /api/runs` (send `X-Admin-Token`) or `ars eval run`.
-- **Live models:** `pip install 'evalcore[litellm]'`, export a provider key (e.g. `ANTHROPIC_API_KEY`), and use `LiteLLMAdapter` / `ClaudeCodeAdapter` (uses your authenticated `claude` CLI; flags verified from `claude --help`). Subscription runs are never priced as money paid.
+- **Live models:** `pip install 'evalcore[litellm]'`, export a provider key (e.g. `ANTHROPIC_API_KEY`), and use `LiteLLMAdapter` / `ClaudeCodeAdapter` (uses your authenticated `claude` CLI; flags checked against Claude Code 2.1.330, adapter tested against a fake binary, not live runs). Subscription runs are never priced as money paid.
 - **Docker (Postgres + API + web):** `docker compose up --build` → <http://localhost:3000>. Optional Phoenix mirror: `docker compose --profile observability up`.
 - **Deploy:** [`render.yaml`](render.yaml) (managed Postgres, private API service, web). No live URL is claimed here.
 
@@ -98,10 +100,10 @@ make demo            # seed + run
 ars demo seed && ars demo verify
 ars dataset validate datasets/support/v1.yaml        # schema + hash; published datasets are frozen
 ars eval run --agent support:v2 --dataset support:v1 --samples 3
-ars eval compare --baseline RUN_A --candidate RUN_B --policy demo-20   # exit 0 pass | 1 regression | 2 invalid | 3 inconclusive
+ars eval compare --baseline RUN_A --candidate RUN_B --policy demo-20   # exit 0 pass (or inconclusive with --no-conservative) | 1 regression | 2 invalid | 3 inconclusive (conservative gate)
 ars eval diff RUN_A RUN_B                            # trajectory + outcome diff per case
 ars judge calibrate --judge keyword-strict-v1        # CALIBRATED / NOT CALIBRATED (exit 1)
-ars traces distill --run RUN_ID --out datasets/candidates/   # candidate cases, never auto-promoted
+ars traces distill RUN_ID --out datasets/candidates/   # candidate cases, never auto-promoted
 python scripts/check_pins.py                         # frozen agent versions intact?
 ```
 

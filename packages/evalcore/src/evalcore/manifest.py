@@ -155,6 +155,9 @@ def validate_pair(
                     f"{label}: {len(missing)} case(s) lack expected sample indexes (e.g. {missing[:3]})",
                 )
             )
+        stray = sorted({s.case_id for s in samples} - set(man.case_ids))
+        if stray:
+            issues.append(Issue("unexpected_samples", f"{label}: samples for cases not in the manifest: {stray[:3]}"))
         keys = [(s.case_id, s.sample_index) for s in samples]
         if len(keys) != len(set(keys)):
             issues.append(Issue("duplicate_samples", f"{label}: duplicate (case, sample_index) rows"))

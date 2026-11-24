@@ -92,8 +92,13 @@ def score_result(
             "error": out.error,
             "verdict": out.verdict.model_dump() if out.verdict else None,
         }
+        gate_it = bool(spec.get("gating", True)) and judge_admitted
         if out.verdict is None:
             judge_uncertain = True  # judge failure is not an agent failure
+            if gate_it:
+                # A gating (admitted) judge that cannot answer must not let the case pass by omission:
+                # the sample becomes an execution error (excluded from quality metrics, counted by validation).
+                result.error, result.error_kind = f"judge failure: {out.error}", "judge"
         else:
             gate = bool(spec.get("gating", True)) and judge_admitted  # never gate on uncalibrated judge
             assertions.append(

@@ -289,7 +289,7 @@ def failure_trend(agent: str, s: Session = Depends(get_session)) -> list[dict[st
 
 @router.get("/failures/samples")
 def failure_samples(
-    run_id: str, label: str, page_size: int = Query(10, le=50), s: Session = Depends(get_session)
+    run_id: str, label: str, page_size: int = Query(10, ge=1, le=50), s: Session = Depends(get_session)
 ) -> list[dict[str, Any]]:
     ids = [
         sid

@@ -168,7 +168,7 @@ def list_runs(
     model: str | None = None,
     dataset: str | None = None,
     status: str | None = None,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=10000),
     page_size: int = Query(25, ge=1, le=100),
     s: Session = Depends(get_session),
 ) -> sc.RunList:
@@ -246,7 +246,7 @@ def run_samples(
     status: str | None = None,
     category: str | None = None,
     label: str | None = None,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=10000),
     page_size: int = Query(50, ge=1, le=200),
     s: Session = Depends(get_session),
 ) -> sc.SampleList:
@@ -307,7 +307,7 @@ def trace(sample_id: int, s: Session = Depends(get_session)) -> sc.TraceOut:
 def traces(
     run_id: str | None = None,
     status: str | None = None,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=10000),
     page_size: int = Query(30, ge=1, le=100),
     s: Session = Depends(get_session),
 ) -> dict[str, Any]:

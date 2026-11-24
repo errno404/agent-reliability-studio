@@ -11,8 +11,27 @@ SCRIPT = ROOT / "scripts" / "ci_eval_gate.py"
 def run_gate(tmp_path, baseline, candidate, policy="demo-20"):
     out = tmp_path / "out"
     r = subprocess.run(
-        [sys.executable, str(SCRIPT), "--baseline-spec", baseline, "--candidate-spec", candidate, "--dataset", "support:v1",
-         "--samples", "1", "--policy", policy, "--out-dir", str(out)], cwd=ROOT, text=True, capture_output=True, timeout=240)
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--baseline-spec",
+            baseline,
+            "--candidate-spec",
+            candidate,
+            "--dataset",
+            "support:v1",
+            "--samples",
+            "1",
+            "--policy",
+            policy,
+            "--out-dir",
+            str(out),
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        timeout=240,
+    )
     return r, out
 
 
@@ -22,7 +41,8 @@ def test_gate_passes_on_improvement_and_writes_reports(tmp_path):
     data = json.loads((out / "comparison.json").read_text())
     assert data["comparison"]["decision"] == "significant_improvement" and data["gate"]["verdict"] == "pass"
     suite = ET.parse(out / "junit.xml").getroot()
-    assert suite.get("failures") == "0" and (out / "report.md").read_text().startswith("## Agent eval gate: ✅ PASS")
+    assert suite.find("testcase[@name='release-gate']/failure") is None  # gate passed; regressed cases still listed
+    assert (out / "report.md").read_text().startswith("## Agent eval gate: ✅ PASS")
     assert "check_refund_eligibility" in (out / "trace-diff.txt").read_text()
 
 

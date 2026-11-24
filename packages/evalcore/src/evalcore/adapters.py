@@ -52,6 +52,12 @@ def run_command(
         return None, out or "", err or "", True
 
 
+def safe_env() -> dict[str, str]:
+    """Minimal environment for subprocesses: no inherited secrets (admin token, database URL, API keys)."""
+    keep = ("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "TERM", "USER")
+    return {k: v for k, v in os.environ.items() if k in keep}
+
+
 def snapshot(root: Path) -> dict[str, str]:
     """Relative path -> content hash for every regular file under root."""
     snap: dict[str, str] = {}
@@ -123,12 +129,18 @@ class ClaudeCodeAdapter:
         with tempfile.TemporaryDirectory(prefix="ars-cc-") as tmp:
             work = Path(tmp) / "ws"
             if src and self.fixtures_root:
-                shutil.copytree(self.fixtures_root / str(src), work)
+                root = self.fixtures_root.resolve()
+                srcdir = (root / str(src)).resolve()
+                if not srcdir.is_relative_to(
+                    root
+                ):  # a dataset must not point the sandbox at arbitrary host directories
+                    return AgentResult(error="fixture workspace escapes the fixtures root", error_kind="adapter")
+                shutil.copytree(srcdir, work, symlinks=True)
             else:
                 work.mkdir()
             before = snapshot(work)
             t0 = time.monotonic()
-            code, out, err, timed_out = run_command(self.build_argv(case.input), work, self.timeout_s)
+            code, out, err, timed_out = run_command(self.build_argv(case.input), work, self.timeout_s, env=safe_env())
             latency = (time.monotonic() - t0) * 1000
             if timed_out:
                 return AgentResult(
@@ -143,7 +155,7 @@ class ClaudeCodeAdapter:
             res.changed_files = changed_files(before, after)
             res.workspace_files = sorted(after)
             for name, cmd in (case.fixture.get("commands") or {}).items():
-                c, o, e, to = run_command(list(cmd), work, 120)
+                c, o, e, to = run_command(list(cmd), work, 120, env=safe_env())
                 res.commands[name] = {"exit_code": c, "stdout": o[-1000:], "stderr": e[-500:], "timed_out": to}
             return res
 

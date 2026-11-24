@@ -1,0 +1,77 @@
+name: CI
+on:
+  pull_request:
+  push: { branches: [main] }
+concurrency: { group: "ci-${{ github.ref }}", cancel-in-progress: true }
+permissions: { contents: read }   # least privilege: CI never needs to write
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --python 3.13 --frozen
+      - name: Lint
+        run: uv run ruff format --check . && uv run ruff check .
+      - name: Type check
+        run: uv run pyright
+      - name: Tests (evalcore coverage gate >= 85%)
+        run: uv run pytest --cov=evalcore --cov-fail-under=85 -q
+      - name: Agent pins are intact (frozen versions are never edited)
+        env:
+          BASE_REF: ${{ github.base_ref }}   # passed via env, never interpolated into the script
+          EVENT: ${{ github.event_name }}
+        run: |
+          uv run python scripts/check_pins.py
+          if [ "$EVENT" = "pull_request" ]; then uv run python scripts/check_pins.py --base "origin/$BASE_REF"; fi
+      - name: Datasets validate
+        run: |
+          for f in datasets/support/*.yaml datasets/research/*.yaml datasets/coding/*.yaml datasets/redteam/*.yaml; do
+            uv run ars dataset validate "$f"
+          done
+      - name: Demo seed + invariants (zero API keys)
+        env: { DATABASE_URL: "sqlite:///./ci.db" }
+        run: uv run ars db upgrade && uv run ars demo seed && uv run ars demo verify
+
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - run: npm ci
+      - run: npx eslint .
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - run: npm run build
+
+  e2e:
+    needs: [python, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - run: uv sync --python 3.13 --frozen
+      - run: npm ci && npm run build && npx playwright install --with-deps chrome
+        working-directory: apps/web
+      - name: Playwright (seeds its own API on :8100)
+        run: npx playwright test
+        working-directory: apps/web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-traces, path: apps/web/test-results, retention-days: 7 }
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config -q
+      - run: docker build -f infra/docker/api.Dockerfile -t ars-api:ci .
+      - run: docker build -f infra/docker/web.Dockerfile -t ars-web:ci .

@@ -122,7 +122,9 @@ def create_comparison(
 
 
 def judge_ok_for(s: Session, *runs: Run) -> bool:
-    return all(judges.judge_admitted(s, r.judge_config_id) for r in runs)
+    # Use the admission state RECORDED when each run executed (a later calibration must not retro-legitimise it).
+    _ = (s, judges)
+    return all(r.judge_config_id is None or r.judge_admitted for r in runs)
 
 
 def create_gate(s: Session, comp: Comparison, conservative: bool = True) -> CiGateDecision:

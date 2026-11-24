@@ -40,7 +40,7 @@ test("compare: invalid and inconclusive states are first-class", async ({ page }
   await expect(page.getByText("INVALID COMPARISON").first()).toBeVisible();
   await expect(page.getByText("INCONCLUSIVE").first()).toBeVisible();
   await page.getByRole("link", { name: /DIFFERENT dataset version/ }).click();
-  await expect(page.getByText(/dataset_mismatch/)).toBeVisible();
+  await expect(page.getByText(/dataset_mismatch/).first()).toBeVisible();
 });
 
 test("trace explorer: waterfall, span selection, no reasoning content", async ({ page }) => {

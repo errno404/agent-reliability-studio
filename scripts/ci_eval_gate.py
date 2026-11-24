@@ -22,7 +22,13 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EXIT = {"significant_improvement": 0, "no_meaningful_regression": 0, "significant_regression": 1, "invalid": 2, "inconclusive": 3}
+EXIT = {
+    "significant_improvement": 0,
+    "no_meaningful_regression": 0,
+    "significant_regression": 1,
+    "invalid": 2,
+    "inconclusive": 3,
+}
 
 
 def pythonpath(agent_src: Path | None) -> str:
@@ -63,11 +69,15 @@ def main() -> int:
     ap.add_argument("--baseline-spec", required=True, help="e.g. support:v2 (as defined in the baseline checkout)")
     ap.add_argument("--candidate-spec", required=True, help="e.g. support:v3")
     ap.add_argument("--dataset", required=True, help="e.g. support:v1 (published, frozen)")
-    ap.add_argument("--baseline-src", type=Path, help="checkout of the target branch that supplies the BASELINE agent code")
+    ap.add_argument(
+        "--baseline-src", type=Path, help="checkout of the target branch that supplies the BASELINE agent code"
+    )
     ap.add_argument("--samples", type=int, default=3)
     ap.add_argument("--seed", type=int, default=20260601)
     ap.add_argument("--policy", default="production", choices=["production", "demo-20", "demo-15", "demo-10"])
-    ap.add_argument("--no-conservative", action="store_true", help="do not block on INCONCLUSIVE (still blocks invalid/regression)")
+    ap.add_argument(
+        "--no-conservative", action="store_true", help="do not block on INCONCLUSIVE (still blocks invalid/regression)"
+    )
     ap.add_argument("--out-dir", type=Path, default=Path("gate-out"))
     a = ap.parse_args()
     out = a.out_dir
@@ -76,9 +86,31 @@ def main() -> int:
     db.unlink(missing_ok=True)
 
     steps = [(["db", "upgrade"], None), (["dataset", "sync", f"datasets/{a.dataset.replace(':', '/')}.yaml"], None)]
-    for spec, rid, src in ((a.baseline_spec, "gate-baseline", a.baseline_src), (a.candidate_spec, "gate-candidate", None)):
-        steps.append((["eval", "run", "--agent", spec, "--dataset", a.dataset, "--samples", str(a.samples), "--seed", str(a.seed),
-                       "--run-id", rid, "--name", f"{spec} (gate)"], src))
+    for spec, rid, src in (
+        (a.baseline_spec, "gate-baseline", a.baseline_src),
+        (a.candidate_spec, "gate-candidate", None),
+    ):
+        steps.append(
+            (
+                [
+                    "eval",
+                    "run",
+                    "--agent",
+                    spec,
+                    "--dataset",
+                    a.dataset,
+                    "--samples",
+                    str(a.samples),
+                    "--seed",
+                    str(a.seed),
+                    "--run-id",
+                    rid,
+                    "--name",
+                    f"{spec} (gate)",
+                ],
+                src,
+            )
+        )
     for args, src in steps:
         r = run_ars(args, db, src)
         if r.returncode != 0:
@@ -87,46 +119,79 @@ def main() -> int:
         print(f"ok: ars {' '.join(args[:2])}")
 
     from app.db import reset_engine, session_scope
+    from app.models import Run, Sample
     from app.services import comparisons
-    from app.models import Run
+    from app.services.queries import comparison_out  # noqa: F401  (import check only)
     from evalcore.models import AgentResult
     from evalcore.trajectory import diff_trajectories
-    from app.services.queries import comparison_out  # noqa: F401  (import check only)
     from sqlalchemy import select
-    from app.models import Sample
 
     reset_engine(f"sqlite:///{db}")
     with session_scope() as s:
-        comp = comparisons.create_comparison(s, "gate-baseline", "gate-candidate", mode="strict", policy_name=a.policy,
-                                             name=f"{a.baseline_spec} -> {a.candidate_spec}")
+        comp = comparisons.create_comparison(
+            s,
+            "gate-baseline",
+            "gate-candidate",
+            mode="strict",
+            policy_name=a.policy,
+            name=f"{a.baseline_spec} -> {a.candidate_spec}",
+        )
         gate = comparisons.create_gate(s, comp, conservative=not a.no_conservative)
         base, cand = s.get(Run, "gate-baseline"), s.get(Run, "gate-candidate")
-        payload = {"name": comp.name, "decision": comp.decision, "valid": comp.valid, "explanation": comp.explanation,
-                   "policy": comp.policy_name, "validity": comp.validity, "result": comp.result}
+        payload = {
+            "name": comp.name,
+            "decision": comp.decision,
+            "valid": comp.valid,
+            "explanation": comp.explanation,
+            "policy": comp.policy_name,
+            "validity": comp.validity,
+            "result": comp.result,
+        }
         g = {"verdict": gate.verdict, "reasons": gate.reasons, "judge_ok": gate.judge_ok}
-        first = lambda rid: {x.case_id: x for x in s.scalars(select(Sample).where(Sample.run_id == rid, Sample.sample_index == 0))}  # noqa: E731
+
+        def first(rid: str) -> dict:
+            return {
+                x.case_id: x for x in s.scalars(select(Sample).where(Sample.run_id == rid, Sample.sample_index == 0))
+            }
+
         bs, cs = first("gate-baseline"), first("gate-candidate")
         lines = []
         for cid in sorted(set(bs) & set(cs)):
-            d = diff_trajectories(AgentResult.model_validate(bs[cid].result), AgentResult.model_validate(cs[cid].result))
+            d = diff_trajectories(
+                AgentResult.model_validate(bs[cid].result), AgentResult.model_validate(cs[cid].result)
+            )
             if bs[cid].status != cs[cid].status or not d["identical"]:
-                lines.append(f"{cid}: {bs[cid].status} -> {cs[cid].status} | {' > '.join(d['baseline'])}  =>  {' > '.join(d['candidate'])}")
+                lines.append(
+                    f"{cid}: {bs[cid].status} -> {cs[cid].status} | {' > '.join(d['baseline'])}  =>  {' > '.join(d['candidate'])}"
+                )
         (out / "trace-diff.txt").write_text("\n".join(lines) + ("\n" if lines else "no trajectory differences\n"))
         base_hash, cand_hash = base.manifest["agent_hash"], cand.manifest["agent_hash"]  # type: ignore[union-attr]
     (out / "comparison.json").write_text(json.dumps({"comparison": payload, "gate": g}, indent=2, default=str))
     junit(out / "junit.xml", payload, g)
-    md = [f"## Agent eval gate: {'✅ PASS' if g['verdict'] == 'pass' else '❌ FAIL'}", "",
-          f"**{payload['name']}** · dataset `{a.dataset}` · policy `{a.policy}` · {a.samples} samples/case · seed {a.seed}", "",
-          f"**Decision:** `{payload['decision']}`  \n{payload['explanation']}", ""]
+    md = [
+        f"## Agent eval gate: {'✅ PASS' if g['verdict'] == 'pass' else '❌ FAIL'}",
+        "",
+        f"**{payload['name']}** · dataset `{a.dataset}` · policy `{a.policy}` · {a.samples} samples/case · seed {a.seed}",
+        "",
+        f"**Decision:** `{payload['decision']}`  \n{payload['explanation']}",
+        "",
+    ]
     if payload["result"].get("what_changed"):
         md += [f"**What changed:** {payload['result']['what_changed']}", ""]
-    md += ["**Gate reasons:**", *[f"- {r}" for r in g["reasons"]], "", f"Agent code hashes: baseline `{base_hash}` · candidate `{cand_hash}`",
-           f"Changed cases: {len(payload['result'].get('case_changes', []))}", "",
-           "_Synthetic fixture evidence; thresholds are never relaxed to turn CI green._"]
+    md += [
+        "**Gate reasons:**",
+        *[f"- {r}" for r in g["reasons"]],
+        "",
+        f"Agent code hashes: baseline `{base_hash}` · candidate `{cand_hash}`",
+        f"Changed cases: {len(payload['result'].get('case_changes', []))}",
+        "",
+        "_Synthetic fixture evidence; thresholds are never relaxed to turn CI green._",
+    ]
     (out / "report.md").write_text("\n".join(md) + "\n")
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
-        Path(summary).open("a").write("\n".join(md) + "\n")
+        with Path(summary).open("a") as fh:
+            fh.write("\n".join(md) + "\n")
     print("\n".join(md[:6]))
     return 0 if g["verdict"] == "pass" else max(EXIT.get(payload["decision"], 3), 1)
 
