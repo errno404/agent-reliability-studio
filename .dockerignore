@@ -1,0 +1,15 @@
+.git
+.venv
+**/node_modules
+**/.next
+**/__pycache__
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.example
+apps/web/playwright-report
+apps/web/test-results
+docs/images
+**/* 2

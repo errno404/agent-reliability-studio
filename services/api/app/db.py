@@ -14,8 +14,16 @@ _engine: Engine | None = None
 _factory: sessionmaker[Session] | None = None
 
 
+def normalize_url(url: str) -> str:
+    """Managed Postgres hands out postgres:// or postgresql:// URLs; we use the psycopg 3 driver."""
+    for old in ("postgres://", "postgresql://"):
+        if url.startswith(old):
+            return "postgresql+psycopg://" + url[len(old) :]
+    return url
+
+
 def make_engine(url: str | None = None) -> Engine:
-    url = url or get_settings().database_url
+    url = normalize_url(url or get_settings().database_url)
     kw: dict[str, object] = {"pool_pre_ping": True}
     if url.startswith("sqlite"):
         kw["connect_args"] = {"check_same_thread": False, "timeout": 30}

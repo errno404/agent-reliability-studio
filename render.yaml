@@ -1,0 +1,35 @@
+# Render blueprint: managed Postgres + API + web (+ optional worker). Public demo is read-only (DEMO_MODE=true)
+# and uses synthetic data only. Deploy: Render dashboard -> New -> Blueprint -> select this repo.
+databases:
+  - name: ars-db
+    plan: free
+    databaseName: ars
+    user: ars
+
+services:
+  - type: web
+    name: ars-api
+    runtime: docker
+    dockerfilePath: ./infra/docker/api.Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: ars-db, property: connectionString }
+      - { key: DEMO_MODE, value: "true" }
+      - { key: ENVIRONMENT, value: production }
+      - { key: CORS_ORIGINS, sync: false }          # set to the web service URL
+      - { key: FORWARDED_ALLOW_IPS, value: "*" }    # Render private network: only the web service reaches this API
+      - { key: ADMIN_TOKEN, generateValue: true }   # only used when DEMO_MODE=false
+
+  - type: web
+    name: ars-web
+    runtime: docker
+    dockerfilePath: ./infra/docker/web.Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      - key: API_URL
+        fromService: { type: web, name: ars-api, envVarKey: RENDER_EXTERNAL_URL }
+      # Render's load balancer appends the real client address to X-Forwarded-For: one trusted hop. Verify this for any other host.
+      - { key: TRUSTED_PROXY_HOPS, value: "1" }

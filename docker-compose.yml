@@ -1,0 +1,47 @@
+# Full stack: Postgres (canonical DB) + API + worker + web. `docker compose up --build` then open http://localhost:3000
+# Zero API keys needed: the API seeds the synthetic demo on first start.
+# Optional Phoenix mirror:  docker compose --profile observability up
+x-api-env: &api-env
+  DATABASE_URL: postgresql+psycopg://ars:ars@db:5432/ars
+  DEMO_MODE: ${DEMO_MODE:-true}
+  ENVIRONMENT: production
+  ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+  FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-*}   # compose network is private; only the web container can reach the API
+  OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment: { POSTGRES_USER: ars, POSTGRES_PASSWORD: ars, POSTGRES_DB: ars }
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U ars -d ars"], interval: 5s, timeout: 3s, retries: 20 }
+
+  api:
+    build: { context: ., dockerfile: infra/docker/api.Dockerfile }
+    environment: *api-env
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["8000:8000"]
+
+  worker:
+    build: { context: ., dockerfile: infra/docker/api.Dockerfile }
+    command: ["sh", "-c", "exec ars worker"]
+    environment: *api-env
+    depends_on: { api: { condition: service_healthy } }
+    healthcheck: { disable: true }
+    profiles: ["worker"]   # not needed for the read-only demo; enable with --profile worker for live runs
+
+  web:
+    build: { context: ., dockerfile: infra/docker/web.Dockerfile }
+    environment: { API_URL: "http://api:8000" }
+    depends_on: { api: { condition: service_healthy } }
+    ports: ["3000:3000"]
+
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    profiles: ["observability"]
+    ports: ["6006:6006"]
+    environment: { PHOENIX_WORKING_DIR: /data }
+    volumes: ["phoenixdata:/data"]
+
+volumes: { pgdata: {}, phoenixdata: {} }
