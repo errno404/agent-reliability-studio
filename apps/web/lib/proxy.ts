@@ -4,6 +4,25 @@ import { apiBase } from "./config";
 const HOP_BY_HOP = new Set(["connection", "keep-alive", "transfer-encoding", "te", "upgrade", "host", "content-length", "accept-encoding"]);
 // Client-supplied forwarding headers are untrusted: drop them all; re-assert one address only if a trusted edge exists.
 const MAX_BODY = 8 * 1024; // annotation payloads are tiny
+
+/** Read a request body, aborting once MAX bytes are exceeded. Counts real bytes, so chunked uploads (no Content-Length) are capped too. */
+export async function readLimited(req: Request, max: number): Promise<Uint8Array | null> {
+  if (!req.body) return new Uint8Array();
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) { await reader.cancel(); return null; }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(size);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.byteLength; }
+  return out;
+}
 const FORWARDING = /^(x-forwarded-.*|forwarded|x-real-ip|x-client-ip|cf-connecting-ip|true-client-ip)$/i;
 
 /**
@@ -32,9 +51,10 @@ export async function proxy(req: Request, upstreamPath: string): Promise<Respons
   if (client) headers.set("x-forwarded-for", client);
   const hasBody = req.method !== "GET" && req.method !== "HEAD";
   if (hasBody && !upstreamPath.startsWith("/api/annotation")) return Response.json({ detail: "read-only: POST is only proxied for /api/annotation*" }, { status: 405 });
-  if (hasBody && Number(req.headers.get("content-length") ?? 0) > MAX_BODY) return Response.json({ detail: "request body too large" }, { status: 413 });
+  const body = hasBody ? await readLimited(req, MAX_BODY) : undefined;
+  if (body === null) return Response.json({ detail: "request body too large" }, { status: 413 });
   try {
-    const res = await fetch(target, { method: req.method, headers, body: hasBody ? await req.arrayBuffer() : undefined, signal: AbortSignal.timeout(20_000), cache: "no-store", redirect: "manual" });
+    const res = await fetch(target, { method: req.method, headers, body: body as BodyInit | undefined, signal: AbortSignal.timeout(20_000), cache: "no-store", redirect: "manual" });
     const out = new Headers();
     res.headers.forEach((v, k) => { if (!HOP_BY_HOP.has(k.toLowerCase()) && k.toLowerCase() !== "content-encoding") out.set(k, v); });
     return new Response(res.body, { status: res.status, headers: out });
