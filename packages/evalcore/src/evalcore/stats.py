@@ -77,8 +77,16 @@ def repeated_run_stats(samples: Sequence[SampleResult]) -> RepeatedRunStats:
     for c in flaky:
         flips[cat[c]] += 1
     return RepeatedRunStats(
-        n_cases, n_samples, min(len(v) for v in outs.values()), passes / n_samples,
-        wilson_interval(passes, n_samples), pass_all / n_cases, pass_any / n_cases, flaky, dict(flips))
+        n_cases,
+        n_samples,
+        min(len(v) for v in outs.values()),
+        passes / n_samples,
+        wilson_interval(passes, n_samples),
+        pass_all / n_cases,
+        pass_any / n_cases,
+        flaky,
+        dict(flips),
+    )
 
 
 def case_pass_fraction(samples: Iterable[SampleResult]) -> dict[str, float]:
@@ -136,7 +144,8 @@ def classify_delta(ci_low: float, ci_high: float, margin: float) -> tuple[Decisi
 
 
 def paired_cluster_bootstrap(
-    baseline: Sequence[SampleResult], candidate: Sequence[SampleResult],
+    baseline: Sequence[SampleResult],
+    candidate: Sequence[SampleResult],
     policy: BootstrapPolicy | None = None,
 ) -> BootstrapResult:
     """Case-level paired bootstrap of (candidate - baseline) pass rate.
@@ -152,8 +161,7 @@ def paired_cluster_bootstrap(
     n = len(common)
     deltas = [c[i] - b[i] for i in common]
     if n == 0:
-        return BootstrapResult(Decision.INCONCLUSIVE, 0.0, -1.0, 1.0, 0, 0, 0, 0, 0.0, 0.0,
-                               "no matched cases", pol)
+        return BootstrapResult(Decision.INCONCLUSIVE, 0.0, -1.0, 1.0, 0, 0, 0, 0, 0.0, 0.0, "no matched cases", pol)
     brate = sum(b[i] for i in common) / n
     crate = sum(c[i] for i in common) / n
     delta = crate - brate
@@ -168,9 +176,20 @@ def paired_cluster_bootstrap(
     hi_i = int(math.ceil((1 - pol.alpha / 2) * pol.n_boot)) - 1
     lo, hi = means[max(0, lo_i)], means[min(pol.n_boot - 1, hi_i)]
     if n < pol.min_cases:
-        return BootstrapResult(Decision.INCONCLUSIVE, delta, lo, hi, n, imp, reg, n - imp - reg,
-                               brate, crate,
-                               f"only {n} matched cases; policy requires >= {pol.min_cases}", pol)
+        return BootstrapResult(
+            Decision.INCONCLUSIVE,
+            delta,
+            lo,
+            hi,
+            n,
+            imp,
+            reg,
+            n - imp - reg,
+            brate,
+            crate,
+            f"only {n} matched cases; policy requires >= {pol.min_cases}",
+            pol,
+        )
     dec, why = classify_delta(lo, hi, pol.margin)
     return BootstrapResult(dec, delta, lo, hi, n, imp, reg, n - imp - reg, brate, crate, why, pol)
 

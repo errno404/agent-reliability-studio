@@ -36,9 +36,18 @@ class SupportAdapter:
 
     def run(self, case: Case, ctx: RunContext) -> AgentResult:
         world = SupportWorld(self._data, (case.fixture or {}).get("tool_failures"))
-        rt = Runtime(agent=self.name, version=self.version, model=self.model, prompt_hash=self.prompt_hash,
-                     run_id=ctx.run_id, case_id=case.id, sample_index=ctx.sample_index, seed=ctx.seed,
-                     noise=self._m.NOISE, secrets=(SECRET,))
+        rt = Runtime(
+            agent=self.name,
+            version=self.version,
+            model=self.model,
+            prompt_hash=self.prompt_hash,
+            run_id=ctx.run_id,
+            case_id=case.id,
+            sample_index=ctx.sample_index,
+            seed=ctx.seed,
+            noise=self._m.NOISE,
+            secrets=(SECRET,),
+        )
         agent = self._m.SupportAgent(rt, world)
         rt.start(case.input)
         user = UserSimulator(case.simulated_user) if case.simulated_user else None
@@ -59,4 +68,5 @@ class SupportAdapter:
 
 def _file_hash(p: Path) -> str:
     import hashlib
+
     return hashlib.sha256(p.read_bytes()).hexdigest()[:16]

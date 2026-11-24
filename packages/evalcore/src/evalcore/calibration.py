@@ -71,10 +71,21 @@ def calibration_metrics(predicted: Sequence[bool], reference: Sequence[bool]) ->
     n = len(pairs)
     prec, rec = _div(tp, tp + fp), _div(tp, tp + fn)
     return CalibrationMetrics(
-        n=n, n_pos=tp + fn, n_neg=tn + fp, tp=tp, fp=fp, tn=tn, fn=fn,
-        accuracy=_div(tp + tn, n), precision=prec, recall=rec, f1=_div(2 * prec * rec, prec + rec),
+        n=n,
+        n_pos=tp + fn,
+        n_neg=tn + fp,
+        tp=tp,
+        fp=fp,
+        tn=tn,
+        fn=fn,
+        accuracy=_div(tp + tn, n),
+        precision=prec,
+        recall=rec,
+        f1=_div(2 * prec * rec, prec + rec),
         kappa=cohens_kappa(list(predicted), list(reference)),
-        fpr=_div(fp, fp + tn), fnr=_div(fn, fn + tp))
+        fpr=_div(fp, fp + tn),
+        fnr=_div(fn, fn + tp),
+    )
 
 
 @dataclass(frozen=True)

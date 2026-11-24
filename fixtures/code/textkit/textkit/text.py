@@ -1,5 +1,4 @@
 """Tiny text helpers (synthetic fixture repository)."""
-import re
 
 
 def slugify(text: str) -> str:

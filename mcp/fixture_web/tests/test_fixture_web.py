@@ -61,6 +61,8 @@ def test_mcp_server_lists_exactly_three_readonly_tools_and_matches_direct_calls(
 
     assert asyncio.run(names()) == ["read_context", "web_fetch", "web_search"]
     c = McpWebClient()
-    assert c.call("web_search", {"query": "Aurelia ferry capacity"}) == {"results": web().search("Aurelia ferry capacity")}
+    assert c.call("web_search", {"query": "Aurelia ferry capacity"}) == {
+        "results": web().search("Aurelia ferry capacity")
+    }
     assert c.call("web_fetch", {"url": "https://nope.example/x"})["status"] == 404
     assert json.dumps(c.call("read_context", {"name": "citation_style"}))

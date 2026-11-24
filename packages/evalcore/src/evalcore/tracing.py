@@ -93,12 +93,18 @@ class TraceRecorder:
             assert ctx is not None
             parent = s.parent.span_id if s.parent else None
             attrs = {k: v for k, v in (s.attributes or {}).items()}
-            out.append(SpanRecord(
-                span_id=f"{ctx.span_id:016x}", parent_id=f"{parent:016x}" if parent else None,
-                trace_id=f"{ctx.trace_id:032x}", name=s.name, kind=sc.kind_of(attrs),
-                start_ms=((s.start_time or 0) - self._origin) / _NS,
-                duration_ms=((s.end_time or 0) - (s.start_time or 0)) / _NS,
-                status="error" if s.status.status_code == StatusCode.ERROR else "ok",
-                attributes=attrs))
+            out.append(
+                SpanRecord(
+                    span_id=f"{ctx.span_id:016x}",
+                    parent_id=f"{parent:016x}" if parent else None,
+                    trace_id=f"{ctx.trace_id:032x}",
+                    name=s.name,
+                    kind=sc.kind_of(attrs),
+                    start_ms=((s.start_time or 0) - self._origin) / _NS,
+                    duration_ms=((s.end_time or 0) - (s.start_time or 0)) / _NS,
+                    status="error" if s.status.status_code == StatusCode.ERROR else "ok",
+                    attributes=attrs,
+                )
+            )
         out.sort(key=lambda r: (r.start_ms, -r.duration_ms))
         return out

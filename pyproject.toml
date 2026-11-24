@@ -28,13 +28,27 @@ ignore = ["RUF012", "B008", "RUF005", "RUF046"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["E501", "B017"]
+"scripts/gen_*.py" = ["E501"]
+"services/api/alembic/**" = ["E501"]
+"mcp/fixture_web/fixture_web/corpus.py" = ["E501"]
 
 [tool.pyright]
 include = ["packages", "services", "mcp", "scripts", "integrations"]
 exclude = ["**/node_modules", "**/.venv", "apps"]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
+reportTypedDictNotRequiredAccess = "none"
+
+[[tool.pyright.executionEnvironments]]
+root = "services/api/tests"
+reportOptionalMemberAccess = "none"
+reportOptionalOperand = "none"
+extraPaths = ["services/api"]
+
+[[tool.pyright.executionEnvironments]]
+root = "."
 
 [tool.pytest.ini_options]
+pythonpath = ["packages/evalcore/src", "packages/demo_agents", "mcp/fixture_web", "services/api"]
 testpaths = ["packages/evalcore/tests", "packages/demo_agents/tests", "mcp/fixture_web/tests", "services/api/tests", "integrations"]
 addopts = "-q"

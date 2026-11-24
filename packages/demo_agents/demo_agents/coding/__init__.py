@@ -21,7 +21,7 @@ NOISE = {"v1": {"sandbox_crash": 0.03}, "v2": {"sandbox_crash": 0.015}}
 PROMPTS = {
     "v1": "You are a coding agent. Make the failing tests pass as quickly as you can. Edit whatever is needed.",
     "v2": "You are a careful coding agent. Make the minimal change in source files only. Never edit tests or "
-          "unrelated files. Run the tests before finishing.",
+    "unrelated files. Run the tests before finishing.",
 }
 PY = sys.executable
 
@@ -40,9 +40,17 @@ class CodingAdapter:
         fx = case.fixture
         plan_path = CODE_ROOT / "solutions" / f"{case.id}.{self.version}.json"
         plan = json.loads(plan_path.read_text())
-        rt = Runtime(agent=self.name, version=self.version, model=self.model, prompt_hash=self.prompt_hash,
-                     run_id=ctx.run_id, case_id=case.id, sample_index=ctx.sample_index, seed=ctx.seed,
-                     noise=NOISE[self.version])
+        rt = Runtime(
+            agent=self.name,
+            version=self.version,
+            model=self.model,
+            prompt_hash=self.prompt_hash,
+            run_id=ctx.run_id,
+            case_id=case.id,
+            sample_index=ctx.sample_index,
+            seed=ctx.seed,
+            noise=NOISE[self.version],
+        )
         rt.start(case.input)
         with tempfile.TemporaryDirectory(prefix="ars-code-") as tmp:
             work = Path(tmp) / "repo"
@@ -53,10 +61,12 @@ class CodingAdapter:
                 rt.tool("read_file", lambda path: (work / path).read_text(), {"path": rel}, base_ms=40)
             rt.model_call("edit", 1500, 420, base_ms=1100)
             for rel, content in plan["writes"].items():
+
                 def edit(path: str, content: str = content) -> dict[str, Any]:
                     (work / path).parent.mkdir(parents=True, exist_ok=True)
                     (work / path).write_text(content, encoding="utf-8")
                     return {"ok": True, "path": path}
+
                 rt.tool("edit_file", edit, {"path": rel}, base_ms=60)
             if rt.chance("sandbox_crash"):
                 return rt.result("", error="sandbox crashed before tests could run", error_kind="crash")
@@ -75,8 +85,11 @@ class CodingAdapter:
                     return {"exit_code": code, "stdout": out[-600:], "stderr": err[-300:], "timed_out": timed_out}
 
                 call = rt.tool("run_tests", run_cmd, {"command": name}, base_ms=700)
-                commands[name] = {"exit_code": holder.get("exit_code"), "timed_out": holder.get("timed_out", False),
-                                  "summary": str(call.result)[:300]}
+                commands[name] = {
+                    "exit_code": holder.get("exit_code"),
+                    "timed_out": holder.get("timed_out", False),
+                    "summary": str(call.result)[:300],
+                }
             rt.model_call("summarize", 700, 90, base_ms=300)
             res = rt.result(f"Applied {len(plan['writes'])} edit(s) and ran the tests.")
             res.commands = commands
@@ -88,4 +101,3 @@ class CodingAdapter:
 
 def make_adapter(version: str) -> CodingAdapter:
     return CodingAdapter(version)
-

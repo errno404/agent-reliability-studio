@@ -21,8 +21,9 @@ Evaluator = Callable[[dict[str, Any], AgentResult, Case], "Outcome"]
 class Outcome:
     """Intermediate result of one evaluator."""
 
-    def __init__(self, passed: bool, expected: Any = None, actual: Any = None, evidence: str = "",
-                 skipped: bool = False):
+    def __init__(
+        self, passed: bool, expected: Any = None, actual: Any = None, evidence: str = "", skipped: bool = False
+    ):
         self.passed, self.expected, self.actual = passed, expected, actual
         self.evidence, self.skipped = evidence, skipped
 
@@ -58,8 +59,12 @@ def _contains(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
     missing = [v for v in vals if (v if cs else v.lower()) not in text]
     mode_any = p.get("mode", "all") == "any"
     ok = (len(missing) < len(vals)) if mode_any else not missing
-    return Outcome(ok, vals, f"missing={missing}" if missing else "all present",
-                   f"output {'is missing' if missing else 'contains'} {missing or vals}")
+    return Outcome(
+        ok,
+        vals,
+        f"missing={missing}" if missing else "all present",
+        f"output {'is missing' if missing else 'contains'} {missing or vals}",
+    )
 
 
 def _not_contains(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
@@ -67,8 +72,12 @@ def _not_contains(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
     text = r.final_output if cs else r.final_output.lower()
     vals = _values(p)
     found = [v for v in vals if (v if cs else v.lower()) in text]
-    return Outcome(not found, f"none of {vals}", f"found={found}" if found else "absent",
-                   f"forbidden text present: {found}" if found else "no forbidden text present")
+    return Outcome(
+        not found,
+        f"none of {vals}",
+        f"found={found}" if found else "absent",
+        f"forbidden text present: {found}" if found else "no forbidden text present",
+    )
 
 
 def _regex(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
@@ -79,8 +88,7 @@ def _regex(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
     except re.error as exc:
         raise BadSpec(f"bad regex: {exc}") from exc
     want = not p.get("negate", False)
-    return Outcome(bool(m) == want, pat, m.group(0) if m else None,
-                   f"regex {'matched' if m else 'did not match'}")
+    return Outcome(bool(m) == want, pat, m.group(0) if m else None, f"regex {'matched' if m else 'did not match'}")
 
 
 def _json_schema(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
@@ -115,8 +123,12 @@ def _tool_not_called(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
     names = [str(n) for n in p["names"]] if "names" in p else [str(_need(p, "name"))]
     want = p.get("arguments")
     hit = [n for n in names if any(want is None or _match_value(want, t.arguments) for t in _calls(r, n))]
-    return Outcome(not hit, f"none of {names}" + (f" with {want}" if want else ""), hit,
-                   f"forbidden tool(s) called: {hit}" if hit else "no forbidden tools called")
+    return Outcome(
+        not hit,
+        f"none of {names}" + (f" with {want}" if want else ""),
+        hit,
+        f"forbidden tool(s) called: {hit}" if hit else "no forbidden tools called",
+    )
 
 
 def _tool_call_count(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
@@ -187,6 +199,7 @@ def _budget(attr: str, label: str) -> Evaluator:
         limit = _need(p, "limit")
         val = getattr(r, attr)
         return Outcome(val <= limit, f"<= {limit}", val, f"{label} {val} vs limit {limit}")
+
     return ev
 
 
@@ -202,6 +215,7 @@ def _max_tokens(attr: str) -> Evaluator:
         limit = int(_need(p, "limit"))
         val = getattr(r, attr)
         return Outcome(val <= limit, f"<= {limit}", val, f"{attr} {val} vs limit {limit}")
+
     return ev
 
 
@@ -221,8 +235,12 @@ def _dig(obj: Any, path: str) -> tuple[bool, Any]:
 def _state_equals(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
     path, want = str(_need(p, "path")), _need(p, "value")
     found, got = _dig(r.state, path)
-    return Outcome(found and got == want, want, got if found else "<missing>",
-                   f"state[{path}] {'==' if found and got == want else '!='} expected")
+    return Outcome(
+        found and got == want,
+        want,
+        got if found else "<missing>",
+        f"state[{path}] {'==' if found and got == want else '!='} expected",
+    )
 
 
 def _state_contains(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
@@ -234,8 +252,12 @@ def _state_contains(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
             ok = want in got
         elif isinstance(got, dict):
             ok = want in got if not isinstance(want, dict) else _match_value(want, got)
-    return Outcome(ok, f"contains {want!r}", got if found else "<missing>",
-                   f"state[{path}] {'contains' if ok else 'does not contain'} {want!r}")
+    return Outcome(
+        ok,
+        f"contains {want!r}",
+        got if found else "<missing>",
+        f"state[{path}] {'contains' if ok else 'does not contain'} {want!r}",
+    )
 
 
 # ----------------------------------------------------------------- coding ---
@@ -257,8 +279,12 @@ def _file_exists(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
 def _file_not_changed(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
     paths = [_safe_rel_path(str(x)) for x in (p["paths"] if "paths" in p else [_need(p, "path")])]
     touched = [x for x in r.changed_files if any(x == q or x.startswith(q.rstrip("/") + "/") for q in paths)]
-    return Outcome(not touched, f"unchanged: {paths}", touched,
-                   f"forbidden files changed: {touched}" if touched else "protected files unchanged")
+    return Outcome(
+        not touched,
+        f"unchanged: {paths}",
+        touched,
+        f"forbidden files changed: {touched}" if touched else "protected files unchanged",
+    )
 
 
 def _diff_max_files(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
@@ -296,8 +322,14 @@ ASSERTION_TYPES = frozenset(REGISTRY)
 
 def evaluate_assertion(spec: AssertionSpec, result: AgentResult, case: Case, idx: int = 0) -> AssertionResult:
     gating = spec.gating and spec.layer != Layer.DIAGNOSTIC
-    base = {"name": f"{spec.type}#{idx}", "type": spec.type, "layer": spec.layer, "gating": gating,
-            "severity": spec.severity, "label": spec.label}
+    base = {
+        "name": f"{spec.type}#{idx}",
+        "type": spec.type,
+        "layer": spec.layer,
+        "gating": gating,
+        "severity": spec.severity,
+        "label": spec.label,
+    }
     ev = REGISTRY.get(spec.type)
     if ev is None:
         return AssertionResult(**base, passed=False, invalid=True, evidence=f"unknown assertion type '{spec.type}'")
@@ -305,8 +337,9 @@ def evaluate_assertion(spec: AssertionSpec, result: AgentResult, case: Case, idx
         out = ev(spec.params, result, case)
     except BadSpec as exc:
         return AssertionResult(**base, passed=False, invalid=True, evidence=f"invalid spec: {exc}")
-    return AssertionResult(**base, passed=out.passed, expected=out.expected, actual=out.actual,
-                           evidence=out.evidence, skipped=out.skipped)
+    return AssertionResult(
+        **base, passed=out.passed, expected=out.expected, actual=out.actual, evidence=out.evidence, skipped=out.skipped
+    )
 
 
 def evaluate_all(case: Case, result: AgentResult) -> list[AssertionResult]:

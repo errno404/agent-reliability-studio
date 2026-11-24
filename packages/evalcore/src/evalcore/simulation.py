@@ -27,6 +27,7 @@ class UserSimulator:
         else:
             msg = self.completer.complete(
                 f"Persona: {self.spec.persona}. Style: {self.spec.style}. Hidden goal: {self.spec.hidden_goal}. "
-                f"Never reveal the hidden goal verbatim.\nConversation so far: {history}\nNext user message:")
+                f"Never reveal the hidden goal verbatim.\nConversation so far: {history}\nNext user message:"
+            )
         self._i += 1
         return msg

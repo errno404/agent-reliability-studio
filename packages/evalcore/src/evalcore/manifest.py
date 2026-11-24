@@ -61,9 +61,18 @@ class RunManifest:
 
 # fields that must be identical for a *strict* (CI-gating) comparison
 STRICT_MATCH = (
-    "dataset_name", "dataset_hash", "fixture_hash", "samples_per_case", "judge_backend", "judge_model",
-    "judge_prompt_hash", "simulated_user_model", "simulated_user_prompt_hash", "evaluator_version",
-    "model_provider", "model",
+    "dataset_name",
+    "dataset_hash",
+    "fixture_hash",
+    "samples_per_case",
+    "judge_backend",
+    "judge_model",
+    "judge_prompt_hash",
+    "simulated_user_model",
+    "simulated_user_prompt_hash",
+    "evaluator_version",
+    "model_provider",
+    "model",
 )
 
 
@@ -90,10 +99,13 @@ class ValidationReport:
 
 
 def validate_pair(
-    base: RunManifest, cand: RunManifest,
-    base_samples: list[SampleResult], cand_samples: list[SampleResult],
+    base: RunManifest,
+    cand: RunManifest,
+    base_samples: list[SampleResult],
+    cand_samples: list[SampleResult],
     mode: str = "strict",
-    base_complete: bool = True, cand_complete: bool = True,
+    base_complete: bool = True,
+    cand_complete: bool = True,
 ) -> ValidationReport:
     """Return validity of a baseline/candidate comparison.
 
@@ -111,16 +123,20 @@ def validate_pair(
     for f in STRICT_MATCH:
         a, b = getattr(base, f), getattr(cand, f)
         if a != b:
-            code = {"dataset_hash": "dataset_mismatch", "fixture_hash": "fixture_mismatch",
-                    "judge_prompt_hash": "judge_changed", "judge_model": "judge_changed",
-                    "judge_backend": "judge_changed", "samples_per_case": "sample_count_mismatch",
-                    "model": "model_mismatch"}.get(f, f"{f}_mismatch")
+            code = {
+                "dataset_hash": "dataset_mismatch",
+                "fixture_hash": "fixture_mismatch",
+                "judge_prompt_hash": "judge_changed",
+                "judge_model": "judge_changed",
+                "judge_backend": "judge_changed",
+                "samples_per_case": "sample_count_mismatch",
+                "model": "model_mismatch",
+            }.get(f, f"{f}_mismatch")
             issues.append(Issue(code, f"{f}: baseline={a!r} candidate={b!r}", fatal=strict))
 
     if set(base.case_ids) != set(cand.case_ids):
         only_b, only_c = set(base.case_ids) - set(cand.case_ids), set(cand.case_ids) - set(base.case_ids)
-        issues.append(Issue("case_set_mismatch",
-                            f"{len(only_b)} baseline-only, {len(only_c)} candidate-only cases"))
+        issues.append(Issue("case_set_mismatch", f"{len(only_b)} baseline-only, {len(only_c)} candidate-only cases"))
 
     def _by_case(samples: list[SampleResult]) -> dict[str, set[int]]:
         out: dict[str, set[int]] = {}
@@ -133,8 +149,12 @@ def validate_pair(
         want = set(range(man.samples_per_case))
         missing = [c for c in man.case_ids if got.get(c, set()) != want]
         if missing:
-            issues.append(Issue("missing_samples", f"{label}: {len(missing)} case(s) lack expected sample indexes"
-                                                  f" (e.g. {missing[:3]})"))
+            issues.append(
+                Issue(
+                    "missing_samples",
+                    f"{label}: {len(missing)} case(s) lack expected sample indexes (e.g. {missing[:3]})",
+                )
+            )
         keys = [(s.case_id, s.sample_index) for s in samples]
         if len(keys) != len(set(keys)):
             issues.append(Issue("duplicate_samples", f"{label}: duplicate (case, sample_index) rows"))
@@ -142,8 +162,13 @@ def validate_pair(
         if n_err:
             # execution errors are excluded from quality stats, but too many make comparison unreliable
             frac = n_err / max(1, len(samples))
-            issues.append(Issue("execution_errors", f"{label}: {n_err}/{len(samples)} samples are execution errors"
-                                                   " (excluded from quality metrics)", fatal=frac > 0.2))
+            issues.append(
+                Issue(
+                    "execution_errors",
+                    f"{label}: {n_err}/{len(samples)} samples are execution errors (excluded from quality metrics)",
+                    fatal=frac > 0.2,
+                )
+            )
         n_inv = sum(1 for s in samples if s.status == SampleStatus.INVALID)
         if n_inv:
             issues.append(Issue("invalid_samples", f"{label}: {n_inv} sample(s) have invalid assertions"))
@@ -151,6 +176,7 @@ def validate_pair(
     if not (set(base.case_ids) & set(cand.case_ids)):
         issues.append(Issue("no_overlap", "no cases in common"))
     if base.agent != cand.agent:
-        issues.append(Issue("agent_mismatch", f"comparing different agents: {base.agent} vs {cand.agent}",
-                            fatal=strict))
+        issues.append(
+            Issue("agent_mismatch", f"comparing different agents: {base.agent} vs {cand.agent}", fatal=strict)
+        )
     return ValidationReport(not any(i.fatal for i in issues), issues, mode)

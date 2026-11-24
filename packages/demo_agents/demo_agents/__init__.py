@@ -38,7 +38,9 @@ class RedteamAdapter:
 def get_adapter(spec: str) -> Any:
     agent, _, version = spec.partition(":")
     if agent not in VERSIONS or version not in VERSIONS[agent]:
-        raise KeyError(f"unknown agent '{spec}'. available: " + ", ".join(f"{a}:{v}" for a, vs in VERSIONS.items() for v in vs))
+        raise KeyError(
+            f"unknown agent '{spec}'. available: " + ", ".join(f"{a}:{v}" for a, vs in VERSIONS.items() for v in vs)
+        )
     if agent == "support":
         return support.make_adapter(version)
     if agent == "research":
@@ -48,8 +50,33 @@ def get_adapter(spec: str) -> Any:
     return RedteamAdapter(version)
 
 
+def tool_schema_hash(agent: str) -> str:
+    """Hash of the tool names + signatures the system under test can call."""
+    import inspect
+
+    from evalcore.hashing import hash_obj
+
+    if agent == "research":
+        sigs = {"web_search": "(query: str)", "web_fetch": "(url: str)", "read_context": "(name: str)"}
+    elif agent == "coding":
+        sigs = {"read_file": "(path)", "edit_file": "(path)", "run_tests": "(command)"}
+    else:
+        from .support.world import SupportWorld, load_world_data
+
+        sigs = {n: str(inspect.signature(f)) for n, f in SupportWorld(load_world_data()).tools().items()}
+        if agent == "redteam":
+            sigs.update({"web_search": "(query: str)", "web_fetch": "(url: str)"})
+    return hash_obj(sigs, 16)
+
+
 def agent_info(spec: str) -> dict[str, str]:
     """Pinned identity (hashes) for the manifest/dashboard."""
     ad = get_adapter(spec)
-    return {"agent": ad.name, "version": ad.version, "agent_hash": ad.agent_hash, "prompt_hash": ad.prompt_hash,
-            "model": ad.model}
+    return {
+        "agent": ad.name,
+        "version": ad.version,
+        "agent_hash": ad.agent_hash,
+        "prompt_hash": ad.prompt_hash,
+        "model": ad.model,
+        "tool_schema_hash": tool_schema_hash(ad.name),
+    }

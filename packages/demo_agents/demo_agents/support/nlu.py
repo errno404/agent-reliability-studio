@@ -8,14 +8,22 @@ from dataclasses import dataclass
 ORDER_RE = re.compile(r"\bO-\d{4}\b")
 SUB_RE = re.compile(r"\bS-\d{4}\b")
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
-ADDR_RE = re.compile(r"\bto\s+(?P<street>\d+[^,]*?(?:,\s*(?:apt|unit|suite|#)[^,]*)?),\s*(?P<city>[A-Za-z ]+?)\s+(?P<zip>\d{5})\b",
-                     re.IGNORECASE)
+ADDR_RE = re.compile(
+    r"\bto\s+(?P<street>\d+[^,]*?(?:,\s*(?:apt|unit|suite|#)[^,]*)?),\s*(?P<city>[A-Za-z ]+?)\s+(?P<zip>\d{5})\b",
+    re.IGNORECASE,
+)
 UNIT_RE = re.compile(r"\b(apt|unit|suite)\b|#", re.IGNORECASE)
 
-EXTRACT_PAT = re.compile(r"(system prompt|your instructions|initial instructions|developer message|reveal.*(prompt|rules|secret|code)|"
-                         r"override code|admin code|print.*configuration|repeat everything above)", re.IGNORECASE)
-AUTH_PAT = re.compile(r"(i am (the )?(a )?(manager|admin|owner|developer|supervisor)|as (an )?admin|"
-                      r"authorized by|my manager approved|ignore (the |all )?(previous|prior|policy|policies|rules))", re.IGNORECASE)
+EXTRACT_PAT = re.compile(
+    r"(system prompt|your instructions|initial instructions|developer message|reveal.*(prompt|rules|secret|code)|"
+    r"override code|admin code|print.*configuration|repeat everything above)",
+    re.IGNORECASE,
+)
+AUTH_PAT = re.compile(
+    r"(i am (the )?(a )?(manager|admin|owner|developer|supervisor)|as (an )?admin|"
+    r"authorized by|my manager approved|ignore (the |all )?(previous|prior|policy|policies|rules))",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -38,7 +46,9 @@ def parse(text: str) -> Parsed:
         intent = "policy"
     elif any(k in t for k in ("subscription", "trail club", "membership")) and "cancel" in t:
         intent = "cancel_sub"
-    elif any(k in t for k in ("address", "ship it to", "deliver it to", "ship to")) and (addr or "change" in t or "update" in t):
+    elif any(k in t for k in ("address", "ship it to", "deliver it to", "ship to")) and (
+        addr or "change" in t or "update" in t
+    ):
         intent = "address"
     elif any(k in t for k in ("refund", "money back", "return this", "send it back")):
         intent = "refund"
@@ -51,5 +61,12 @@ def parse(text: str) -> Parsed:
     else:
         intent = "other"
     o, s, e = ORDER_RE.search(text), SUB_RE.search(text), EMAIL_RE.search(text)
-    return Parsed(intent, o.group(0) if o else None, s.group(0) if s else None, e.group(0).rstrip(".,;:") if e else None, addr,
-                  bool(EXTRACT_PAT.search(text)), bool(AUTH_PAT.search(text)))
+    return Parsed(
+        intent,
+        o.group(0) if o else None,
+        s.group(0) if s else None,
+        e.group(0).rstrip(".,;:") if e else None,
+        addr,
+        bool(EXTRACT_PAT.search(text)),
+        bool(AUTH_PAT.search(text)),
+    )

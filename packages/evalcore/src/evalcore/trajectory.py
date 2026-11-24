@@ -26,9 +26,20 @@ def trajectory_checks(case: Case, r: AgentResult) -> list[AssertionResult]:
     out: list[AssertionResult] = []
 
     def add(name: str, ok: bool, expected: Any, actual: Any, evidence: str, label: str) -> None:
-        out.append(AssertionResult(name=name, type=name, layer=Layer.TRAJECTORY, gating=gating, passed=ok,
-                                   expected=expected, actual=actual, evidence=evidence,
-                                   severity=Severity.MEDIUM, label=label))
+        out.append(
+            AssertionResult(
+                name=name,
+                type=name,
+                layer=Layer.TRAJECTORY,
+                gating=gating,
+                passed=ok,
+                expected=expected,
+                actual=actual,
+                evidence=evidence,
+                severity=Severity.MEDIUM,
+                label=label,
+            )
+        )
 
     if "max_duplicate_calls" in cfg:
         counts: dict[str, int] = {}
@@ -37,21 +48,38 @@ def trajectory_checks(case: Case, r: AgentResult) -> list[AssertionResult]:
         worst = max(counts.values(), default=0)
         dups = {k.split("{")[0]: v for k, v in counts.items() if v > cfg["max_duplicate_calls"]}
         limit = cfg["max_duplicate_calls"]
-        add("no_duplicate_calls", worst <= limit, f"<= {limit} identical calls", dups or worst,
-            f"identical calls repeated: {dups}" if dups else "no repeated identical calls", "repeated_tool_loop")
+        add(
+            "no_duplicate_calls",
+            worst <= limit,
+            f"<= {limit} identical calls",
+            dups or worst,
+            f"identical calls repeated: {dups}" if dups else "no repeated identical calls",
+            "repeated_tool_loop",
+        )
     if "max_consecutive_errors" in cfg:
         run = best = 0
         for t in r.tool_calls:
             run = run + 1 if t.error else 0
             best = max(best, run)
-        add("no_error_thrashing", best <= cfg["max_consecutive_errors"],
-            f"<= {cfg['max_consecutive_errors']} consecutive tool errors", best,
-            f"longest streak of failing tool calls = {best}", "error_thrashing")
+        add(
+            "no_error_thrashing",
+            best <= cfg["max_consecutive_errors"],
+            f"<= {cfg['max_consecutive_errors']} consecutive tool errors",
+            best,
+            f"longest streak of failing tool calls = {best}",
+            "error_thrashing",
+        )
     for a, b in cfg.get("require_before", []):
         names = r.tool_names
         ok = (b not in names) or (a in names and names.index(a) < names.index(b))
-        add(f"{a}_before_{b}", ok, f"{a} before {b}", names,
-            f"{a} {'precedes' if ok else 'does not precede'} {b}", "wrong_tool_order")
+        add(
+            f"{a}_before_{b}",
+            ok,
+            f"{a} before {b}",
+            names,
+            f"{a} {'precedes' if ok else 'does not precede'} {b}",
+            "wrong_tool_order",
+        )
     return out
 
 
@@ -75,11 +103,16 @@ def diff_trajectories(base: AgentResult, cand: AgentResult) -> dict[str, Any]:
         else:
             ops.append({"op": tag, "baseline": bn[i1:i2], "candidate": cn[j1:j2]})
     return {
-        "baseline": bn, "candidate": cn, "ops": ops, "changed_arguments": changed_args,
+        "baseline": bn,
+        "candidate": cn,
+        "ops": ops,
+        "changed_arguments": changed_args,
         "identical": bn == cn and not changed_args,
-        "removed_tools": sorted(set(bn) - set(cn)), "added_tools": sorted(set(cn) - set(bn)),
+        "removed_tools": sorted(set(bn) - set(cn)),
+        "added_tools": sorted(set(cn) - set(bn)),
         "latency_delta_ms": cand.latency_ms - base.latency_ms,
         "token_delta": cand.total_tokens - base.total_tokens,
         "cost_delta": (cand.cost_usd - base.cost_usd)
-        if cand.cost_usd is not None and base.cost_usd is not None else None,
+        if cand.cost_usd is not None and base.cost_usd is not None
+        else None,
     }

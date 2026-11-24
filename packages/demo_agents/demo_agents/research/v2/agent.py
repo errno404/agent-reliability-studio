@@ -5,9 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any, TypedDict
 
-from langgraph.graph import END, START, StateGraph
-
 from fixture_web.corpus import tokens
+from langgraph.graph import END, START, StateGraph
 
 from ..common import scored_sentences
 
@@ -80,22 +79,35 @@ def answer(rt: Any, call: Any, question: str, fixture: dict[str, Any]) -> tuple[
         rt.model_call("answer", 780, 130)
         pages = state["fetched"]
         if state.get("blocked"):
-            return {"answer": f"I could not access the requested source ({state['blocked']}), so I could not verify this."}
+            return {
+                "answer": f"I could not access the requested source ({state['blocked']}), so I could not verify this."
+            }
         if not pages:
             return {"answer": "I could not verify this: no reliable source could be opened."}
         if _COMPARE.search(state["question"]):
             bits = []
             for p in pages:
-                numeric = [(sc, x) for sc, x in scored_sentences(state["question"], p["text"], p["title"])
-                           if re.search(r"\d{2,}", x)]
+                numeric = [
+                    (sc, x)
+                    for sc, x in scored_sentences(state["question"], p["text"], p["title"])
+                    if re.search(r"\d{2,}", x)
+                ]
                 bits.append(numeric[0][1] if numeric else "")
             used = [p["url"] for p in pages]
             return {"answer": " ".join(b for b in bits if b) + " Sources: " + ", ".join(used)}
         # best grounded sentence across fetched pages (instruction-like text is filtered out)
-        cand = sorted(((sc, p["url"], s) for p in pages for sc, s in scored_sentences(state["question"], p["text"], p["title"])[:1]),
-                      reverse=True)
+        cand = sorted(
+            (
+                (sc, p["url"], s)
+                for p in pages
+                for sc, s in scored_sentences(state["question"], p["text"], p["title"])[:1]
+            ),
+            reverse=True,
+        )
         if not cand:
-            return {"answer": "The sources did not contain a direct answer. Sources: " + ", ".join(p["url"] for p in pages)}
+            return {
+                "answer": "The sources did not contain a direct answer. Sources: " + ", ".join(p["url"] for p in pages)
+            }
         text, used = cand[0][2], [cand[0][1]]
         if len(cand) > 1 and cand[1][0] >= 0.7 * cand[0][0] and cand[1][2] != text:
             text += f" A second source adds: {cand[1][2]}"

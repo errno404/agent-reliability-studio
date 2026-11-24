@@ -38,8 +38,9 @@ def summarize(samples: Sequence[SampleResult]) -> dict[str, Any]:
         "trajectory": _rate(samples, Layer.TRAJECTORY),
         "component": _rate(samples, Layer.COMPONENT),
         "policy": _rate(samples, Layer.POLICY),
-        "execution_error_rate": (sum(1 for s in samples if s.status == SampleStatus.EXECUTION_ERROR)
-                                 / len(samples)) if samples else 0.0,
+        "execution_error_rate": (sum(1 for s in samples if s.status == SampleStatus.EXECUTION_ERROR) / len(samples))
+        if samples
+        else 0.0,
         "latency_p50_ms": percentile(lat, 50),
         "latency_p95_ms": percentile(lat, 95),
         "total_tokens": sum(s.result.total_tokens for s in quality),
@@ -47,9 +48,13 @@ def summarize(samples: Sequence[SampleResult]) -> dict[str, Any]:
         "output_tokens": sum(s.result.output_tokens for s in quality),
         "cost_usd": round(sum(c for c in costs if c is not None), 6) if cost_known else None,
         "cost_label": "API-equivalent estimated cost" if cost_known else "pricing unavailable",
-        "pass_hat_k": rr.pass_hat_k, "pass_at_k": rr.pass_at_k, "k": rr.k,
-        "single_run_pass_rate": rr.single_run_pass_rate, "single_run_ci": list(rr.single_run_ci),
-        "flaky_cases": rr.flaky_cases, "flips_by_category": rr.flips_by_category,
+        "pass_hat_k": rr.pass_hat_k,
+        "pass_at_k": rr.pass_at_k,
+        "k": rr.k,
+        "single_run_pass_rate": rr.single_run_pass_rate,
+        "single_run_ci": list(rr.single_run_ci),
+        "flaky_cases": rr.flaky_cases,
+        "flips_by_category": rr.flips_by_category,
         "failure_labels": dict(Counter(lab for s in samples for lab in s.failure_labels)),
     }
 

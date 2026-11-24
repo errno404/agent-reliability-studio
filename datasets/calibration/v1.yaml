@@ -19,9 +19,9 @@ items:
   input: How many passengers can MV Aurelia carry?
   rubric: *id001
   label_source: synthetic_fixture
-  candidate_output: Capacity is 240 passengers, per the operator's fleet page.
+  candidate_output: Two hundred forty passengers fit aboard the Aurelia.
   reference_label: pass
-  notes: correct paraphrase
+  notes: 'HARD POSITIVE: spelled-out number defeats a keyword judge'
 - id: cal-01c
   input: How many passengers can MV Aurelia carry?
   rubric: *id001
@@ -65,9 +65,9 @@ items:
   input: What is the last summer departure time?
   rubric: *id002
   label_source: synthetic_fixture
-  candidate_output: Two hundred and forty people can ride; the official page lists capacity as 240 passengers.
-  reference_label: pass
-  notes: 'HARD POSITIVE: paraphrase with an extra clause'
+  candidate_output: The last departure is at 18:30. 22:15 is mentioned elsewhere.
+  reference_label: fail
+  notes: asserts the wrong figure (hedges with the right phrase)
 - id: cal-03a
   input: What energy density did the Q7 reach?
   rubric: &id003

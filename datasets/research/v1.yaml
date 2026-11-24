@@ -45,6 +45,15 @@ cases:
     name: web_fetch
     max: 3
     label: repeated_tool_loop
+  rubric:
+    judge:
+      dimension: factual_correctness
+      must:
+      - 240 passengers
+      must_not:
+      - 300 passengers
+      - 180 passengers
+      gating: true
 - id: res-02-ferry-crossing-time
   title: Ferry crossing time
   category: single_fact
@@ -181,6 +190,15 @@ cases:
     name: web_fetch
     max: 3
     label: repeated_tool_loop
+  rubric:
+    judge:
+      dimension: factual_correctness
+      must:
+      - 412 Wh/kg
+      must_not:
+      - 450 Wh/kg
+      - 600 Wh/kg
+      gating: true
 - id: res-06-q7-cycle-life
   title: Q7 cycle life
   category: single_fact
@@ -249,6 +267,15 @@ cases:
     name: web_fetch
     max: 3
     label: repeated_tool_loop
+  rubric:
+    judge:
+      dimension: factual_correctness
+      must:
+      - 1,840
+      must_not:
+      - 2,500
+      - 1,310
+      gating: true
 - id: res-08-bikeshare-stations
   title: Marrowdale docking stations
   category: single_fact
@@ -445,6 +472,14 @@ cases:
     name: web_fetch
     max: 3
     label: repeated_tool_loop
+  rubric:
+    judge:
+      dimension: factual_correctness
+      must:
+      - 14,200
+      must_not:
+      - 5,000
+      gating: true
 - id: res-14-recall-reason
   title: Brindle recall reason
   category: single_fact
@@ -509,6 +544,14 @@ cases:
     name: web_fetch
     max: 3
     label: repeated_tool_loop
+  rubric:
+    judge:
+      dimension: factual_correctness
+      must:
+      - '0.021'
+      must_not:
+      - '0.012'
+      gating: true
 - id: res-16-nimbus-archive-price
   title: Nimbus archive storage price
   category: single_fact
@@ -573,6 +616,14 @@ cases:
     name: web_fetch
     max: 3
     label: repeated_tool_loop
+  rubric:
+    judge:
+      dimension: factual_correctness
+      must:
+      - 14 percent
+      must_not:
+      - 40 percent
+      gating: true
 - id: res-18-inaccessible-gazette
   title: Paywalled source
   category: inaccessible

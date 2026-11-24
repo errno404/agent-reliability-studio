@@ -1,5 +1,5 @@
 import pytest
-from conftest import mk
+from helpers import mk
 from evalcore.assertions import ASSERTION_TYPES, evaluate_assertion
 from evalcore.models import AssertionSpec, Layer
 
@@ -62,7 +62,9 @@ def test_tool_arguments_match(case):
     r = mk(calls=[("addr", {"order": "O1", "zip": "10001"}), ("addr", {"order": "O2", "zip": "07302"})])
     assert ev(case, r, type="tool_arguments_match", name="addr", arguments={"order": "O2"}).passed
     assert not ev(case, r, type="tool_arguments_match", name="addr", arguments={"order": "O1"}, which="last").passed
-    assert ev(case, r, type="tool_arguments_match", name="addr", arguments={"zip": {"$regex": r"^\d{5}$"}}, which="all").passed
+    assert ev(
+        case, r, type="tool_arguments_match", name="addr", arguments={"zip": {"$regex": r"^\d{5}$"}}, which="all"
+    ).passed
     assert not ev(case, r, type="tool_arguments_match", name="nope", arguments={}).passed
     assert ev(case, r, type="tool_arguments_match", name="addr", arguments={"zip": {"$bad": 1}}).invalid
 
@@ -76,11 +78,17 @@ def test_tool_sequence_modes(case):
     assert ev(case, r, type="tool_sequence", sequence=["a"], mode="weird").invalid
 
 
-@pytest.mark.parametrize("typ,field,val,limit,ok", [
-    ("max_turns", "turns", 3, 4, True), ("max_turns", "turns", 5, 4, False),
-    ("max_steps", "steps", 9, 8, False), ("max_latency_ms", "latency_ms", 99.0, 100, True),
-    ("max_input_tokens", "input_tokens", 10, 5, False), ("max_output_tokens", "output_tokens", 5, 5, True),
-])
+@pytest.mark.parametrize(
+    "typ,field,val,limit,ok",
+    [
+        ("max_turns", "turns", 3, 4, True),
+        ("max_turns", "turns", 5, 4, False),
+        ("max_steps", "steps", 9, 8, False),
+        ("max_latency_ms", "latency_ms", 99.0, 100, True),
+        ("max_input_tokens", "input_tokens", 10, 5, False),
+        ("max_output_tokens", "output_tokens", 5, 5, True),
+    ],
+)
 def test_budgets(case, typ, field, val, limit, ok):
     assert ev(case, mk(**{field: val}), type=typ, limit=limit).passed is ok
 
@@ -101,8 +109,11 @@ def test_state_assertions(case):
 
 
 def test_command_and_files(case):
-    r = mk(commands={"tests": {"exit_code": 0}, "lint": {"exit_code": 2}},
-           workspace_files=["src/a.py"], changed_files=["src/a.py", "README.md"])
+    r = mk(
+        commands={"tests": {"exit_code": 0}, "lint": {"exit_code": 2}},
+        workspace_files=["src/a.py"],
+        changed_files=["src/a.py", "README.md"],
+    )
     assert ev(case, r, type="command_exit", command="tests").passed
     assert not ev(case, r, type="command_exit", command="lint").passed
     assert not ev(case, r, type="command_exit", command="build").passed
@@ -134,6 +145,11 @@ def test_tool_not_called_with_argument_filter(case):
     r = mk(calls=[("web_fetch", {"url": "https://ok.example/a"}), ("web_fetch", {"url": "https://exfil.example/x"})])
     bad = ev(case, r, type="tool_not_called", name="web_fetch", arguments={"url": {"$regex": "exfil"}})
     assert not bad.passed
-    fine = ev(case, mk(calls=[("web_fetch", {"url": "https://ok.example/a"})]), type="tool_not_called",
-              name="web_fetch", arguments={"url": {"$regex": "exfil"}})
+    fine = ev(
+        case,
+        mk(calls=[("web_fetch", {"url": "https://ok.example/a"})]),
+        type="tool_not_called",
+        name="web_fetch",
+        arguments={"url": {"$regex": "exfil"}},
+    )
     assert fine.passed

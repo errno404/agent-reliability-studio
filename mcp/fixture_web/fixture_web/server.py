@@ -6,16 +6,19 @@ import asyncio
 import json
 from typing import Any
 
-from mcp import Client
 from mcp.server.mcpserver import MCPServer
+
+from mcp import Client
 
 from .corpus import FixtureWeb, load_corpus
 
 
 def build_server(web: FixtureWeb | None = None) -> MCPServer:
     web = web or load_corpus()
-    mcp = MCPServer(f"fixture-web-{web.version}",
-                    instructions="Frozen synthetic web. Read-only. All hosts are .example and fictional.")
+    mcp = MCPServer(
+        f"fixture-web-{web.version}",
+        instructions="Frozen synthetic web. Read-only. All hosts are .example and fictional.",
+    )
 
     @mcp.tool()
     def web_search(query: str) -> str:

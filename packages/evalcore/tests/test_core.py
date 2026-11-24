@@ -3,7 +3,7 @@ import textwrap
 from typing import Any
 
 import pytest
-from conftest import mk
+from helpers import mk
 from evalcore import (
     AdmissionPolicy,
     BootstrapPolicy,
@@ -67,16 +67,21 @@ def write(tmp_path, text):
 def test_dataset_hash_changes_with_any_evidence(tmp_path):
     ds, h = load_and_validate(write(tmp_path, YAML))
     assert len(h) == 16
-    variants = [YAML.replace("value: refund}", "value: refunded}"),            # assertion / expected
-                YAML.replace("fixture_version: f1", "fixture_version: f2"),      # fixture version
-                YAML.replace("refund please", "refund pls")]                     # case definition
+    variants = [
+        YAML.replace("value: refund}", "value: refunded}"),  # assertion / expected
+        YAML.replace("fixture_version: f1", "fixture_version: f2"),  # fixture version
+        YAML.replace("refund please", "refund pls"),
+    ]  # case definition
     for v in variants:
         assert load_and_validate(write(tmp_path, v))[1] != h
     assert dataset_hash(ds) == h  # stable
 
 
 def test_hash_ignores_provenance_and_case_order(tmp_path):
-    two = YAML + "  - {id: a2, title: B, category: c, description: d, input: x, assertions: [{type: output_contains, value: x}]}\n"
+    two = (
+        YAML
+        + "  - {id: a2, title: B, category: c, description: d, input: x, assertions: [{type: output_contains, value: x}]}\n"
+    )
     ds = load_dataset(write(tmp_path, two))
     h = dataset_hash(ds)
     ds.cases.reverse()
@@ -99,8 +104,15 @@ def test_validation_problems(tmp_path):
 
 # --------------------------------------------------------------- runner ---
 def case_with(*assertions, **kw):
-    return Case(id="k", title="t", category="c", description="d", input="i",
-                assertions=[AssertionSpec(**a) for a in assertions], **kw)
+    return Case(
+        id="k",
+        title="t",
+        category="c",
+        description="d",
+        input="i",
+        assertions=[AssertionSpec(**a) for a in assertions],
+        **kw,
+    )
 
 
 def test_status_semantics():
@@ -109,13 +121,16 @@ def test_status_semantics():
     err = score_result(case_with({"type": "output_contains", "value": "yes"}), AgentResult(error="boom"))
     inv = score_result(case_with({"type": "nope"}), mk())
     assert (ok.status, bad.status, err.status, inv.status) == (
-        SampleStatus.PASSED, SampleStatus.FAILED, SampleStatus.EXECUTION_ERROR, SampleStatus.INVALID)
+        SampleStatus.PASSED,
+        SampleStatus.FAILED,
+        SampleStatus.EXECUTION_ERROR,
+        SampleStatus.INVALID,
+    )
     assert err.failure_labels == ["execution_error"] and "incorrect_final_answer" in bad.failure_labels
 
 
 def test_non_gating_assertion_does_not_fail_case():
-    c = case_with({"type": "output_contains", "value": "yes"},
-                  {"type": "max_latency_ms", "limit": 1, "gating": False})
+    c = case_with({"type": "output_contains", "value": "yes"}, {"type": "max_latency_ms", "limit": 1, "gating": False})
     s = score_result(c, mk(final_output="yes", latency_ms=500))
     assert s.status == SampleStatus.PASSED
 
@@ -143,9 +158,11 @@ def test_execute_run_sample_indexes_and_concurrency():
 
 # ------------------------------------------------------------ taxonomy ----
 def test_taxonomy_labels():
-    c = case_with({"type": "tool_not_called", "name": "issue_refund", "layer": "policy"},
-                  {"type": "tool_arguments_match", "name": "upd", "arguments": {"zip": "1"}, "layer": "component"},
-                  {"type": "max_latency_ms", "limit": 1, "layer": "outcome"})
+    c = case_with(
+        {"type": "tool_not_called", "name": "issue_refund", "layer": "policy"},
+        {"type": "tool_arguments_match", "name": "upd", "arguments": {"zip": "1"}, "layer": "component"},
+        {"type": "max_latency_ms", "limit": 1, "layer": "outcome"},
+    )
     r = mk(calls=[("issue_refund", {}), ("upd", {"zip": "2"})], latency_ms=9, final_output="x")
     s = score_result(c, r)
     assert {"forbidden_tool", "policy_violation", "wrong_tool_arguments", "latency_budget"} <= set(s.failure_labels)
@@ -154,17 +171,19 @@ def test_taxonomy_labels():
 
 
 def test_explicit_label_overrides():
-    c = case_with({"type": "output_not_contains", "value": "SECRET", "layer": "policy",
-                   "label": "prompt_injection_failure"})
+    c = case_with(
+        {"type": "output_not_contains", "value": "SECRET", "layer": "policy", "label": "prompt_injection_failure"}
+    )
     s = score_result(c, mk(final_output="here SECRET"))
     assert s.failure_labels == ["prompt_injection_failure"]
 
 
 # ----------------------------------------------------------- trajectory ---
 def test_trajectory_checks_and_diff():
-    c = case_with({"type": "output_contains", "value": "x"},
-                  trajectory={"max_duplicate_calls": 1, "max_consecutive_errors": 1,
-                              "require_before": [["lookup", "refund"]]})
+    c = case_with(
+        {"type": "output_contains", "value": "x"},
+        trajectory={"max_duplicate_calls": 1, "max_consecutive_errors": 1, "require_before": [["lookup", "refund"]]},
+    )
     r = mk(calls=[("refund", {"a": 1}), ("refund", {"a": 1}), ("lookup", {})])
     r.tool_calls[0].error = "e"
     r.tool_calls[1].error = "e"
@@ -227,14 +246,17 @@ def test_admission_policy_each_reason():
 
 def test_judge_identity_changes_with_any_component():
     from evalcore.calibration import judge_identity
+
     base = judge_identity("litellm", "m1", "p1")
     assert judge_identity("litellm", "m2", "p1") != base and judge_identity("litellm", "m1", "p2") != base
     assert judge_identity("heuristic", "m1", "p1") != base and judge_identity("litellm", "m1", "p1") == base
 
 
 def test_inter_annotator_agreement_and_adjudication():
-    ann = {"a": {"i1": True, "i2": False, "i3": True, "i4": False},
-           "b": {"i1": True, "i2": False, "i3": False, "i4": False}}
+    ann = {
+        "a": {"i1": True, "i2": False, "i3": True, "i4": False},
+        "b": {"i1": True, "i2": False, "i3": False, "i4": False},
+    }
     k, n = mean_pairwise_kappa(ann)
     assert n == 4 and k == pytest.approx(0.5)
     assert mean_pairwise_kappa({"a": ann["a"]}) == (None, 0)  # no consensus claimed from one annotator
@@ -247,9 +269,13 @@ GOOD = json.dumps({"passed": True, "score": 0.9, "label": "pass", "rationale": "
 
 def test_parse_verdict_strict():
     assert parse_verdict("```json\n" + GOOD + "\n```").passed
-    for bad in ["not json", '{"passed": true}', json.dumps({"passed": True, "score": 2, "label": "pass", "rationale": "r"}),
-                json.dumps({"passed": True, "score": .5, "label": "fail", "rationale": "r"}),
-                json.dumps({"passed": True, "score": .5, "label": "pass", "rationale": "r", "extra": 1})]:
+    for bad in [
+        "not json",
+        '{"passed": true}',
+        json.dumps({"passed": True, "score": 2, "label": "pass", "rationale": "r"}),
+        json.dumps({"passed": True, "score": 0.5, "label": "fail", "rationale": "r"}),
+        json.dumps({"passed": True, "score": 0.5, "label": "pass", "rationale": "r", "extra": 1}),
+    ]:
         with pytest.raises(MalformedJudgeOutput):
             parse_verdict(bad)
 
@@ -272,8 +298,10 @@ def test_judge_prompt_hash_tracks_template_and_rubric_version():
 
 
 def test_heuristic_judge_and_gating_requires_admission():
-    case = case_with({"type": "output_contains", "value": "x"},
-                     rubric={"judge": {"must": ["refund approved"], "must_not": ["guarantee"]}})
+    case = case_with(
+        {"type": "output_contains", "value": "x"},
+        rubric={"judge": {"must": ["refund approved"], "must_not": ["guarantee"]}},
+    )
     case.assertions = [AssertionSpec.model_validate({"type": "max_turns", "limit": 9})]
     j = Judge(HeuristicJudge(), JudgeConfig(backend="heuristic", model="keyword-v1"))
     r = mk(final_output="Your refund approved.")
@@ -293,9 +321,21 @@ def test_judge_failure_is_not_agent_failure():
 
 # ------------------------------------------------- manifest / comparison --
 def man(**kw) -> RunManifest:
-    base: dict[str, Any] = dict(run_id="r", run_type="synthetic_demo", agent="support", agent_version="v1", dataset_name="d",
-                dataset_hash="h1", fixture_hash="f1", case_ids=["a", "b"], samples_per_case=1,
-                model="synthetic-sim-small", judge_backend="heuristic", judge_model="k", judge_prompt_hash="p")
+    base: dict[str, Any] = dict(
+        run_id="r",
+        run_type="synthetic_demo",
+        agent="support",
+        agent_version="v1",
+        dataset_name="d",
+        dataset_hash="h1",
+        fixture_hash="f1",
+        case_ids=["a", "b"],
+        samples_per_case=1,
+        model="synthetic-sim-small",
+        judge_backend="heuristic",
+        judge_model="k",
+        judge_prompt_hash="p",
+    )
     base.update(kw)
     return RunManifest(**base)
 
@@ -317,10 +357,17 @@ def test_manifest_hash_ignores_volatile_but_not_provenance():
     assert man(judge_prompt_hash="other").content_hash() != a.content_hash()
 
 
-@pytest.mark.parametrize("change,code", [
-    ({"dataset_hash": "h2"}, "dataset_mismatch"), ({"fixture_hash": "f2"}, "fixture_mismatch"),
-    ({"judge_prompt_hash": "p2"}, "judge_changed"), ({"samples_per_case": 2}, "sample_count_mismatch"),
-    ({"case_ids": ["a", "c"]}, "case_set_mismatch"), ({"model": "other"}, "model_mismatch")])
+@pytest.mark.parametrize(
+    "change,code",
+    [
+        ({"dataset_hash": "h2"}, "dataset_mismatch"),
+        ({"fixture_hash": "f2"}, "fixture_mismatch"),
+        ({"judge_prompt_hash": "p2"}, "judge_changed"),
+        ({"samples_per_case": 2}, "sample_count_mismatch"),
+        ({"case_ids": ["a", "c"]}, "case_set_mismatch"),
+        ({"model": "other"}, "model_mismatch"),
+    ],
+)
 def test_invalid_pairs(change, code):
     rep = validate_pair(man(), man(**change), good_set(), good_set(), "strict")
     assert not rep.valid and any(i.code == code for i in rep.issues)
@@ -362,12 +409,14 @@ def test_end_to_end_compare_and_gate():
     assert len(reg.case_changes) == 30 and "regression" in reg.explanation.lower()
     imp = compare_runs(bm, many(60, lambda i, j: i >= 30), cm, many(60, lambda i, j: True), pol)
     assert imp.decision == Decision.SIGNIFICANT_IMPROVEMENT and gate(imp).passed
-    inv = compare_runs(bm, many(60, lambda i, j: True), man(case_ids=ids, dataset_hash="zz"),
-                       many(60, lambda i, j: True), pol)
+    inv = compare_runs(
+        bm, many(60, lambda i, j: True), man(case_ids=ids, dataset_hash="zz"), many(60, lambda i, j: True), pol
+    )
     assert inv.decision == Decision.INVALID and not gate(inv).passed and "INVALID" in inv.explanation
     small_ids = ids[:10]
-    inc = compare_runs(man(case_ids=small_ids), many(10, lambda i, j: True), man(case_ids=small_ids),
-                       many(10, lambda i, j: True), pol)
+    inc = compare_runs(
+        man(case_ids=small_ids), many(10, lambda i, j: True), man(case_ids=small_ids), many(10, lambda i, j: True), pol
+    )
     assert inc.decision == Decision.INCONCLUSIVE and not gate(inc, conservative=True).passed
     assert gate(inc, conservative=False).passed
     assert not gate(imp, judge_ok=False).passed  # uncalibrated judge blocks gating
@@ -376,8 +425,15 @@ def test_end_to_end_compare_and_gate():
 # ------------------------------------------------- redaction / tracing ----
 def test_redaction_keys_patterns_known_and_truncation():
     r = Redactor(known_secrets=("hunter2hunter2",), max_text=40)
-    out = r.apply({"api_key": "abc", "note": "token sk-abcdefghijklmnopqrstuvwx and hunter2hunter2",
-                   "nested": [{"password": "p"}], "long": "z" * 100, "DEMO": "DEMO_SECRET_DO_NOT_REVEAL_7F2A"})
+    out = r.apply(
+        {
+            "api_key": "abc",
+            "note": "token sk-abcdefghijklmnopqrstuvwx and hunter2hunter2",
+            "nested": [{"password": "p"}],
+            "long": "z" * 100,
+            "DEMO": "DEMO_SECRET_DO_NOT_REVEAL_7F2A",
+        }
+    )
     assert out["api_key"] == REDACTED and out["nested"][0]["password"] == REDACTED
     assert "sk-abc" not in out["note"] and "hunter2" not in out["note"]
     assert out["long"].endswith("chars]") and REDACTED in out["DEMO"]
@@ -387,8 +443,10 @@ def test_trace_recorder_tree_timing_and_redaction():
     tr = TraceRecorder(Redactor())
     with tr.span("invoke_agent demo", {"gen_ai.operation.name": "invoke_agent"}):
         tr.advance(10)
-        with tr.span("execute_tool lookup", {"gen_ai.operation.name": "execute_tool",
-                                             "gen_ai.tool.call.arguments": {"api_key": "x", "id": 1}}):
+        with tr.span(
+            "execute_tool lookup",
+            {"gen_ai.operation.name": "execute_tool", "gen_ai.tool.call.arguments": {"api_key": "x", "id": 1}},
+        ):
             tr.advance(25)
         with pytest.raises(ValueError), tr.span("chat m", {"gen_ai.operation.name": "chat"}):
             tr.advance(5)
@@ -397,8 +455,10 @@ def test_trace_recorder_tree_timing_and_redaction():
     root, tool, chat = recs["invoke_agent demo"], recs["execute_tool lookup"], recs["chat m"]
     assert tool.parent_id == root.span_id and tool.kind == "tool" and tool.duration_ms == 25
     assert root.duration_ms == 40 and chat.status == "error" and root.kind == "agent"
-    assert "[REDACTED]" in tool.attributes["gen_ai.tool.call.arguments"] and "x" not in json.loads(
-        tool.attributes["gen_ai.tool.call.arguments"])["api_key"]
+    assert (
+        "[REDACTED]" in tool.attributes["gen_ai.tool.call.arguments"]
+        and "x" not in json.loads(tool.attributes["gen_ai.tool.call.arguments"])["api_key"]
+    )
 
 
 # ------------------------------------------------------------- distill ----
@@ -419,6 +479,7 @@ def test_tool_call_model_validation():
 
 def test_pricing_never_invents_prices():
     from evalcore.pricing import SYNTHETIC_PRICES, PriceTable
+
     assert SYNTHETIC_PRICES.cost("synthetic-sim-small", 1_000_000, 1_000_000) == pytest.approx(2.0)
     assert SYNTHETIC_PRICES.cost("claude-unknown", 10, 10) is None and PriceTable("v").cost(None, 1, 1) is None
 
@@ -426,6 +487,7 @@ def test_pricing_never_invents_prices():
 def test_simulated_user_scripted_and_llm_modes():
     from evalcore.models import SimulatedUser
     from evalcore.simulation import UserSimulator
+
     spec = SimulatedUser(persona="confused", max_turns=2, script=["hi", "what?", "never"])
     u = UserSimulator(spec)
     assert [u.next_message([]), u.next_message([]), u.next_message([])] == ["hi", "what?", None]

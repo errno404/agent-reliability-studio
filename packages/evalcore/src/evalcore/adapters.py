@@ -25,15 +25,23 @@ from .runner import RunContext
 # ---------------------------------------------------------------- sandbox --
 
 
-def run_command(argv: list[str], cwd: Path, timeout_s: float, env: dict[str, str] | None = None,
-                stdin: str | None = None) -> tuple[int | None, str, str, bool]:
+def run_command(
+    argv: list[str], cwd: Path, timeout_s: float, env: dict[str, str] | None = None, stdin: str | None = None
+) -> tuple[int | None, str, str, bool]:
     """Run a command with a timeout and kill the WHOLE process tree on expiry.
 
     Returns (exit_code | None, stdout, stderr, timed_out). Never uses a shell.
     """
-    proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.PIPE if stdin is not None else None,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                            start_new_session=True)
+    proc = subprocess.Popen(
+        argv,
+        cwd=cwd,
+        env=env,
+        stdin=subprocess.PIPE if stdin is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
     try:
         out, err = proc.communicate(stdin, timeout=timeout_s)
         return proc.returncode, out, err, False
@@ -67,10 +75,18 @@ class ClaudeCodeAdapter:
     copied from ``case.fixture['workspace']``; local/admin use only.
     """
 
-    def __init__(self, name: str = "claude-code", version: str = "cli", binary: str | None = None,
-                 model: str | None = None, timeout_s: float = 300.0, allowed_tools: list[str] | None = None,
-                 permission_mode: str = "acceptEdits", fixtures_root: Path | None = None,
-                 extra_args: list[str] | None = None):
+    def __init__(
+        self,
+        name: str = "claude-code",
+        version: str = "cli",
+        binary: str | None = None,
+        model: str | None = None,
+        timeout_s: float = 300.0,
+        allowed_tools: list[str] | None = None,
+        permission_mode: str = "acceptEdits",
+        fixtures_root: Path | None = None,
+        extra_args: list[str] | None = None,
+    ):
         self.name, self.version = name, version
         self.binary = binary or shutil.which("claude")
         self.model, self.timeout_s = model, timeout_s
@@ -84,8 +100,16 @@ class ClaudeCodeAdapter:
 
     def build_argv(self, prompt: str) -> list[str]:
         assert self.binary
-        argv = [self.binary, "-p", prompt, "--output-format", "json", "--no-session-persistence",
-                "--permission-mode", self.permission_mode]
+        argv = [
+            self.binary,
+            "-p",
+            prompt,
+            "--output-format",
+            "json",
+            "--no-session-persistence",
+            "--permission-mode",
+            self.permission_mode,
+        ]
         if self.model:
             argv += ["--model", self.model]
         if self.allowed_tools:
@@ -107,8 +131,12 @@ class ClaudeCodeAdapter:
             code, out, err, timed_out = run_command(self.build_argv(case.input), work, self.timeout_s)
             latency = (time.monotonic() - t0) * 1000
             if timed_out:
-                return AgentResult(error=f"timeout after {self.timeout_s}s", error_kind="timeout",
-                                   latency_ms=latency, metadata={"stderr": err[-500:]})
+                return AgentResult(
+                    error=f"timeout after {self.timeout_s}s",
+                    error_kind="timeout",
+                    latency_ms=latency,
+                    metadata={"stderr": err[-500:]},
+                )
             res = self.parse_output(out, code, err)
             res.latency_ms = latency
             after = snapshot(work)
@@ -124,29 +152,49 @@ class ClaudeCodeAdapter:
         try:
             data = json.loads(stdout)
         except json.JSONDecodeError:
-            return AgentResult(error=f"unparseable CLI output (exit {code}): {stderr[-300:] or stdout[-300:]}",
-                               error_kind="adapter")
+            return AgentResult(
+                error=f"unparseable CLI output (exit {code}): {stderr[-300:] or stdout[-300:]}", error_kind="adapter"
+            )
         usage = data.get("usage") or {}
         model_usage = data.get("modelUsage") or {}
         model = next(iter(model_usage), None)
         if data.get("is_error") or (code not in (0, None)):
-            return AgentResult(error=str(data.get("result") or stderr)[:400], error_kind="provider",
-                               model=model, metadata={"exit_code": code})
+            return AgentResult(
+                error=str(data.get("result") or stderr)[:400],
+                error_kind="provider",
+                model=model,
+                metadata={"exit_code": code},
+            )
         return AgentResult(
-            final_output=str(data.get("result", "")), turns=int(data.get("num_turns", 1)),
+            final_output=str(data.get("result", "")),
+            turns=int(data.get("num_turns", 1)),
             input_tokens=int(usage.get("input_tokens", 0)) + int(usage.get("cache_read_input_tokens", 0)),
-            output_tokens=int(usage.get("output_tokens", 0)), model=model, cost_usd=None,
-            metadata={"api_equivalent_cost_usd": data.get("total_cost_usd"), "session_id": data.get("session_id"),
-                      "cost_note": "API-equivalent estimate; subscription runs are not billed per token"})
+            output_tokens=int(usage.get("output_tokens", 0)),
+            model=model,
+            cost_usd=None,
+            metadata={
+                "api_equivalent_cost_usd": data.get("total_cost_usd"),
+                "session_id": data.get("session_id"),
+                "cost_note": "API-equivalent estimate; subscription runs are not billed per token",
+            },
+        )
 
 
 # ---------------------------------------------------------------- LiteLLM --
 class LiteLLMAdapter:
     """API-backed tool-using agent via LiteLLM chat completions (optional dependency)."""
 
-    def __init__(self, name: str, version: str, model: str, system_prompt: str,
-                 tools: dict[str, Callable[..., Any]], tool_specs: list[dict[str, Any]],
-                 max_steps: int = 8, completion: Callable[..., Any] | None = None):
+    def __init__(
+        self,
+        name: str,
+        version: str,
+        model: str,
+        system_prompt: str,
+        tools: dict[str, Callable[..., Any]],
+        tool_specs: list[dict[str, Any]],
+        max_steps: int = 8,
+        completion: Callable[..., Any] | None = None,
+    ):
         self.name, self.version, self.model = name, version, model
         self.system_prompt, self.tools, self.tool_specs = system_prompt, tools, tool_specs
         self.max_steps, self._completion = max_steps, completion
@@ -159,8 +207,10 @@ class LiteLLMAdapter:
             except ImportError:
                 return AgentResult(error="litellm not installed (pip install evalcore[litellm])", error_kind="adapter")
             fn = litellm.completion
-        msgs: list[dict[str, Any]] = [{"role": "system", "content": self.system_prompt},
-                                      {"role": "user", "content": case.input}]
+        msgs: list[dict[str, Any]] = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": case.input},
+        ]
         res = AgentResult(model=self.model)
         t0 = time.monotonic()
         try:
@@ -175,10 +225,20 @@ class LiteLLMAdapter:
                 if not calls:
                     res.final_output = m.content or ""
                     break
-                msgs.append({"role": "assistant", "content": m.content or "", "tool_calls": [
-                    {"id": tc.id, "type": "function",
-                     "function": {"name": tc.function.name, "arguments": tc.function.arguments or "{}"}}
-                    for tc in calls]})
+                msgs.append(
+                    {
+                        "role": "assistant",
+                        "content": m.content or "",
+                        "tool_calls": [
+                            {
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {"name": tc.function.name, "arguments": tc.function.arguments or "{}"},
+                            }
+                            for tc in calls
+                        ],
+                    }
+                )
                 for tc in calls:
                     args = json.loads(tc.function.arguments or "{}")
                     call = ToolCall(name=tc.function.name, arguments=args)

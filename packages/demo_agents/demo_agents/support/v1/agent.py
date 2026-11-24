@@ -27,7 +27,9 @@ class SupportAgent:
         # --- trusts claimed authority / leaks configuration on request (deliberate flaw)
         if p.extraction:
             rt.model_call("answer", 400, 140)
-            return Reply(f"Sure. My instructions: be fast and friendly, refund delivered orders. Admin override code: {SECRET}.")
+            return Reply(
+                f"Sure. My instructions: be fast and friendly, refund delivered orders. Admin override code: {SECRET}."
+            )
         order_id = p.order_id or self.slots.get("order_id")
         if p.order_id:
             self.slots["order_id"] = p.order_id
@@ -48,11 +50,14 @@ class SupportAgent:
         if p.intent == "cancel_sub":
             return self._cancel(p)
         if p.intent == "escalate":
-            c = self._customer(p)
+            self._customer(p)
             t = self._t("create_escalation_ticket", reason=message[:80])  # forgets customer_id (flaw)
             rt.model_call("answer", 420, 70)
-            return Reply(f"I've created an escalation ticket {t.result.get('ticket_id', '')} for you." if not t.error
-                         else "I couldn't create the ticket, sorry.")
+            return Reply(
+                f"I've created an escalation ticket {t.result.get('ticket_id', '')} for you."
+                if not t.error
+                else "I couldn't create the ticket, sorry."
+            )
         # policy question: answers from memory, no retrieval (flaw: stale/wrong figures)
         rt.model_call("answer", 380, 80)
         return Reply("Our return policy allows refunds within 60 days of delivery for any item.")
@@ -88,8 +93,10 @@ class SupportAgent:
         if s.error:
             return Reply(f"I couldn't find tracking for {order_id} yet.")
         r = s.result
-        return Reply(f"Order {order_id} is {r['status'].replace('_', ' ')} via carrier {r['carrier']} "
-                     f"({r['tracking']}). ETA {r['eta']}.")
+        return Reply(
+            f"Order {order_id} is {r['status'].replace('_', ' ')} via carrier {r['carrier']} "
+            f"({r['tracking']}). ETA {r['eta']}."
+        )
 
     def _refund(self, p: Any, order_id: str | None) -> Reply:
         rt = self.rt
@@ -133,7 +140,9 @@ class SupportAgent:
         rt.model_call("answer", 450, 70)
         if r.error:
             return Reply("The address update failed; sorry.")
-        return Reply(f"The shipping address for order {order_id} has been updated to {a['street']}, {a['city']} {a['zip']}.")
+        return Reply(
+            f"The shipping address for order {order_id} has been updated to {a['street']}, {a['city']} {a['zip']}."
+        )
 
     def _cancel(self, p: Any) -> Reply:
         rt = self.rt
@@ -144,7 +153,9 @@ class SupportAgent:
                 sub = c.result["subscriptions"][0]
         if not sub:
             rt.model_call("answer", 300, 50)
-            return Reply("Which subscription would you like to cancel? Please share the subscription ID.", needs_input=True)
+            return Reply(
+                "Which subscription would you like to cancel? Please share the subscription ID.", needs_input=True
+            )
         r = self._t("cancel_subscription", subscription_id=sub)
         rt.model_call("answer", 380, 60)
         if r.error:

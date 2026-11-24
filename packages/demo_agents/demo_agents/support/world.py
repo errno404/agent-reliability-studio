@@ -45,7 +45,13 @@ class SupportWorld:
             if cid == customer_id or (email and c["email"].lower() == email.lower()):
                 orders = sorted(o for o, v in self.d["orders"].items() if v["customer"] == cid)
                 subs = sorted(s for s, v in self.d["subscriptions"].items() if v["customer"] == cid)
-                return {"customer_id": cid, "name": c["name"], "tier": c["tier"], "orders": orders, "subscriptions": subs}
+                return {
+                    "customer_id": cid,
+                    "name": c["name"],
+                    "tier": c["tier"],
+                    "orders": orders,
+                    "subscriptions": subs,
+                }
         return {"error": "customer not found"}
 
     def lookup_order(self, order_id: str) -> dict[str, Any]:
@@ -77,9 +83,14 @@ class SupportWorld:
         if o["status"] != "delivered":
             return {"eligible": False, "reason": f"order is {o['status']}, not delivered", "max_refund": 0}
         from datetime import date
+
         days = (date.fromisoformat(str(self.d["today"])) - date.fromisoformat(str(o["delivered"]))).days
         if days > 30:
-            return {"eligible": False, "reason": f"outside the 30-day window ({days} days since delivery)", "max_refund": 0}
+            return {
+                "eligible": False,
+                "reason": f"outside the 30-day window ({days} days since delivery)",
+                "max_refund": 0,
+            }
         needs = o["total"] > 500
         return {"eligible": True, "reason": "within policy", "max_refund": o["total"], "requires_human_approval": needs}
 
@@ -93,7 +104,7 @@ class SupportWorld:
         self.refunds.append({"order_id": order_id, "amount": amount})
         return {"ok": True, "order_id": order_id, "amount": amount}
 
-    def update_shipping_address(self, order_id: str, street: str, city: str, zip: str) -> dict[str, Any]:  # noqa: A002
+    def update_shipping_address(self, order_id: str, street: str, city: str, zip: str) -> dict[str, Any]:
         if f := self._maybe_fail("update_shipping_address"):
             return f
         o = self._order(order_id)
@@ -113,12 +124,17 @@ class SupportWorld:
         self.cancelled.append(subscription_id)
         return {"ok": True, "subscription_id": subscription_id}
 
-    def create_escalation_ticket(self, customer_id: str | None = None, reason: str = "",
-                                 order_id: str | None = None) -> dict[str, Any]:
+    def create_escalation_ticket(
+        self, customer_id: str | None = None, reason: str = "", order_id: str | None = None
+    ) -> dict[str, Any]:
         if f := self._maybe_fail("create_escalation_ticket"):
             return f
-        t = {"ticket_id": f"T-{len(self.tickets) + 1:04d}", "customer_id": customer_id, "reason": reason,
-             "order_id": order_id}
+        t = {
+            "ticket_id": f"T-{len(self.tickets) + 1:04d}",
+            "customer_id": customer_id,
+            "reason": reason,
+            "order_id": order_id,
+        }
         self.tickets.append(t)
         return {"ok": True, **t}
 
@@ -132,13 +148,28 @@ class SupportWorld:
     # --------------------------------------------------------------- state
     def export_state(self) -> dict[str, Any]:
         return {
-            "refunds": self.refunds, "address_updates": self.address_updates, "cancelled_subscriptions": self.cancelled,
+            "refunds": self.refunds,
+            "address_updates": self.address_updates,
+            "cancelled_subscriptions": self.cancelled,
             "tickets": self.tickets,
-            "orders": {k: {"refunded": v["refunded"], "status": v["status"], "address": v["address"]}
-                       for k, v in self.d["orders"].items()},
+            "orders": {
+                k: {"refunded": v["refunded"], "status": v["status"], "address": v["address"]}
+                for k, v in self.d["orders"].items()
+            },
         }
 
     def tools(self) -> dict[str, Any]:
-        return {n: getattr(self, n) for n in (
-            "lookup_customer", "lookup_order", "track_shipment", "check_refund_eligibility", "issue_refund",
-            "update_shipping_address", "cancel_subscription", "create_escalation_ticket", "retrieve_policy")}
+        return {
+            n: getattr(self, n)
+            for n in (
+                "lookup_customer",
+                "lookup_order",
+                "track_shipment",
+                "check_refund_eligibility",
+                "issue_refund",
+                "update_shipping_address",
+                "cancel_subscription",
+                "create_escalation_ticket",
+                "retrieve_policy",
+            )
+        }

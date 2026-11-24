@@ -107,17 +107,23 @@ class Judge:
 
     def render(self, rubric: str, input_text: str, output: str) -> str:
         return self.config.prompt_template.format(
-            dimension=self.config.dimension, rubric=rubric, input=input_text, output=output,
-            rubric_version=self.config.rubric_version)
+            dimension=self.config.dimension,
+            rubric=rubric,
+            input=input_text,
+            output=output,
+            rubric_version=self.config.rubric_version,
+        )
 
     def evaluate(self, rubric: str, input_text: str, output: str) -> JudgeOutcome:
         prompt = self.render(rubric, input_text, output)
         last = ""
         for attempt in range(1, self.config.max_retries + 2):
             try:
-                raw = self.backend.complete(prompt if attempt == 1 else
-                                            prompt + f"\n\nYour previous reply was invalid ({last}). "
-                                            "Reply with ONLY the JSON object.")
+                raw = self.backend.complete(
+                    prompt
+                    if attempt == 1
+                    else prompt + f"\n\nYour previous reply was invalid ({last}). Reply with ONLY the JSON object."
+                )
             except Exception as exc:  # provider failure
                 return JudgeOutcome(None, attempt, f"provider_error: {type(exc).__name__}: {exc}"[:300])
             try:
@@ -156,10 +162,15 @@ class HeuristicJudge:
         score = (len(hit) / len(musts)) if musts else 0.5
         score = 0.0 if bad else score
         passed = (not bad) and score >= self.strictness
-        return json.dumps({
-            "passed": passed, "score": round(score, 3), "label": "pass" if passed else "fail",
-            "rationale": f"{len(hit)}/{len(musts)} required points present; {len(bad)} forbidden claims",
-            "evidence": [f"present: {h.strip()}" for h in hit] + [f"forbidden: {b.strip()}" for b in bad]})
+        return json.dumps(
+            {
+                "passed": passed,
+                "score": round(score, 3),
+                "label": "pass" if passed else "fail",
+                "rationale": f"{len(hit)}/{len(musts)} required points present; {len(bad)} forbidden claims",
+                "evidence": [f"present: {h.strip()}" for h in hit] + [f"forbidden: {b.strip()}" for b in bad],
+            }
+        )
 
 
 class ScriptedBackend:
@@ -194,6 +205,5 @@ class LiteLLMBackend:
             except ImportError as exc:
                 raise RuntimeError("litellm not installed; install evalcore[litellm]") from exc
             fn = litellm.completion
-        resp = fn(model=self.model, temperature=self.temperature,
-                  messages=[{"role": "user", "content": prompt}])
+        resp = fn(model=self.model, temperature=self.temperature, messages=[{"role": "user", "content": prompt}])
         return str(resp.choices[0].message.content)

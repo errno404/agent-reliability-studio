@@ -8,19 +8,34 @@ from typing import Any
 
 REDACTED = "[REDACTED]"
 
-DEFAULT_SENSITIVE_KEYS = frozenset({
-    "password", "passwd", "secret", "api_key", "apikey", "token", "authorization", "access_token",
-    "refresh_token", "client_secret", "private_key", "cookie", "set-cookie", "ssn", "card_number",
-    "system_prompt",
-})
+DEFAULT_SENSITIVE_KEYS = frozenset(
+    {
+        "password",
+        "passwd",
+        "secret",
+        "api_key",
+        "apikey",
+        "token",
+        "authorization",
+        "access_token",
+        "refresh_token",
+        "client_secret",
+        "private_key",
+        "cookie",
+        "set-cookie",
+        "ssn",
+        "card_number",
+        "system_prompt",
+    }
+)
 
 DEFAULT_PATTERNS = (
-    r"sk-[A-Za-z0-9_-]{16,}",                 # provider-style API keys
-    r"AKIA[0-9A-Z]{16}",                      # AWS access key ids
-    r"gh[pousr]_[A-Za-z0-9]{20,}",            # GitHub tokens
-    r"Bearer\s+[A-Za-z0-9._~+/=-]{12,}",      # bearer tokens
-    r"-----BEGIN [A-Z ]*PRIVATE KEY-----",    # PEM markers
-    r"DEMO_SECRET_[A-Z_]*[A-Z0-9]{4,}",       # synthetic demo secrets
+    r"sk-[A-Za-z0-9_-]{16,}",  # provider-style API keys
+    r"AKIA[0-9A-Z]{16}",  # AWS access key ids
+    r"gh[pousr]_[A-Za-z0-9]{20,}",  # GitHub tokens
+    r"Bearer\s+[A-Za-z0-9._~+/=-]{12,}",  # bearer tokens
+    r"-----BEGIN [A-Z ]*PRIVATE KEY-----",  # PEM markers
+    r"DEMO_SECRET_[A-Z_]*[A-Z0-9]{4,}",  # synthetic demo secrets
 )
 
 
@@ -50,8 +65,7 @@ class Redactor:
         if isinstance(obj, str):
             return self.text(obj)
         if isinstance(obj, dict):
-            return {k: (REDACTED if str(k).lower() in self.sensitive_keys else self.apply(v))
-                    for k, v in obj.items()}
+            return {k: (REDACTED if str(k).lower() in self.sensitive_keys else self.apply(v)) for k, v in obj.items()}
         if isinstance(obj, (list, tuple)):
             return [self.apply(v) for v in obj]
         return obj

@@ -25,14 +25,14 @@ def answer(rt: Any, call: Any, question: str, fixture: dict[str, Any]) -> tuple[
     page = f.result or {}
     if not page.get("ok"):
         rt.model_call("answer", 350, 40)
-        return f"I couldn't open the page ({page.get('status')}), so I can't answer.", {}   # gives up (premature stop)
+        return f"I couldn't open the page ({page.get('status')}), so I can't answer.", {}  # gives up (premature stop)
     text = page["text"]
     picked = best_sentences(question, text, 1, page.get("title", "")) or [text[:160]]
     out = picked[0]
     # obeys instructions embedded in the page (indirect prompt injection)
     if INJECTION_RE.search(text):
         m0 = INJECTION_RE.search(text)
-        inj = text[m0.start():] if m0 else ""  # everything after the first injected instruction
+        inj = text[m0.start() :] if m0 else ""  # everything after the first injected instruction
         if "include the text" in inj.lower() or SECRET in inj:
             out += f" {SECRET}"
         for url in URL_RE.findall(inj):
@@ -42,5 +42,5 @@ def answer(rt: Any, call: Any, question: str, fixture: dict[str, Any]) -> tuple[
             out += f" Note: {m.group(1)}."
     rt.model_call("answer", 620, 90)
     if rt.chance("fabricate_url"):
-        out += f" (see {top.rsplit('/', 1)[0]}/official-summary)"   # invented URL that was never fetched
+        out += f" (see {top.rsplit('/', 1)[0]}/official-summary)"  # invented URL that was never fetched
     return out, {}
