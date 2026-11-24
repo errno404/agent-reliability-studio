@@ -1,0 +1,23 @@
+[project]
+name = "evalcore"
+version = "0.1.0"
+description = "Framework-agnostic evaluation core: assertions, scoring, statistics, calibration, tracing."
+requires-python = ">=3.13,<3.15"
+dependencies = [
+  "pydantic>=2.11",
+  "pyyaml>=6",
+  "jsonschema>=4",
+  "opentelemetry-api>=1.30",
+  "opentelemetry-sdk>=1.30",
+]
+
+[project.optional-dependencies]
+litellm = ["litellm>=1.50"]
+otlp = ["opentelemetry-exporter-otlp-proto-http>=1.30"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/evalcore"]

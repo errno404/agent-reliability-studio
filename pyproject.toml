@@ -1,0 +1,40 @@
+[project]
+name = "agent-reliability-studio"
+version = "0.1.0"
+description = "Evaluation infrastructure for measuring, debugging, comparing, and improving tool-using AI agents."
+requires-python = ">=3.13,<3.15"
+dependencies = ["evalcore", "demo-agents", "fixture-web", "ars-api"]
+
+[tool.uv.workspace]
+members = ["packages/evalcore", "packages/demo_agents", "mcp/fixture_web", "services/api"]
+
+[tool.uv.sources]
+evalcore = { workspace = true }
+demo-agents = { workspace = true }
+fixture-web = { workspace = true }
+ars-api = { workspace = true }
+
+[dependency-groups]
+dev = ["pytest>=9", "pytest-cov>=6", "ruff>=0.17", "pyright>=1.1.400", "httpx>=0.28"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+extend-exclude = ["apps/web", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["RUF012", "B008", "RUF005", "RUF046"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["E501", "B017"]
+
+[tool.pyright]
+include = ["packages", "services", "mcp", "scripts", "integrations"]
+exclude = ["**/node_modules", "**/.venv", "apps"]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
+
+[tool.pytest.ini_options]
+testpaths = ["packages/evalcore/tests", "packages/demo_agents/tests", "mcp/fixture_web/tests", "services/api/tests", "integrations"]
+addopts = "-q"
