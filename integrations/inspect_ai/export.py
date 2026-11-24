@@ -1,4 +1,5 @@
-# pyright: reportMissingImports=false, reportAttributeAccessIssue=false  (optional dep; local dir shares its name)
+# pyright: reportMissingImports=false, reportAttributeAccessIssue=false
+# (inspect-ai is an optional dependency, and this folder shares its package name)
 """Export our research dataset to Inspect AI.
 
 ``research_cases_as_samples`` is dependency-free (plain dicts shaped like Inspect ``Sample`` kwargs).
