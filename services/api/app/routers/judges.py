@@ -186,8 +186,11 @@ def annotate(body: sc.AnnotationIn, request: Request, s: Session = Depends(get_s
                 item_pk=it.id, annotator=body.annotator, label=body.label, note=body.note[:500], source="human"
             )
         )
+    elif row.label is None and body.label is not None:
+        row.label, row.note = body.label, body.note[:500]  # a skipped item may be filled in later
     else:
-        row.label, row.note = body.label, body.note[:500]
+        # Append-only: annotator ids are self-declared handles (no auth), so an existing label is never overwritten.
+        raise HTTPException(409, "this annotator has already labelled this item; labels are append-only")
     s.commit()
     return {"ok": True}
 
@@ -229,22 +232,30 @@ def summary(set_name: str = "calibration", s: Session = Depends(get_session)) ->
 
 @router.post("/annotation/adjudicate")
 def adjudicate(body: sc.AdjudicationIn, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    """Record an adjudication. Same guards as /annotation: rate limit, capacity cap, reserved ids, append-only.
+
+    Adjudication rows are stored separately (annotator ``adjudicator:<id>``) and never change a calibration set's
+    reference labels or any gate decision."""
     annotation_limiter.check(client_key(request))
+    if not ANNOTATOR.match(body.adjudicator) or body.adjudicator.startswith("demo-annotator"):
+        raise HTTPException(422, "adjudicator must be 2-40 chars [A-Za-z0-9_.-] and not a reserved demo id")
+    if (
+        s.scalar(select(func.count(HumanAnnotation.id)).where(HumanAnnotation.source == "human")) or 0
+    ) >= MAX_HUMAN_ROWS:
+        raise HTTPException(429, "annotation capacity reached for this deployment")
     cs = _cset(s, body.set_name)
     it = s.scalar(
         select(CalibrationItem).where(CalibrationItem.set_id == cs.id, CalibrationItem.item_id == body.item_id)
     )
-    if it is None or not ANNOTATOR.match(body.adjudicator):
-        raise HTTPException(404, "item not found or bad adjudicator id")
+    if it is None:
+        raise HTTPException(404, "item not found")
     who = f"adjudicator:{body.adjudicator}"
-    row = s.scalar(select(HumanAnnotation).where(HumanAnnotation.item_pk == it.id, HumanAnnotation.annotator == who))
-    if row is None:
-        s.add(
-            HumanAnnotation(
-                item_pk=it.id, annotator=who, label=body.label, note=body.note[:500], source="human", adjudicated=True
-            )
+    if s.scalar(select(HumanAnnotation.id).where(HumanAnnotation.item_pk == it.id, HumanAnnotation.annotator == who)):
+        raise HTTPException(409, "this adjudicator has already ruled on this item")
+    s.add(
+        HumanAnnotation(
+            item_pk=it.id, annotator=who, label=body.label, note=body.note[:500], source="human", adjudicated=True
         )
-    else:
-        row.label, row.note = body.label, body.note[:500]
+    )
     s.commit()
     return {"ok": True}

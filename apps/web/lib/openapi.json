@@ -1,0 +1,3634 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Agent Reliability Studio API",
+    "description": "Evaluation infrastructure for measuring, debugging, comparing and improving tool-using AI agents. Demo data is synthetic fixture evidence.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Ready",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Ready Ready Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meta": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Meta",
+        "operationId": "meta_api_meta_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Agents",
+        "operationId": "agents_api_agents_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AgentVersionOut"
+                  },
+                  "type": "array",
+                  "title": "Response Agents Api Agents Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/datasets": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Datasets",
+        "operationId": "datasets_api_datasets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DatasetVersionOut"
+                  },
+                  "type": "array",
+                  "title": "Response Datasets Api Datasets Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/datasets/{name}/{version}": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Dataset Detail",
+        "operationId": "dataset_detail_api_datasets__name___version__get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/candidates": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Distilled",
+        "operationId": "distilled_api_candidates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Distilled Api Candidates Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs": {
+      "get": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "List Runs",
+        "operationId": "list_runs_api_runs_get",
+        "parameters": [
+          {
+            "name": "agent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model"
+            }
+          },
+          {
+            "name": "dataset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dataset"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Create Run",
+        "operationId": "create_run_api_runs_post",
+        "parameters": [
+          {
+            "name": "x-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Run Detail",
+        "operationId": "run_detail_api_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/progress": {
+      "get": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Run Progress",
+        "operationId": "run_progress_api_runs__run_id__progress_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Run Progress Api Runs  Run Id  Progress Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/samples": {
+      "get": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Run Samples",
+        "operationId": "run_samples_api_runs__run_id__samples_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "case",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Case"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Label"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/samples/{sample_id}": {
+      "get": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Sample",
+        "operationId": "sample_api_samples__sample_id__get",
+        "parameters": [
+          {
+            "name": "sample_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sample Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/samples/{sample_id}/trace": {
+      "get": {
+        "tags": [
+          "traces"
+        ],
+        "summary": "Trace",
+        "operationId": "trace_api_samples__sample_id__trace_get",
+        "parameters": [
+          {
+            "name": "sample_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sample Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/traces": {
+      "get": {
+        "tags": [
+          "traces"
+        ],
+        "summary": "Traces",
+        "operationId": "traces_api_traces_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 30,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Traces Api Traces Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comparisons": {
+      "post": {
+        "tags": [
+          "comparisons"
+        ],
+        "summary": "Create Comparison",
+        "operationId": "create_comparison_api_comparisons_post",
+        "parameters": [
+          {
+            "name": "x-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompareCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "List Comparisons",
+        "operationId": "list_comparisons_api_comparisons_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComparisonOut"
+                  },
+                  "title": "Response List Comparisons Api Comparisons Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/overview": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Overview",
+        "operationId": "overview_api_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Overview Api Overview Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comparisons/{cid}": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Comparison",
+        "operationId": "comparison_api_comparisons__cid__get",
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comparisons/{cid}/cases/{case_id}": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Case Comparison",
+        "operationId": "case_comparison_api_comparisons__cid__cases__case_id__get",
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cid"
+            }
+          },
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseComparison"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gates": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Gates",
+        "operationId": "gates_api_gates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GateOut"
+                  },
+                  "type": "array",
+                  "title": "Response Gates Api Gates Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/policies": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Policies",
+        "operationId": "policies_api_policies_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Policies Api Policies Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/failures": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Failures",
+        "operationId": "failures_api_failures_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "baseline_run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Baseline Run Id"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Label"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Failures Api Failures Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/failures/trend": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Failure Trend",
+        "operationId": "failure_trend_api_failures_trend_get",
+        "parameters": [
+          {
+            "name": "agent",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Failure Trend Api Failures Trend Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/failures/samples": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Failure Samples",
+        "operationId": "failure_samples_api_failures_samples_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Label"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "default": 10,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Failure Samples Api Failures Samples Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/judges": {
+      "get": {
+        "tags": [
+          "judges"
+        ],
+        "summary": "Judges",
+        "operationId": "judges_api_judges_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JudgeOut"
+                  },
+                  "type": "array",
+                  "title": "Response Judges Api Judges Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/judges/{jid}": {
+      "get": {
+        "tags": [
+          "judges"
+        ],
+        "summary": "Judge",
+        "operationId": "judge_api_judges__jid__get",
+        "parameters": [
+          {
+            "name": "jid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Jid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JudgeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/calibration/{run_id}/items": {
+      "get": {
+        "tags": [
+          "judges"
+        ],
+        "summary": "Calibration Items",
+        "description": "Per-item predictions vs reference labels (after the fact; the annotation UI never sees these).",
+        "operationId": "calibration_items_api_calibration__run_id__items_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Calibration Items Api Calibration  Run Id  Items Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/judges/{jid}/calibrate": {
+      "post": {
+        "tags": [
+          "judges"
+        ],
+        "summary": "Calibrate",
+        "operationId": "calibrate_api_judges__jid__calibrate_post",
+        "parameters": [
+          {
+            "name": "jid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Jid"
+            }
+          },
+          {
+            "name": "set_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "calibration",
+              "title": "Set Name"
+            }
+          },
+          {
+            "name": "x-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JudgeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/annotation/next": {
+      "get": {
+        "tags": [
+          "judges"
+        ],
+        "summary": "Next Item",
+        "description": "Blind: returns input/candidate/rubric only. No reference label, no judge verdict, no other annotator's label.",
+        "operationId": "next_item_api_annotation_next_get",
+        "parameters": [
+          {
+            "name": "annotator",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{2,40}$",
+              "title": "Annotator"
+            }
+          },
+          {
+            "name": "set_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "calibration",
+              "title": "Set Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BlindItem"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Next Item Api Annotation Next Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/annotation/progress": {
+      "get": {
+        "tags": [
+          "judges"
+        ],
+        "summary": "Progress",
+        "operationId": "progress_api_annotation_progress_get",
+        "parameters": [
+          {
+            "name": "annotator",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{2,40}$",
+              "title": "Annotator"
+            }
+          },
+          {
+            "name": "set_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "calibration",
+              "title": "Set Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Progress Api Annotation Progress Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/annotation": {
+      "post": {
+        "tags": [
+          "judges",
+          "judges"
+        ],
+        "summary": "Annotate",
+        "description": "Store a human label. Rate-limited and capped; seeded demo annotators are separate (source=synthetic_demo).",
+        "operationId": "annotate_api_annotation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Annotate Api Annotation Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/annotation/summary": {
+      "get": {
+        "tags": [
+          "judges"
+        ],
+        "summary": "Summary",
+        "operationId": "summary_api_annotation_summary_get",
+        "parameters": [
+          {
+            "name": "set_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "calibration",
+              "title": "Set Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Summary Api Annotation Summary Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/annotation/adjudicate": {
+      "post": {
+        "tags": [
+          "judges"
+        ],
+        "summary": "Adjudicate",
+        "description": "Record an adjudication. Same guards as /annotation: rate limit, capacity cap, reserved ids, append-only.\n\nAdjudication rows are stored separately (annotator ``adjudicator:<id>``) and never change a calibration set's\nreference labels or any gate decision.",
+        "operationId": "adjudicate_api_annotation_adjudicate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjudicationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Adjudicate Api Annotation Adjudicate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdjudicationIn": {
+        "properties": {
+          "set_name": {
+            "type": "string",
+            "title": "Set Name",
+            "default": "calibration"
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id"
+          },
+          "adjudicator": {
+            "type": "string",
+            "title": "Adjudicator"
+          },
+          "label": {
+            "type": "boolean",
+            "title": "Label"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "adjudicator",
+          "label"
+        ],
+        "title": "AdjudicationIn"
+      },
+      "AgentVersionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "agent": {
+            "type": "string",
+            "title": "Agent"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "agent_hash": {
+            "type": "string",
+            "title": "Agent Hash"
+          },
+          "prompt_hash": {
+            "type": "string",
+            "title": "Prompt Hash"
+          },
+          "tool_schema_hash": {
+            "type": "string",
+            "title": "Tool Schema Hash"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "git_commit": {
+            "type": "string",
+            "title": "Git Commit"
+          },
+          "frozen": {
+            "type": "boolean",
+            "title": "Frozen"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "agent",
+          "version",
+          "role",
+          "agent_hash",
+          "prompt_hash",
+          "tool_schema_hash",
+          "model",
+          "git_commit",
+          "frozen",
+          "notes"
+        ],
+        "title": "AgentVersionOut"
+      },
+      "AnnotationIn": {
+        "properties": {
+          "set_name": {
+            "type": "string",
+            "title": "Set Name",
+            "default": "calibration"
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id"
+          },
+          "annotator": {
+            "type": "string",
+            "title": "Annotator"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "annotator",
+          "label"
+        ],
+        "title": "AnnotationIn"
+      },
+      "AssertionOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "layer": {
+            "type": "string",
+            "title": "Layer"
+          },
+          "gating": {
+            "type": "boolean",
+            "title": "Gating"
+          },
+          "passed": {
+            "type": "boolean",
+            "title": "Passed"
+          },
+          "skipped": {
+            "type": "boolean",
+            "title": "Skipped"
+          },
+          "invalid": {
+            "type": "boolean",
+            "title": "Invalid"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "expected": {
+            "title": "Expected"
+          },
+          "actual": {
+            "title": "Actual"
+          },
+          "evidence": {
+            "type": "string",
+            "title": "Evidence"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "layer",
+          "gating",
+          "passed",
+          "skipped",
+          "invalid",
+          "severity",
+          "evidence"
+        ],
+        "title": "AssertionOut"
+      },
+      "BlindItem": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "title": "Item Id"
+          },
+          "input": {
+            "type": "string",
+            "title": "Input"
+          },
+          "candidate_output": {
+            "type": "string",
+            "title": "Candidate Output"
+          },
+          "rubric": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Rubric"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "input",
+          "candidate_output",
+          "rubric"
+        ],
+        "title": "BlindItem",
+        "description": "What an annotator sees. Deliberately has NO reference label, judge verdict, source or notes."
+      },
+      "CaseComparison": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "expected_assertions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Expected Assertions"
+          },
+          "baseline": {
+            "items": {
+              "$ref": "#/components/schemas/SampleDetail"
+            },
+            "type": "array",
+            "title": "Baseline"
+          },
+          "candidate": {
+            "items": {
+              "$ref": "#/components/schemas/SampleDetail"
+            },
+            "type": "array",
+            "title": "Candidate"
+          },
+          "diff": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Diff"
+          }
+        },
+        "type": "object",
+        "required": [
+          "case_id",
+          "category",
+          "description",
+          "expected_assertions",
+          "baseline",
+          "candidate",
+          "diff"
+        ],
+        "title": "CaseComparison"
+      },
+      "CaseOut": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "definition": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Definition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "case_id",
+          "title",
+          "category",
+          "severity",
+          "description",
+          "tags",
+          "definition"
+        ],
+        "title": "CaseOut"
+      },
+      "CompareCreate": {
+        "properties": {
+          "baseline_run_id": {
+            "type": "string",
+            "title": "Baseline Run Id"
+          },
+          "candidate_run_id": {
+            "type": "string",
+            "title": "Candidate Run Id"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "default": "strict"
+          },
+          "policy": {
+            "type": "string",
+            "title": "Policy",
+            "default": "production"
+          }
+        },
+        "type": "object",
+        "required": [
+          "baseline_run_id",
+          "candidate_run_id"
+        ],
+        "title": "CompareCreate"
+      },
+      "ComparisonDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "baseline_run_id": {
+            "type": "string",
+            "title": "Baseline Run Id"
+          },
+          "candidate_run_id": {
+            "type": "string",
+            "title": "Candidate Run Id"
+          },
+          "baseline_label": {
+            "type": "string",
+            "title": "Baseline Label"
+          },
+          "candidate_label": {
+            "type": "string",
+            "title": "Candidate Label"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "policy_name": {
+            "type": "string",
+            "title": "Policy Name"
+          },
+          "policy": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Policy"
+          },
+          "decision": {
+            "type": "string",
+            "title": "Decision"
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci Low"
+          },
+          "ci_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci High"
+          },
+          "margin": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin"
+          },
+          "n_common_cases": {
+            "type": "integer",
+            "title": "N Common Cases"
+          },
+          "gate_verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate Verdict"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "validity": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Validity"
+          },
+          "result": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Result"
+          },
+          "baseline": {
+            "$ref": "#/components/schemas/RunOut"
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/RunOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "baseline_run_id",
+          "candidate_run_id",
+          "baseline_label",
+          "candidate_label",
+          "mode",
+          "policy_name",
+          "policy",
+          "decision",
+          "valid",
+          "explanation",
+          "delta",
+          "ci_low",
+          "ci_high",
+          "margin",
+          "n_common_cases",
+          "gate_verdict",
+          "created_at",
+          "validity",
+          "result",
+          "baseline",
+          "candidate"
+        ],
+        "title": "ComparisonDetail"
+      },
+      "ComparisonOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "baseline_run_id": {
+            "type": "string",
+            "title": "Baseline Run Id"
+          },
+          "candidate_run_id": {
+            "type": "string",
+            "title": "Candidate Run Id"
+          },
+          "baseline_label": {
+            "type": "string",
+            "title": "Baseline Label"
+          },
+          "candidate_label": {
+            "type": "string",
+            "title": "Candidate Label"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "policy_name": {
+            "type": "string",
+            "title": "Policy Name"
+          },
+          "policy": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Policy"
+          },
+          "decision": {
+            "type": "string",
+            "title": "Decision"
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci Low"
+          },
+          "ci_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci High"
+          },
+          "margin": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin"
+          },
+          "n_common_cases": {
+            "type": "integer",
+            "title": "N Common Cases"
+          },
+          "gate_verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate Verdict"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "baseline_run_id",
+          "candidate_run_id",
+          "baseline_label",
+          "candidate_label",
+          "mode",
+          "policy_name",
+          "policy",
+          "decision",
+          "valid",
+          "explanation",
+          "delta",
+          "ci_low",
+          "ci_high",
+          "margin",
+          "n_common_cases",
+          "gate_verdict",
+          "created_at"
+        ],
+        "title": "ComparisonOut"
+      },
+      "DatasetDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "dataset": {
+            "type": "string",
+            "title": "Dataset"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "hash": {
+            "type": "string",
+            "title": "Hash"
+          },
+          "fixture_version": {
+            "type": "string",
+            "title": "Fixture Version"
+          },
+          "fixture_hash": {
+            "type": "string",
+            "title": "Fixture Hash"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published"
+          },
+          "case_count": {
+            "type": "integer",
+            "title": "Case Count"
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "categories": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Categories",
+            "default": {}
+          },
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/CaseOut"
+            },
+            "type": "array",
+            "title": "Cases"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "dataset",
+          "kind",
+          "version",
+          "hash",
+          "fixture_version",
+          "fixture_hash",
+          "published",
+          "case_count",
+          "source_path",
+          "description",
+          "cases"
+        ],
+        "title": "DatasetDetail"
+      },
+      "DatasetVersionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "dataset": {
+            "type": "string",
+            "title": "Dataset"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "hash": {
+            "type": "string",
+            "title": "Hash"
+          },
+          "fixture_version": {
+            "type": "string",
+            "title": "Fixture Version"
+          },
+          "fixture_hash": {
+            "type": "string",
+            "title": "Fixture Hash"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published"
+          },
+          "case_count": {
+            "type": "integer",
+            "title": "Case Count"
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "categories": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Categories",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "dataset",
+          "kind",
+          "version",
+          "hash",
+          "fixture_version",
+          "fixture_hash",
+          "published",
+          "case_count",
+          "source_path",
+          "description"
+        ],
+        "title": "DatasetVersionOut"
+      },
+      "GateOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "comparison_id": {
+            "type": "integer",
+            "title": "Comparison Id"
+          },
+          "comparison_name": {
+            "type": "string",
+            "title": "Comparison Name"
+          },
+          "verdict": {
+            "type": "string",
+            "title": "Verdict"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "judge_ok": {
+            "type": "boolean",
+            "title": "Judge Ok"
+          },
+          "conservative": {
+            "type": "boolean",
+            "title": "Conservative"
+          },
+          "decision": {
+            "type": "string",
+            "title": "Decision"
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "policy_name": {
+            "type": "string",
+            "title": "Policy Name"
+          },
+          "margin": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin"
+          },
+          "ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci Low"
+          },
+          "ci_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci High"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "changed_cases": {
+            "type": "integer",
+            "title": "Changed Cases"
+          },
+          "baseline_run_id": {
+            "type": "string",
+            "title": "Baseline Run Id"
+          },
+          "candidate_run_id": {
+            "type": "string",
+            "title": "Candidate Run Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "comparison_id",
+          "comparison_name",
+          "verdict",
+          "reasons",
+          "judge_ok",
+          "conservative",
+          "decision",
+          "valid",
+          "explanation",
+          "policy_name",
+          "margin",
+          "ci_low",
+          "ci_high",
+          "delta",
+          "changed_cases",
+          "baseline_run_id",
+          "candidate_run_id",
+          "created_at"
+        ],
+        "title": "GateOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "JudgeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "backend": {
+            "type": "string",
+            "title": "Backend"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "prompt_hash": {
+            "type": "string",
+            "title": "Prompt Hash"
+          },
+          "identity": {
+            "type": "string",
+            "title": "Identity"
+          },
+          "dimension": {
+            "type": "string",
+            "title": "Dimension"
+          },
+          "rubric_version": {
+            "type": "string",
+            "title": "Rubric Version"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "status_label": {
+            "type": "string",
+            "title": "Status Label"
+          },
+          "admitted": {
+            "type": "boolean",
+            "title": "Admitted"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest"
+          },
+          "history": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "History"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "backend",
+          "model",
+          "prompt_hash",
+          "identity",
+          "dimension",
+          "rubric_version",
+          "status",
+          "status_label",
+          "admitted",
+          "latest",
+          "history"
+        ],
+        "title": "JudgeOut"
+      },
+      "Meta": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "demo_mode": {
+            "type": "boolean",
+            "title": "Demo Mode"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          },
+          "synthetic_notice": {
+            "type": "string",
+            "title": "Synthetic Notice"
+          },
+          "semconv": {
+            "type": "string",
+            "title": "Semconv"
+          },
+          "evaluator_version": {
+            "type": "string",
+            "title": "Evaluator Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "demo_mode",
+          "environment",
+          "synthetic_notice",
+          "semconv",
+          "evaluator_version"
+        ],
+        "title": "Meta"
+      },
+      "RunCreate": {
+        "properties": {
+          "agent": {
+            "type": "string",
+            "title": "Agent"
+          },
+          "dataset": {
+            "type": "string",
+            "title": "Dataset"
+          },
+          "samples": {
+            "type": "integer",
+            "title": "Samples",
+            "default": 1
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed",
+            "default": 0
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent",
+          "dataset"
+        ],
+        "title": "RunCreate"
+      },
+      "RunDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "run_type": {
+            "type": "string",
+            "title": "Run Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "agent": {
+            "type": "string",
+            "title": "Agent"
+          },
+          "agent_version": {
+            "type": "string",
+            "title": "Agent Version"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "dataset": {
+            "type": "string",
+            "title": "Dataset"
+          },
+          "dataset_version": {
+            "type": "string",
+            "title": "Dataset Version"
+          },
+          "dataset_hash": {
+            "type": "string",
+            "title": "Dataset Hash"
+          },
+          "samples_per_case": {
+            "type": "integer",
+            "title": "Samples Per Case"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "judge": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge"
+          },
+          "judge_admitted": {
+            "type": "boolean",
+            "title": "Judge Admitted"
+          },
+          "git_commit": {
+            "type": "string",
+            "title": "Git Commit"
+          },
+          "pass_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Rate"
+          },
+          "pass_ci": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Ci"
+          },
+          "n_cases": {
+            "type": "integer",
+            "title": "N Cases"
+          },
+          "n_samples": {
+            "type": "integer",
+            "title": "N Samples"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "cost_label": {
+            "type": "string",
+            "title": "Cost Label"
+          },
+          "p95_latency_ms": {
+            "type": "number",
+            "title": "P95 Latency Ms"
+          },
+          "progress_done": {
+            "type": "integer",
+            "title": "Progress Done"
+          },
+          "progress_total": {
+            "type": "integer",
+            "title": "Progress Total"
+          },
+          "is_synthetic": {
+            "type": "boolean",
+            "title": "Is Synthetic"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "manifest": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Manifest"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Summary"
+          },
+          "agent_hash": {
+            "type": "string",
+            "title": "Agent Hash"
+          },
+          "prompt_hash": {
+            "type": "string",
+            "title": "Prompt Hash"
+          },
+          "tool_schema_hash": {
+            "type": "string",
+            "title": "Tool Schema Hash"
+          },
+          "clusters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Clusters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "run_type",
+          "status",
+          "agent",
+          "agent_version",
+          "model",
+          "dataset",
+          "dataset_version",
+          "dataset_hash",
+          "samples_per_case",
+          "seed",
+          "judge",
+          "judge_admitted",
+          "git_commit",
+          "pass_rate",
+          "pass_ci",
+          "n_cases",
+          "n_samples",
+          "cost_usd",
+          "cost_label",
+          "p95_latency_ms",
+          "progress_done",
+          "progress_total",
+          "is_synthetic",
+          "created_at",
+          "error",
+          "manifest",
+          "summary",
+          "agent_hash",
+          "prompt_hash",
+          "tool_schema_hash",
+          "clusters"
+        ],
+        "title": "RunDetail"
+      },
+      "RunList": {
+        "properties": {
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "page",
+          "page_size",
+          "total",
+          "items"
+        ],
+        "title": "RunList"
+      },
+      "RunOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "run_type": {
+            "type": "string",
+            "title": "Run Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "agent": {
+            "type": "string",
+            "title": "Agent"
+          },
+          "agent_version": {
+            "type": "string",
+            "title": "Agent Version"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "dataset": {
+            "type": "string",
+            "title": "Dataset"
+          },
+          "dataset_version": {
+            "type": "string",
+            "title": "Dataset Version"
+          },
+          "dataset_hash": {
+            "type": "string",
+            "title": "Dataset Hash"
+          },
+          "samples_per_case": {
+            "type": "integer",
+            "title": "Samples Per Case"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "judge": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge"
+          },
+          "judge_admitted": {
+            "type": "boolean",
+            "title": "Judge Admitted"
+          },
+          "git_commit": {
+            "type": "string",
+            "title": "Git Commit"
+          },
+          "pass_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Rate"
+          },
+          "pass_ci": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Ci"
+          },
+          "n_cases": {
+            "type": "integer",
+            "title": "N Cases"
+          },
+          "n_samples": {
+            "type": "integer",
+            "title": "N Samples"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "cost_label": {
+            "type": "string",
+            "title": "Cost Label"
+          },
+          "p95_latency_ms": {
+            "type": "number",
+            "title": "P95 Latency Ms"
+          },
+          "progress_done": {
+            "type": "integer",
+            "title": "Progress Done"
+          },
+          "progress_total": {
+            "type": "integer",
+            "title": "Progress Total"
+          },
+          "is_synthetic": {
+            "type": "boolean",
+            "title": "Is Synthetic"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "run_type",
+          "status",
+          "agent",
+          "agent_version",
+          "model",
+          "dataset",
+          "dataset_version",
+          "dataset_hash",
+          "samples_per_case",
+          "seed",
+          "judge",
+          "judge_admitted",
+          "git_commit",
+          "pass_rate",
+          "pass_ci",
+          "n_cases",
+          "n_samples",
+          "cost_usd",
+          "cost_label",
+          "p95_latency_ms",
+          "progress_done",
+          "progress_total",
+          "is_synthetic",
+          "created_at",
+          "error"
+        ],
+        "title": "RunOut"
+      },
+      "SampleDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "sample_index": {
+            "type": "integer",
+            "title": "Sample Index"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Kind"
+          },
+          "tool_sequence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tool Sequence"
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          },
+          "total_tokens": {
+            "type": "integer",
+            "title": "Total Tokens"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "failure_labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Failure Labels"
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "final_output_preview": {
+            "type": "string",
+            "title": "Final Output Preview"
+          },
+          "input_text": {
+            "type": "string",
+            "title": "Input Text"
+          },
+          "final_output": {
+            "type": "string",
+            "title": "Final Output"
+          },
+          "result": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Result"
+          },
+          "judge": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge"
+          },
+          "assertions": {
+            "items": {
+              "$ref": "#/components/schemas/AssertionOut"
+            },
+            "type": "array",
+            "title": "Assertions"
+          },
+          "status_explanation": {
+            "type": "string",
+            "title": "Status Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "case_id",
+          "category",
+          "sample_index",
+          "status",
+          "error_kind",
+          "tool_sequence",
+          "latency_ms",
+          "total_tokens",
+          "cost_usd",
+          "failure_labels",
+          "trace_id",
+          "final_output_preview",
+          "input_text",
+          "final_output",
+          "result",
+          "judge",
+          "assertions",
+          "status_explanation"
+        ],
+        "title": "SampleDetail"
+      },
+      "SampleList": {
+        "properties": {
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SampleOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "page",
+          "page_size",
+          "total",
+          "items"
+        ],
+        "title": "SampleList"
+      },
+      "SampleOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "sample_index": {
+            "type": "integer",
+            "title": "Sample Index"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Kind"
+          },
+          "tool_sequence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tool Sequence"
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          },
+          "total_tokens": {
+            "type": "integer",
+            "title": "Total Tokens"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "failure_labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Failure Labels"
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "final_output_preview": {
+            "type": "string",
+            "title": "Final Output Preview"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "case_id",
+          "category",
+          "sample_index",
+          "status",
+          "error_kind",
+          "tool_sequence",
+          "latency_ms",
+          "total_tokens",
+          "cost_usd",
+          "failure_labels",
+          "trace_id",
+          "final_output_preview"
+        ],
+        "title": "SampleOut"
+      },
+      "SpanOut": {
+        "properties": {
+          "span_id": {
+            "type": "string",
+            "title": "Span Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "start_ms": {
+            "type": "number",
+            "title": "Start Ms"
+          },
+          "duration_ms": {
+            "type": "number",
+            "title": "Duration Ms"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Attributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "span_id",
+          "parent_id",
+          "name",
+          "kind",
+          "start_ms",
+          "duration_ms",
+          "status",
+          "attributes"
+        ],
+        "title": "SpanOut"
+      },
+      "TraceOut": {
+        "properties": {
+          "sample_id": {
+            "type": "integer",
+            "title": "Sample Id"
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "trajectory": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Trajectory"
+          },
+          "total_ms": {
+            "type": "number",
+            "title": "Total Ms"
+          },
+          "spans": {
+            "items": {
+              "$ref": "#/components/schemas/SpanOut"
+            },
+            "type": "array",
+            "title": "Spans"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sample_id",
+          "trace_id",
+          "case_id",
+          "run_id",
+          "trajectory",
+          "total_ms",
+          "spans"
+        ],
+        "title": "TraceOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

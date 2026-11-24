@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ars-api",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "source scripts/env.sh && exec uv run ars serve --port 8000"],
+      "port": 8000
+    },
+    {
+      "name": "ars-web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd apps/web && exec npx next dev -p 3000"],
+      "port": 3000
+    }
+  ]
+}

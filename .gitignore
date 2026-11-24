@@ -20,3 +20,7 @@ test-results/
 dist/
 *.egg-info/
 .claude/settings.local.json
+
+# iCloud-synced folders create conflict copies like "node_modules 2"; never commit them
+* 2
+* 2.*

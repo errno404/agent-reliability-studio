@@ -125,3 +125,26 @@ def test_dataset_exposes_frozen_state(client):
 def test_unknown_resources_404(client):
     assert client.get("/api/runs/nope").status_code == 404
     assert client.get("/api/comparisons/9999").status_code == 404
+
+
+def test_annotations_are_append_only_and_adjudication_is_guarded(client):
+    ok = client.post("/api/annotation", json={"item_id": "cal-03a", "annotator": "bob", "label": True})
+    assert ok.status_code == 200
+    # impersonation / tampering: the same annotator id cannot overwrite an existing label
+    assert (
+        client.post("/api/annotation", json={"item_id": "cal-03a", "annotator": "bob", "label": False}).status_code
+        == 409
+    )
+    # a skipped item can still be filled in later
+    assert (
+        client.post("/api/annotation", json={"item_id": "cal-03b", "annotator": "bob", "label": None}).status_code
+        == 200
+    )
+    assert (
+        client.post("/api/annotation", json={"item_id": "cal-03b", "annotator": "bob", "label": True}).status_code
+        == 200
+    )
+    adj = {"item_id": "cal-03a", "adjudicator": "carol", "label": True}
+    assert client.post("/api/annotation/adjudicate", json=adj).status_code == 200
+    assert client.post("/api/annotation/adjudicate", json=adj).status_code == 409
+    assert client.post("/api/annotation/adjudicate", json={**adj, "adjudicator": "demo-annotator-a"}).status_code == 422
