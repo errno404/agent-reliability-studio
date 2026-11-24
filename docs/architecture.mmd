@@ -1,0 +1,37 @@
+flowchart LR
+  subgraph SUT["Systems under test (frozen, pinned versions)"]
+    A1["support v1/v2<br/>scripted policy engine"]
+    A2["research v1/v2<br/>v2 = LangGraph"]
+    A3["coding v1/v2<br/>real sandbox + unittest"]
+    MCP[("Frozen MCP web<br/>.example corpus")]
+    A2 --> MCP
+  end
+  subgraph CORE["evalcore (framework-agnostic)"]
+    ADP["AgentAdapter<br/>callable · LangGraph · Claude Code CLI · LiteLLM"]
+    ASSERT["22 deterministic assertions"]
+    SCORE["layers: outcome · trajectory · component · policy"]
+    JUDGE["LLM judge + calibration<br/>admission policy"]
+    STATS["Wilson · paired cluster bootstrap<br/>McNemar · pass^k / pass@k"]
+    VAL["manifest + fair-comparison validation"]
+    OTEL["OTel GenAI spans + redaction"]
+  end
+  subgraph SVC["services/api (FastAPI + SQLAlchemy)"]
+    API["REST + OpenAPI"]
+    WK["worker: run_executions queue"]
+    DB[("PostgreSQL / SQLite<br/>20 tables")]
+    CLI["ars CLI"]
+  end
+  WEB["Next.js dashboard<br/>runtime /api proxy"]
+  CI["CI eval gate<br/>baseline vs candidate"]
+  PHX["Phoenix (optional OTLP mirror)"]
+  A1 & A2 & A3 --> ADP --> ASSERT --> SCORE --> STATS
+  JUDGE --> SCORE
+  ADP --> OTEL
+  STATS --> VAL --> DB
+  OTEL --> DB
+  WK --> ADP
+  API --> DB
+  CLI --> API
+  WEB --> API
+  CI --> CLI
+  OTEL -.-> PHX

@@ -171,6 +171,7 @@ def _find_dv(s: Any, spec: str) -> Any:
 def eval_run(
     agent: Annotated[str, typer.Option(help="e.g. support:v1")],
     dataset_: Annotated[str, typer.Option("--dataset", help="e.g. support:v1")],
+    run_id: Annotated[str | None, typer.Option(help="explicit run id (CI uses stable ids)")] = None,
     samples: int = 1,
     seed: int = 0,
     name: str | None = None,
@@ -184,7 +185,7 @@ def eval_run(
         dv = _find_dv(s, dataset_)
         catalog.sync_agent_version(s, agent)
         jr = s.scalar(select(JudgeConfig).where(JudgeConfig.model == judge_name)) if judge_name else None
-        rid = f"run-{run_svc.hash_of([agent, dataset_, samples, seed, time.time()])}"
+        rid = run_id or f"run-{run_svc.hash_of([agent, dataset_, samples, seed, time.time()])}"
         run = run_svc.create_run(
             s,
             run_id=rid,

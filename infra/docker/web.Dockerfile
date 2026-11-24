@@ -13,13 +13,13 @@ RUN npm run build
 
 FROM node:22-slim AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/* && useradd --create-home --uid 10001 ars
 WORKDIR /repo
 # standalone output keeps the monorepo-relative layout (outputFileTracingRoot = repo root)
-COPY --from=build --chown=ars /repo/apps/web/.next/standalone ./
-COPY --from=build --chown=ars /repo/apps/web/.next/static ./apps/web/.next/static
-USER ars
+COPY --from=build --chown=node /repo/apps/web/.next/standalone ./
+COPY --from=build --chown=node /repo/apps/web/.next/static ./apps/web/.next/static
+USER node
 EXPOSE 3000
 # API_URL is read at RUNTIME by the proxy route handler (not baked into the image).
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 CMD curl -fsS http://127.0.0.1:${PORT}/ >/dev/null || exit 1
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "apps/web/server.js"]

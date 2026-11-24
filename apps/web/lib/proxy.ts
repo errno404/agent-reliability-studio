@@ -1,3 +1,5 @@
+import { apiBase } from "./config";
+
 /** Runtime reverse proxy to the FastAPI service. `API_URL` is read per request, so one build runs anywhere. */
 const HOP_BY_HOP = new Set(["connection", "keep-alive", "transfer-encoding", "te", "upgrade", "host", "content-length", "accept-encoding"]);
 // Client-supplied forwarding headers are untrusted: drop them all; re-assert one address only if a trusted edge exists.
@@ -20,7 +22,7 @@ export function forwardedClient(headers: Headers, hops: number): string | null {
 }
 
 export async function proxy(req: Request, upstreamPath: string): Promise<Response> {
-  const base = (process.env.API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
+  const base = apiBase();
   const url = new URL(req.url);
   const target = `${base}${upstreamPath}${url.search}`;
   const headers = new Headers();

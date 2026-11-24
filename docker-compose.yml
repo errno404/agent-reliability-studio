@@ -7,7 +7,9 @@ x-api-env: &api-env
   ENVIRONMENT: production
   ADMIN_TOKEN: ${ADMIN_TOKEN:-}
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-  FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-*}   # compose network is private; only the web container can reach the API
+  # Trust X-Forwarded-For only from loopback by default. The web tier drops client-supplied forwarding headers
+  # (TRUSTED_PROXY_HOPS=0), so the API rate-limits on the web container's address. Widen ONLY to your real proxy range.
+  FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
   OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
 
 services:
@@ -21,7 +23,7 @@ services:
     build: { context: ., dockerfile: infra/docker/api.Dockerfile }
     environment: *api-env
     depends_on: { db: { condition: service_healthy } }
-    ports: ["8000:8000"]
+    ports: ["127.0.0.1:8000:8000"]   # loopback only (debugging); the web container reaches it over the private compose network
 
   worker:
     build: { context: ., dockerfile: infra/docker/api.Dockerfile }

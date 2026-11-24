@@ -1,4 +1,5 @@
 /** Typed fetch layer. Server components call the API directly; the browser uses the same-origin /api proxy. */
+import { apiBase } from "./config";
 import type {
   AgentVersionOut, AnnotationSummary, BlindItem, CaseComparison, ComparisonDetail, ComparisonOut, DatasetDetail,
   DatasetVersionOut, FailuresResp, GateOut, JudgeOut, Meta, Overview, RunDetail, RunList, SampleDetail, SampleList, TraceOut,
@@ -13,7 +14,7 @@ export class ApiError extends Error {
 }
 
 const isServer = typeof window === "undefined";
-const base = () => (isServer ? (process.env.API_URL ?? "http://127.0.0.1:8000") : "");
+const base = () => (isServer ? apiBase() : "");
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;

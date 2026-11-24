@@ -7,19 +7,20 @@ databases:
     user: ars
 
 services:
-  - type: web
+  # The API is a PRIVATE service: unreachable from the internet, only from the web service on Render's private network.
+  - type: pserv
     name: ars-api
     runtime: docker
     dockerfilePath: ./infra/docker/api.Dockerfile
     dockerContext: .
-    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         fromDatabase: { name: ars-db, property: connectionString }
       - { key: DEMO_MODE, value: "true" }
       - { key: ENVIRONMENT, value: production }
-      - { key: CORS_ORIGINS, sync: false }          # set to the web service URL
-      - { key: FORWARDED_ALLOW_IPS, value: "*" }    # Render private network: only the web service reaches this API
+      - { key: CORS_ORIGINS, sync: false }          # browsers never call the API directly (the web app proxies /api), so CORS can stay tight
+      # Only private-network peers (the web service) can reach this API, so trusting their forwarded address is sound.
+      - { key: FORWARDED_ALLOW_IPS, value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16" }
       - { key: ADMIN_TOKEN, generateValue: true }   # only used when DEMO_MODE=false
 
   - type: web
@@ -30,6 +31,6 @@ services:
     healthCheckPath: /
     envVars:
       - key: API_URL
-        fromService: { type: web, name: ars-api, envVarKey: RENDER_EXTERNAL_URL }
+        fromService: { type: pserv, name: ars-api, property: hostport }   # host:port; the app adds http://
       # Render's load balancer appends the real client address to X-Forwarded-For: one trusted hop. Verify this for any other host.
       - { key: TRUSTED_PROXY_HOPS, value: "1" }
