@@ -148,3 +148,12 @@ def test_annotations_are_append_only_and_adjudication_is_guarded(client):
     assert client.post("/api/annotation/adjudicate", json=adj).status_code == 200
     assert client.post("/api/annotation/adjudicate", json=adj).status_code == 409
     assert client.post("/api/annotation/adjudicate", json={**adj, "adjudicator": "demo-annotator-a"}).status_code == 422
+
+
+def test_annotator_id_rejects_trailing_newline_and_bad_chars(client):
+    for bad in ["alice\n", "a", "a" * 41, "bad id", "ünï", "x;drop"]:
+        r = client.post("/api/annotation", json={"item_id": "cal-04a", "annotator": bad, "label": True})
+        assert r.status_code == 422, bad
+        r = client.post("/api/annotation/adjudicate", json={"item_id": "cal-04a", "adjudicator": bad, "label": True})
+        assert r.status_code == 422, bad
+    assert client.get("/api/annotation/next", params={"annotator": "alice\n"}).status_code == 422

@@ -396,7 +396,14 @@ def serve(host: str = "127.0.0.1", port: int = 8000, database_url: DbOpt = None)
     import uvicorn
 
     _setup(database_url)
-    uvicorn.run("app.main:app", host=host, port=port, log_config=None)
+    uvicorn.run(
+        "app.main:app",
+        host=host,
+        port=port,
+        log_config=None,
+        proxy_headers=True,
+        forwarded_allow_ips=get_settings().forwarded_allow_ips,
+    )
 
 
 @app.command("openapi")

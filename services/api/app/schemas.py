@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Out(BaseModel):
@@ -268,18 +268,18 @@ class BlindItem(Out):
 
 class AnnotationIn(BaseModel):
     set_name: str = "calibration"
-    item_id: str
-    annotator: str
+    item_id: str = Field(max_length=48)
+    annotator: str = Field(pattern=r"^[A-Za-z0-9_.-]{2,40}$")
     label: bool | None  # None = skip
-    note: str = ""
+    note: str = Field(default="", max_length=500)
 
 
 class AdjudicationIn(BaseModel):
     set_name: str = "calibration"
-    item_id: str
-    adjudicator: str
+    item_id: str = Field(max_length=48)
+    adjudicator: str = Field(pattern=r"^[A-Za-z0-9_.-]{2,40}$")
     label: bool
-    note: str = ""
+    note: str = Field(default="", max_length=500)
 
 
 class RunCreate(BaseModel):

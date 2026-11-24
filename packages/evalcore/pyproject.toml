@@ -13,7 +13,9 @@ dependencies = [
 
 [project.optional-dependencies]
 litellm = ["litellm>=1.50"]
-otlp = ["opentelemetry-exporter-otlp-proto-http>=1.30"]
+otlp = [
+    "opentelemetry-exporter-otlp-proto-http>=1.30",
+]
 
 [build-system]
 requires = ["hatchling"]

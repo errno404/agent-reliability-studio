@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     otlp_endpoint: str = ""  # e.g. http://localhost:6006/v1/traces (Phoenix); empty = disabled
     stale_job_seconds: int = 120
     live_rate_limit_per_minute: int = 6
+    # Only these peers may set X-Forwarded-For (the web service / load balancer). Never "*" on a public API.
+    forwarded_allow_ips: str = "127.0.0.1"
 
     @property
     def cors_list(self) -> list[str]:

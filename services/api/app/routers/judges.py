@@ -17,7 +17,9 @@ from ..security import annotation_limiter, client_key, require_admin
 from ..services import judges as judge_svc
 
 router = APIRouter(prefix="/api", tags=["judges"])
-ANNOTATOR = re.compile(r"^[A-Za-z0-9_.-]{2,40}$")
+ANNOTATOR = re.compile(
+    r"[A-Za-z0-9_.-]{2,40}"
+)  # always used with fullmatch (a bare `$` would accept a trailing newline)
 MAX_HUMAN_ROWS = 5000
 
 
@@ -122,7 +124,7 @@ def _cset(s: Session, name: str) -> CalibrationSet:
 
 @router.get("/annotation/next", response_model=sc.BlindItem | None)
 def next_item(
-    annotator: str = Query(..., pattern=ANNOTATOR.pattern),
+    annotator: str = Query(..., pattern=r"^[A-Za-z0-9_.-]{2,40}$"),
     set_name: str = "calibration",
     s: Session = Depends(get_session),
 ) -> sc.BlindItem | None:
@@ -142,7 +144,7 @@ def next_item(
 
 @router.get("/annotation/progress")
 def progress(
-    annotator: str = Query(..., pattern=ANNOTATOR.pattern),
+    annotator: str = Query(..., pattern=r"^[A-Za-z0-9_.-]{2,40}$"),
     set_name: str = "calibration",
     s: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -165,7 +167,7 @@ def progress(
 def annotate(body: sc.AnnotationIn, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
     """Store a human label. Rate-limited and capped; seeded demo annotators are separate (source=synthetic_demo)."""
     annotation_limiter.check(client_key(request))
-    if not ANNOTATOR.match(body.annotator) or body.annotator.startswith("demo-annotator"):
+    if not ANNOTATOR.fullmatch(body.annotator) or body.annotator.startswith("demo-annotator"):
         raise HTTPException(422, "annotator must be 2-40 chars [A-Za-z0-9_.-] and not a reserved demo id")
     if (
         s.scalar(select(func.count(HumanAnnotation.id)).where(HumanAnnotation.source == "human")) or 0
@@ -237,7 +239,7 @@ def adjudicate(body: sc.AdjudicationIn, request: Request, s: Session = Depends(g
     Adjudication rows are stored separately (annotator ``adjudicator:<id>``) and never change a calibration set's
     reference labels or any gate decision."""
     annotation_limiter.check(client_key(request))
-    if not ANNOTATOR.match(body.adjudicator) or body.adjudicator.startswith("demo-annotator"):
+    if not ANNOTATOR.fullmatch(body.adjudicator) or body.adjudicator.startswith("demo-annotator"):
         raise HTTPException(422, "adjudicator must be 2-40 chars [A-Za-z0-9_.-] and not a reserved demo id")
     if (
         s.scalar(select(func.count(HumanAnnotation.id)).where(HumanAnnotation.source == "human")) or 0

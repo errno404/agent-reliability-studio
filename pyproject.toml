@@ -15,7 +15,7 @@ fixture-web = { workspace = true }
 ars-api = { workspace = true }
 
 [dependency-groups]
-dev = ["pytest>=9", "pytest-cov>=6", "ruff>=0.17", "pyright>=1.1.400", "httpx>=0.28"]
+dev = ["opentelemetry-exporter-otlp-proto-http>=1.30", "pytest>=9", "pytest-cov>=6", "ruff>=0.17", "pyright>=1.1.400", "httpx>=0.28"]
 
 [tool.ruff]
 line-length = 120
@@ -28,7 +28,7 @@ ignore = ["RUF012", "B008", "RUF005", "RUF046"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["E501", "B017"]
-"scripts/gen_*.py" = ["E501"]
+"scripts/*.py" = ["E501"]
 "services/api/alembic/**" = ["E501"]
 "mcp/fixture_web/fixture_web/corpus.py" = ["E501"]
 
@@ -49,6 +49,6 @@ extraPaths = ["services/api"]
 root = "."
 
 [tool.pytest.ini_options]
-pythonpath = ["packages/evalcore/src", "packages/demo_agents", "mcp/fixture_web", "services/api"]
+pythonpath = [".", "packages/evalcore/src", "packages/demo_agents", "mcp/fixture_web", "services/api"]
 testpaths = ["packages/evalcore/tests", "packages/demo_agents/tests", "mcp/fixture_web/tests", "services/api/tests", "integrations"]
 addopts = "-q"

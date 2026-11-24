@@ -23,6 +23,18 @@ from .redaction import Redactor
 
 _NS = 1_000_000
 
+# Exporters applied to every recorder (e.g. OTLP -> Phoenix). Spans are redacted BEFORE any exporter sees them.
+_DEFAULT_EXPORTERS: list[SpanExporter] = []
+_WALL_CLOCK_EPOCH = False
+
+
+def set_default_exporters(exporters: list[SpanExporter], wall_clock_epoch: bool = False) -> None:
+    """Register exporters for all future recorders. ``wall_clock_epoch`` stamps spans with today's date
+    (otherwise a fixed virtual epoch keeps timestamps reproducible; fine for the DB, odd in an external UI)."""
+    global _WALL_CLOCK_EPOCH
+    _DEFAULT_EXPORTERS[:] = exporters
+    _WALL_CLOCK_EPOCH = wall_clock_epoch
+
 
 class _Collector(SpanExporter):
     def __init__(self) -> None:
@@ -44,10 +56,10 @@ class TraceRecorder:
         self._collector = _Collector()
         self._provider = TracerProvider()
         self._provider.add_span_processor(SimpleSpanProcessor(self._collector))
-        for e in extra_exporters or []:  # e.g. an OTLP exporter for Phoenix
+        for e in extra_exporters if extra_exporters is not None else _DEFAULT_EXPORTERS:  # e.g. OTLP for Phoenix
             self._provider.add_span_processor(SimpleSpanProcessor(e))
         self._tracer = self._provider.get_tracer("evalcore", "1.0")
-        self._now = 1_700_000_000_000 * _NS  # fixed virtual epoch (ns)
+        self._now = __import__("time").time_ns() if _WALL_CLOCK_EPOCH else 1_700_000_000_000 * _NS  # virtual epoch (ns)
         self._origin = self._now
         self._stack: list[Any] = []
 
