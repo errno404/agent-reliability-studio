@@ -2,12 +2,12 @@ import { expect, test } from "@playwright/test";
 
 test("overview loads with the headline comparison, KPIs and synthetic labelling", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Did this agent change improve reliability/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Did the latest change improve reliability/ })).toBeVisible();
   await expect(page.getByText("IMPROVEMENT").first()).toBeVisible();
   await expect(page.getByText(/CI gate: PASS/)).toBeVisible();
   await expect(page.getByText(/Localized regression: 'address'/).first()).toBeVisible();
   await expect(page.getByText("Task success", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("pass^k (reliability)")).toBeVisible();
+  await expect(page.getByText("pass^k (every repeat passes)")).toBeVisible();
   await expect(page.getByText("synthetic fixture evidence").first()).toBeVisible();
   await expect(page.locator("svg.recharts-surface").first()).toBeVisible(); // charts hydrate and draw from stored data
 });
@@ -25,7 +25,7 @@ test("compare: decision, CI, validity and changed-case drill-down", async ({ pag
   await page.goto("/compare");
   await page.locator('a[href^="/compare/"]').filter({ has: page.getByRole("heading", { name: "Support v1 → v2", exact: true }) }).click();
   await page.waitForURL(/\/compare\/\d+$/);
-  await expect(page.getByText(/entirely above zero/).first()).toBeVisible();
+  await expect(page.getByText(/excludes zero/).first()).toBeVisible();
   await expect(page.getByText("Matched cases", { exact: true })).toBeVisible();
   await expect(page.getByText("Metric comparison")).toBeVisible();
   await page.getByRole("link", { name: "sup-17-address-unit-apt" }).click();
@@ -56,7 +56,7 @@ test("judges: calibrated vs not calibrated is always explicit", async ({ page })
   await page.goto("/judges");
   await expect(page.getByText(/ADMITTED ON DEMONSTRATION LABELS — not release-eligible/).first()).toBeVisible();
   await expect(page.getByText("NOT CALIBRATED — diagnostic only").first()).toBeVisible();
-  await expect(page.getByText(/never been calibrated/)).toBeVisible();
+  await expect(page.getByText(/never been calibrated/).first()).toBeVisible();
   await expect(page.getByRole("table", { name: /Confusion matrix/ }).first()).toBeVisible();
   await expect(page.getByText(/synthetic fixture labels, not human labels/).first()).toBeVisible();
 });
@@ -77,7 +77,7 @@ test("annotation: blind item, label, progress advances, labels are append-only",
   await page.addInitScript(() => localStorage.setItem("annotator", `e2e-${Math.random().toString(36).slice(2, 8)}`));
   await page.goto("/judges/annotate");
   await expect(page.getByText("Candidate output", { exact: true })).toBeVisible();
-  await expect(page.getByText(/reference|judge verdict/i)).toHaveCount(0); // blind: no labels leak into the item view
+  await expect(page.locator("main").getByText(/reference|judge verdict/i)).toHaveCount(0); // blind: no labels leak into the item view
   const first = await page.locator("main p").filter({ hasText: /.+/ }).nth(2).innerText();
   await page.getByRole("button", { name: /Pass/ }).click();
   await expect(page.getByText(/1 labelled/)).toBeVisible();
@@ -89,8 +89,8 @@ test("failures, gates and methodology pages explain themselves", async ({ page }
   await page.goto("/failures");
   await expect(page.getByText(/increased by/).first()).toBeVisible();
   await page.goto("/gates");
-  await expect(page.getByText(/GATE (PASS|FAIL)/).first()).toBeVisible();
-  await expect(page.getByText(/not release-eligible/).first()).toBeVisible();
+  await expect(page.getByText(/gate:? (pass|fail)/i).first()).toBeVisible();
+  await expect(page.getByText(/not release-eligible/i).first()).toBeVisible();
   await page.goto("/methodology");
   await expect(page.getByText("Non-inferiority margin").first()).toBeVisible();
   await expect(page.getByText("pass^k", { exact: true }).first()).toBeVisible();

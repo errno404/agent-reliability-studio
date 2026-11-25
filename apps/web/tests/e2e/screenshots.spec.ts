@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import path from "node:path";
 
 // Reproducible README screenshots. Skipped in normal runs; `python scripts/capture_screenshots.py` sets CAPTURE=1.
-const OUT = path.resolve(process.cwd(), "../../docs/images"); // tests run from apps/web
+const OUT = process.env.SHOT_OUT ?? path.resolve(process.cwd(), "../../docs/images"); // tests run from apps/web
 test.skip(!process.env.CAPTURE, "set CAPTURE=1 to capture screenshots");
 test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.5, colorScheme: "dark" });
 
@@ -39,7 +39,7 @@ test("capture", async ({ page, request }) => {
   await shot("trace.png");
 
   await page.goto("/judges");
-  await expect(page.getByText("CALIBRATED — allowed for gating")).toBeVisible();
+  await expect(page.getByText("Which judges can gate a release?")).toBeVisible();
   await shot("judge-calibration.png");
 
   await page.goto("/failures");
@@ -47,7 +47,7 @@ test("capture", async ({ page, request }) => {
   await shot("failures.png");
 
   await page.goto("/gates");
-  await expect(page.getByText(/GATE (PASS|FAIL)/).first()).toBeVisible();
+  await expect(page.getByText(/gate:? (pass|fail)/i).first()).toBeVisible();
   await shot("gates.png");
 
   // live experiment (real model) vs synthetic evidence: separate, labelled, never blended

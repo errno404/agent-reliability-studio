@@ -2,44 +2,48 @@
 
 /* Design tokens: a restrained, instrument-panel palette. One accent; semantic colours carry meaning only. */
 :root {
-  --bg: #f6f7f9;
+  /* Agent Reliability Studio — "gauge" palette. Cool graphite neutrals; ONE accent (cobalt) that means "this is the thing measured".
+     ok / warn / bad are verdict colours only. info is a neutral slate used for synthetic (illustrative) evidence. */
+  --bg: #f5f6f8;
   --panel: #ffffff;
-  --panel-2: #f1f3f6;
-  --line: #dde1e8;
-  --fg: #111827;
-  --muted: #5b6575;
-  --faint: #8792a2;
-  --accent: #0b6e99;
-  --accent-soft: #e3f1f8;
-  --ok: #0f7b4d;
-  --ok-soft: #e1f4ea;
-  --warn: #9a5b00;
-  --warn-soft: #fdf1d9;
-  --bad: #b42318;
-  --bad-soft: #fde8e6;
-  --info: #5b3fb5;
-  --info-soft: #ece8fa;
-  --ring: #0b6e99;
+  --panel-2: #eff1f4;
+  --line: #dfe2e8;
+  --line-strong: #c4c9d2;
+  --fg: #0e1319;
+  --muted: #4d5767;
+  --faint: #5f6a7b;
+  --accent: #1f4fd8;
+  --accent-soft: #e6ecfc;
+  --ok: #0e7a47;
+  --ok-soft: #e0f3e9;
+  --warn: #8a5a00;
+  --warn-soft: #fbefd3;
+  --bad: #b3261e;
+  --bad-soft: #fbe6e3;
+  --info: #475569;
+  --info-soft: #edf0f5;
+  --ring: #1f4fd8;
 }
 .dark {
-  --bg: #0c0f14;
-  --panel: #12161d;
-  --panel-2: #181d26;
-  --line: #262d39;
-  --fg: #e8ecf2;
-  --muted: #9aa5b5;
-  --faint: #6c7686;
-  --accent: #4cb8e6;
-  --accent-soft: #11303d;
-  --ok: #4ad295;
-  --ok-soft: #0f2a20;
-  --warn: #f1b44c;
-  --warn-soft: #33270f;
-  --bad: #ff7b6e;
-  --bad-soft: #35161a;
-  --info: #b49cff;
-  --info-soft: #241d3d;
-  --ring: #4cb8e6;
+  --bg: #0a0c10;
+  --panel: #101318;
+  --panel-2: #161a21;
+  --line: #232830;
+  --line-strong: #363d49;
+  --fg: #e9edf3;
+  --muted: #a0aab9;
+  --faint: #7b8696;
+  --accent: #7ea3ff;
+  --accent-soft: #15223f;
+  --ok: #4fd39a;
+  --ok-soft: #0e2a20;
+  --warn: #f0b84f;
+  --warn-soft: #2f240d;
+  --bad: #ff8277;
+  --bad-soft: #341719;
+  --info: #a3afc2;
+  --info-soft: #1a1f28;
+  --ring: #7ea3ff;
 }
 
 @theme inline {
@@ -47,6 +51,7 @@
   --color-panel: var(--panel);
   --color-panel2: var(--panel-2);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-faint: var(--faint);
@@ -60,13 +65,16 @@
   --color-bad-soft: var(--bad-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, monospace;
+  --radius-lg: 4px;
+  --radius-md: 3px;
+  --radius-sm: 2px;
 }
 
 html { color-scheme: light; }
 html.dark { color-scheme: dark; }
-body { background: var(--bg); color: var(--fg); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body { background: var(--bg); color: var(--fg); font-size: 14px; line-height: 1.5; letter-spacing: -0.003em; -webkit-font-smoothing: antialiased; }
 * { border-color: var(--line); }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 4px; }
 .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
@@ -74,3 +82,10 @@ body { background: var(--bg); color: var(--fg); font-size: 14px; line-height: 1.
 @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } * { scroll-behavior: auto !important; } }
 .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Numbers are the product: tabular, mono-adjacent, never wrap. */
+.mono { font-family: var(--font-mono); font-feature-settings: "zero" 1; }
+td.num, th.num { white-space: nowrap; }
+.rule-top { border-top: 1px solid var(--line); }
+/* keyboard focus ring must survive dark backgrounds and table cells */
+:focus-visible { outline-offset: 1px; }

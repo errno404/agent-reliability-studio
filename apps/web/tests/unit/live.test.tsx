@@ -19,7 +19,7 @@ describe("live vs synthetic are never blended", () => {
   });
   it("labels render and the live note names the controlled environment", () => {
     render(<><KindBadge kind="live" /><KindBadge kind="synthetic" /><KindBadge kind="mixed" /><LiveNote /></>);
-    expect(screen.getByText("live · real model")).toBeInTheDocument();
+    expect(screen.getByText("live model")).toBeInTheDocument();
     expect(screen.getByText("synthetic")).toBeInTheDocument();
     expect(screen.getByText("mixed kinds")).toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent("Real LLM behaviour evaluated in a controlled synthetic environment.");

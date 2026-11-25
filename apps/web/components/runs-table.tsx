@@ -38,7 +38,7 @@ export function RunsTable({ runs }: { runs: RunOut[] }) {
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({ data: rows, columns: COLS, state: { sorting }, onSortingChange: setSorting, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel() });
   const sel = (key: keyof typeof f, label: string, opts: string[], text: (o: string) => string = (o) => o) => (
-    <label className="flex flex-col gap-1 text-[11px] font-medium uppercase tracking-wider text-faint">
+    <label className="flex flex-col gap-1 text-[11px] font-medium text-faint">
       {label}
       <select value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} className="rounded-md border border-line bg-panel px-2 py-1.5 text-[13px] normal-case tracking-normal text-fg">
         <option value="">All</option>{opts.map((o) => <option key={o} value={o}>{text(o)}</option>)}
@@ -54,7 +54,7 @@ export function RunsTable({ runs }: { runs: RunOut[] }) {
         {sel("model", "Model", uniq(runs, (r) => r.model))}
         {sel("dataset", "Dataset", uniq(runs, (r) => `${r.dataset}:${r.dataset_version}`))}
         {sel("status", "Status", uniq(runs, (r) => r.status))}
-        <label className="flex flex-col gap-1 text-[11px] font-medium uppercase tracking-wider text-faint">Since
+        <label className="flex flex-col gap-1 text-[11px] font-medium text-faint">Since
           <input type="date" value={f.since} onChange={(e) => setF({ ...f, since: e.target.value })} className="rounded-md border border-line bg-panel px-2 py-1 text-[13px] normal-case tracking-normal text-fg" />
         </label>
       </div>
@@ -73,7 +73,7 @@ export function RunsTable({ runs }: { runs: RunOut[] }) {
           </ul>
           <div className="scroll-x hidden md:block">
             <table className="w-full min-w-[980px] text-left text-[13px]">
-              <thead className="border-b border-line text-[11px] uppercase tracking-wider text-faint">
+              <thead className="border-b border-line text-[11px] text-faint">
                 {table.getHeaderGroups().map((hg) => (
                   <tr key={hg.id}>{hg.headers.map((h) => {
                     const dir = h.column.getIsSorted();

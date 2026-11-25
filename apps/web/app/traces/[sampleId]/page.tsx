@@ -18,10 +18,10 @@ export default async function TracePage({ params }: { params: Promise<{ sampleId
         <Card className="mb-5"><CardHeader title="Trajectory" sub="Ordered tool calls (observable behaviour only)." />
           <div className="px-4 py-3"><Trajectory tools={t.trajectory} max={20} /></div></Card>
         <TraceWaterfall spans={t.spans} totalMs={t.total_ms} />
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
           <Card><CardHeader title="Input → output" />
-            <div className="space-y-3 p-4 text-[13px]"><div><div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-faint">Input</div><p className="whitespace-pre-wrap">{s.input_text}</p></div>
-              <div><div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-faint">Output</div><p className="whitespace-pre-wrap rounded bg-panel2 px-3 py-2">{s.final_output || "(empty)"}</p></div>
+            <div className="space-y-3 p-4 text-[13px]"><div><div className="mb-1 text-[12px] font-medium text-muted">Input</div><p className="whitespace-pre-wrap">{s.input_text}</p></div>
+              <div><div className="mb-1 text-[12px] font-medium text-muted">Output</div><p className="whitespace-pre-wrap rounded bg-panel2 px-3 py-2">{s.final_output || "(empty)"}</p></div>
               <div className="num flex flex-wrap gap-3 text-xs text-muted"><span>{num(s.total_tokens)} tokens</span><span>{String(s.result.turns ?? 1)} turn(s)</span><span>{String(s.result.steps ?? 0)} steps</span></div></div></Card>
           <Card><CardHeader title="Why this status" sub={s.status_explanation} />
             <ul className="divide-y divide-line">{s.assertions.map((a) => (

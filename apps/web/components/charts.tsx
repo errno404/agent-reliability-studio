@@ -32,7 +32,7 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
             <Tooltip contentStyle={TIP} formatter={(v) => pct(Number(v), 1)} cursor={{ fill: "var(--panel-2)" }} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             {versions.map((v) => (
-              <Bar key={v} dataKey={v} name={`${v}${v === "v1" ? " (baseline)" : v === "v2" ? " (candidate)" : ""}`} fill={colors[v] ?? "var(--info)"} radius={[3, 3, 0, 0]}>
+              <Bar isAnimationActive={false} key={v} dataKey={v} name={`${v}${v === "v1" ? " (baseline)" : v === "v2" ? " (candidate)" : ""}`} fill={colors[v] ?? "var(--info)"} radius={[3, 3, 0, 0]}>
                 <ErrorBar dataKey={`${v}_err`} width={4} stroke="var(--fg)" strokeWidth={1} direction="y" />
               </Bar>
             ))}
@@ -60,8 +60,8 @@ export function FailureBars({ clusters, baseline }: { clusters: Cluster[]; basel
             <XAxis type="number" tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} />
             <YAxis type="category" dataKey="name" width={150} tick={AXIS} axisLine={false} tickLine={false} />
             <Tooltip contentStyle={TIP} cursor={{ fill: "var(--panel-2)" }} />
-            {baseline && <Bar dataKey="base" name="baseline" fill="var(--line)" radius={[0, 3, 3, 0]} barSize={8} />}
-            <Bar dataKey="count" name="candidate" radius={[0, 3, 3, 0]} barSize={baseline ? 8 : 14}>
+            {baseline && <Bar isAnimationActive={false} dataKey="base" name="baseline" fill="var(--line)" radius={[0, 3, 3, 0]} barSize={8} />}
+            <Bar isAnimationActive={false} dataKey="count" name="candidate" radius={[0, 3, 3, 0]} barSize={baseline ? 8 : 14}>
               {data.map((d, i) => <Cell key={i} fill={SEV_COLOR[d.severity] ?? "var(--accent)"} />)}
             </Bar>
           </BarChart>
@@ -86,7 +86,7 @@ export function CategoryDeltaBars({ deltas }: { deltas: Record<string, CategoryD
             <XAxis type="number" tick={AXIS} axisLine={false} tickLine={false} unit=" pts" />
             <YAxis type="category" dataKey="name" width={110} tick={AXIS} axisLine={false} tickLine={false} />
             <Tooltip contentStyle={TIP} formatter={(v) => `${Number(v) >= 0 ? "+" : ""}${Number(v).toFixed(1)} pts`} cursor={{ fill: "var(--panel-2)" }} />
-            <Bar dataKey="delta" name="Δ pass rate" radius={3} barSize={14}>
+            <Bar isAnimationActive={false} dataKey="delta" name="Δ pass rate" radius={3} barSize={14}>
               {data.map((d, i) => <Cell key={i} fill={d.delta < 0 ? "var(--bad)" : d.delta > 0 ? "var(--ok)" : "var(--faint)"} />)}
             </Bar>
           </BarChart>

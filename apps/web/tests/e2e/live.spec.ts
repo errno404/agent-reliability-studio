@@ -15,14 +15,14 @@ async function liveComparisons(page: Page) {
 test("runs list: live vs synthetic is a visible, filterable label and the kinds are not aggregated", async ({ page }) => {
   await page.goto("/experiments");
   const table = page.locator("table").last();
-  await expect(table.getByText("live · real model").first()).toBeVisible();
+  await expect(table.getByText("live model").first()).toBeVisible();
   await expect(table.getByText("synthetic", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/never aggregated together/).first()).toBeVisible();
   await page.getByLabel("Kind").selectOption("live");
-  await expect(table.getByText("live · real model")).toHaveCount(4);
+  await expect(table.getByText("live model")).toHaveCount(4);
   await expect(table.getByText("synthetic", { exact: true })).toHaveCount(0);
   await page.getByLabel("Kind").selectOption("synthetic");
-  await expect(table.getByText("live · real model")).toHaveCount(0);
+  await expect(table.getByText("live model")).toHaveCount(0);
 });
 
 test("experiments page: experiment 001, numbers come from the API, proofs are real links", async ({ page }) => {
@@ -48,7 +48,7 @@ test("compare: strict mode, declared intent, controlled variables and coverage a
   await page.goto(`/compare/${held.id}`);
   await expect(page.getByText(/STRICT · release-grade evidence/)).toBeVisible();
   await expect(page.getByText("intent: prompt change").first()).toBeVisible();
-  await expect(page.getByText("live · real model").first()).toBeVisible();
+  await expect(page.getByText("live model").first()).toBeVisible();
   await expect(page.getByText("Provenance and controlled variables")).toBeVisible();
   await expect(page.getByText("nothing but the agent / prompt itself")).toBeVisible();
   await expect(page.getByText("End-to-end sensitivity")).toBeVisible();
@@ -117,6 +117,6 @@ for (const tag of ["@tablet", "@mobile"]) {
       expect(o, `horizontal overflow on ${path} (${tag})`).toBeLessThanOrEqual(1);
     }
     await page.goto("/experiments");
-    await expect(page.getByText("live · real model").first()).toBeVisible();
+    await expect(page.getByText("live model").first()).toBeVisible();
   });
 }

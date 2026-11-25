@@ -36,13 +36,13 @@ export function CaseList({ cases }: { cases: Item[] }) {
               </summary>
               <div className="grid gap-4 border-t border-line bg-panel2 px-4 py-4 text-[13px] lg:grid-cols-2">
                 <div className="space-y-3">
-                  <div><div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Why this case exists</div><p>{c.description}</p></div>
-                  <div><div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Input</div><p className="whitespace-pre-wrap">{c.definition.input}</p></div>
+                  <div><div className="text-[12px] font-medium text-muted">Why this case exists</div><p>{c.description}</p></div>
+                  <div><div className="text-[12px] font-medium text-muted">Input</div><p className="whitespace-pre-wrap">{c.definition.input}</p></div>
                   {c.tags.length > 0 && <div className="flex flex-wrap gap-1">{c.tags.map((t) => <Badge key={t}>{t}</Badge>)}</div>}
-                  {c.definition.fixture && Object.keys(c.definition.fixture).length > 0 && <div><div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Fixture</div><pre className="overflow-x-auto font-mono text-[11.5px]">{JSON.stringify(c.definition.fixture, null, 1).slice(0, 400)}</pre></div>}
-                  {c.definition.rubric && Object.keys(c.definition.rubric).length > 0 && <div><div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Rubric</div><pre className="overflow-x-auto font-mono text-[11.5px]">{JSON.stringify(c.definition.rubric, null, 1)}</pre></div>}
+                  {c.definition.fixture && Object.keys(c.definition.fixture).length > 0 && <div><div className="text-[12px] font-medium text-muted">Fixture</div><pre className="overflow-x-auto font-mono text-[11.5px]">{JSON.stringify(c.definition.fixture, null, 1).slice(0, 400)}</pre></div>}
+                  {c.definition.rubric && Object.keys(c.definition.rubric).length > 0 && <div><div className="text-[12px] font-medium text-muted">Rubric</div><pre className="overflow-x-auto font-mono text-[11.5px]">{JSON.stringify(c.definition.rubric, null, 1)}</pre></div>}
                 </div>
-                <div><div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-faint">Assertions</div>
+                <div><div className="mb-1 text-[12px] font-medium text-muted">Assertions</div>
                   <ul className="space-y-1.5">{c.definition.assertions.map((a, i) => (
                     <li key={i} className="rounded border border-line bg-panel px-2 py-1.5"><div className="flex flex-wrap items-center gap-1.5"><Badge tone={a.gating === false ? "neutral" : "info"}>{a.layer}</Badge><span className="font-mono text-[11.5px] font-medium">{a.type}</span>{a.gating === false && <span className="text-[11px] text-faint">informational</span>}</div>
                       <div className="mt-0.5 break-all font-mono text-[11px] text-muted">{JSON.stringify(Object.fromEntries(Object.entries(a).filter(([k]) => !["type", "layer", "gating", "severity", "label", "note"].includes(k))))}</div></li>))}</ul></div>

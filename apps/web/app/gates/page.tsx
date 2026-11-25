@@ -28,14 +28,14 @@ export default async function GatesPage() {
             </div>
           </Card>)}
         <Card className="mt-5"><CardHeader title="Decision history" sub="Each row is a stored comparison + gate decision." />
-          <div className="scroll-x"><table className="w-full min-w-[820px] text-[13px]"><thead className="border-b border-line text-[11px] uppercase tracking-wider text-faint"><tr>{["Comparison", "Verdict", "Statistical result", "Δ", "Policy", "Reasons", "When"].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+          <div className="scroll-x"><table className="w-full min-w-[820px] text-[13px]"><thead className="border-b border-line text-[11px] text-faint"><tr>{["Comparison", "Verdict", "Statistical result", "Δ", "Policy", "Reasons", "When"].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
             <tbody className="divide-y divide-line">{gates.map((g) => (
               <tr key={g.id} className="align-top hover:bg-panel2"><td className="px-3 py-2"><Link className="font-medium text-accent hover:underline" href={`/compare/${g.comparison_id}`}>{g.comparison_name}</Link></td>
                 <td className="px-3 py-2"><Badge tone={g.verdict === "pass" ? "ok" : "bad"}>{g.verdict.toUpperCase()}</Badge></td><td className="px-3 py-2"><DecisionBadge decision={g.decision} /></td>
                 <td className="num px-3 py-2">{pts(g.delta)}</td><td className="px-3 py-2 text-muted">{g.policy_name}</td>
                 <td className="max-w-[360px] px-3 py-2 text-xs text-muted">{g.reasons.join(" · ")}</td><td className="px-3 py-2 text-xs text-faint">{shortDate(g.created_at)}</td></tr>))}</tbody></table></div></Card>
         <Card className="mt-5"><CardHeader title="Statistical policies" sub="Defaults are conservative starting points, not universal constants. Each comparison stores the policy it used." />
-          <div className="scroll-x"><table className="w-full text-[13px]"><thead className="border-b border-line text-[11px] uppercase tracking-wider text-faint"><tr>{["Policy", "Min matched cases", "α", "Bootstrap resamples", "Regression margin"].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+          <div className="scroll-x"><table className="w-full text-[13px]"><thead className="border-b border-line text-[11px] text-faint"><tr>{["Policy", "Min matched cases", "α", "Bootstrap resamples", "Regression margin"].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
             <tbody className="divide-y divide-line">{Object.entries(policies).map(([k, p]) => <tr key={k}><td className="px-3 py-2 font-mono text-xs">{k}</td><td className="num px-3 py-2">{p.min_cases}</td><td className="num px-3 py-2">{p.alpha}</td><td className="num px-3 py-2">{p.n_boot.toLocaleString()}</td><td className="num px-3 py-2">−{(p.margin * 100).toFixed(0)} pts</td></tr>)}</tbody></table></div>
           <p className="px-4 py-3 text-xs text-muted">The <code>demo-*</code> policies lower the minimum case count because the bundled synthetic datasets have 10–30 cases; <code>production</code> requires 50. Under <code>production</code>, the 30-case support comparison is correctly INCONCLUSIVE.</p></Card>
       </>

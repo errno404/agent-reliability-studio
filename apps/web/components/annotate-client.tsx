@@ -78,10 +78,10 @@ export function AnnotateClient({ initial }: { initial: AnnotationSummary }) {
           {item && (
             <div className="space-y-3">
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded border border-line p-3"><div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Question / input</div><p className="mt-1 text-[14px]">{item.input}</p></div>
-                <div className="rounded border border-line bg-panel2 p-3"><div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Candidate output</div><p className="mt-1 text-[14px]">{item.candidate_output}</p></div>
+                <div className="rounded border border-line p-3"><div className="text-[12px] font-medium text-muted">Question / input</div><p className="mt-1 text-[14px]">{item.input}</p></div>
+                <div className="rounded border border-line bg-panel2 p-3"><div className="text-[12px] font-medium text-muted">Candidate output</div><p className="mt-1 text-[14px]">{item.candidate_output}</p></div>
               </div>
-              <div className="rounded border border-line p-3 text-[13px]"><div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Rubric</div>
+              <div className="rounded border border-line p-3 text-[13px]"><div className="text-[12px] font-medium text-muted">Rubric</div>
                 <ul className="mt-1 space-y-0.5">{(item.rubric.must as string[] | undefined)?.map((m) => <li key={m}><Badge tone="ok">must</Badge> {m}</li>)}{(item.rubric.must_not as string[] | undefined)?.map((m) => <li key={m}><Badge tone="bad">must not</Badge> {m}</li>)}</ul></div>
               <label className="block text-xs font-medium text-muted">Note (optional)<textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} className="mt-1 w-full rounded-md border border-line bg-panel px-3 py-2 text-sm text-fg" /></label>
               <div className="flex flex-wrap gap-2">
@@ -102,7 +102,7 @@ export function AnnotateClient({ initial }: { initial: AnnotationSummary }) {
             {(summary.untrusted_annotators ?? []).map((a) => { const t = annotationTrust("public_untrusted"); return <Badge key={a} tone={t.tone} title={t.title}>{a} · {t.label} · {summary.untrusted_label_counts?.[a] ?? 0} labels (excluded from agreement)</Badge>; })}
             {summary.consensus_claimed && summary.kappa !== null ? <Badge tone="info">mean pairwise κ {summary.kappa.toFixed(2)} over {summary.items_compared} shared items</Badge> : <Badge tone="warn">no consensus claimed (needs ≥ 2 trusted annotators)</Badge>}
             {summary.sources.includes("synthetic_demo") && <Badge>includes seeded demo annotators (synthetic, not human)</Badge>}</div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Disagreement queue ({summary.disagreement_queue.length})</div>
+          <div className="text-[12px] font-medium text-muted">Disagreement queue ({summary.disagreement_queue.length})</div>
           <ul className="space-y-2">{summary.disagreement_queue.map((d) => <Adjudicate key={d.item_id} d={d} annotator={annotator} onDone={async () => setSummary(await api.annotationSummary())} />)}</ul>
         </div></Card>
     </div>

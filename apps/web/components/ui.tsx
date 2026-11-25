@@ -6,31 +6,31 @@ import { decisionLabel, decisionTone, pct, statusLabel, statusTone, type Tone } 
 import { LIVE_NOTE } from "@/lib/live";
 
 const TONES: Record<Tone, string> = {
-  ok: "bg-ok-soft text-ok border-ok/30",
-  warn: "bg-warn-soft text-warn border-warn/30",
-  bad: "bg-bad-soft text-bad border-bad/30",
-  info: "bg-info-soft text-info border-info/30",
-  neutral: "bg-panel2 text-muted border-line",
+  ok: "bg-ok-soft text-ok border-transparent",
+  warn: "bg-warn-soft text-warn border-transparent",
+  bad: "bg-bad-soft text-bad border-transparent",
+  info: "bg-info-soft text-info border-transparent",
+  neutral: "bg-panel2 text-muted border-transparent",
 };
 
 export function Badge({ tone = "neutral", children, title, className }: { tone?: Tone; children: ReactNode; title?: string; className?: string }) {
   return (
-    <span title={title} className={clsx("inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-medium leading-4 whitespace-nowrap", TONES[tone], className)}>
+    <span title={title} className={clsx("inline-flex items-center gap-1 rounded-sm border px-1.5 py-px text-[12px] font-medium leading-5 max-w-full", TONES[tone], className)}>
       {children}
     </span>
   );
 }
 export const StatusBadge = ({ status }: { status: string }) => <Badge tone={statusTone(status)}>{statusLabel(status)}</Badge>;
-export const DecisionBadge = ({ decision }: { decision: string }) => <Badge tone={decisionTone(decision)} className="uppercase tracking-wide">{decisionLabel(decision)}</Badge>;
+export const DecisionBadge = ({ decision }: { decision: string }) => <Badge tone={decisionTone(decision)} >{decisionLabel(decision)}</Badge>;
 export const SyntheticBadge = () => <Badge tone="info" title="Scripted, seeded reference agents. Not a benchmark of any real model.">synthetic fixture evidence</Badge>;
 /** SYNTHETIC vs LIVE is a first-class label: the two kinds are never blended in any number or chart. */
 export function KindBadge({ kind }: { kind: "live" | "synthetic" | "mixed" }) {
-  if (kind === "live") return <Badge tone="ok" title={LIVE_NOTE} className="uppercase tracking-wide">live · real model</Badge>;
-  if (kind === "mixed") return <Badge tone="bad" title="Baseline and candidate are different kinds; such a comparison is invalid." className="uppercase tracking-wide">mixed kinds</Badge>;
-  return <Badge tone="info" title="Scripted, seeded reference agents. Not a benchmark of any real model." className="uppercase tracking-wide">synthetic</Badge>;
+  if (kind === "live") return <Badge tone="ok" title={LIVE_NOTE}>live model</Badge>;
+  if (kind === "mixed") return <Badge tone="bad" title="Baseline and candidate are different kinds; such a comparison is invalid.">mixed kinds</Badge>;
+  return <Badge tone="info" title="Scripted, seeded reference agents. Not a benchmark of any real model.">synthetic</Badge>;
 }
 export const LiveNote = () => (
-  <p role="note" className="rounded-md border border-ok/30 bg-ok-soft px-3 py-2 text-[13px] text-ok"><b>{LIVE_NOTE}</b> The model&apos;s decisions are real; the world it acts in is an invented, frozen document collection. Not a benchmark of the model or of the real web.</p>
+  <p role="note" className="border-l-2 border-ok bg-ok-soft px-3 py-2 text-[13px] text-ok"><b>{LIVE_NOTE}</b> The model&apos;s decisions are real; the world it acts in is an invented, frozen document collection. Not a benchmark of the model or of the real web.</p>
 );
 
 export function Card({ children, className, as: Tag = "section", ...rest }: { children: ReactNode; className?: string; as?: "section" | "div" | "article" } & React.HTMLAttributes<HTMLElement>) {
@@ -50,9 +50,9 @@ export function CardHeader({ title, sub, right, id }: { title: ReactNode; sub?: 
 
 export function PageHeader({ title, sub, right }: { title: string; sub?: ReactNode; right?: ReactNode }) {
   return (
-    <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
+        <h1 className="text-[19px] font-semibold tracking-tight sm:text-[22px]">{title}</h1>
         {sub && <p className="mt-1 max-w-3xl text-sm text-muted">{sub}</p>}
       </div>
       {right}
@@ -66,8 +66,8 @@ export function Stat({ label, value, sub, n, ciLo, ciHi, tone, hint }: {
 }) {
   return (
     <div className="rounded-lg border border-line bg-panel px-3.5 py-3" title={hint}>
-      <div className="text-[11px] font-medium uppercase tracking-wider text-faint">{label}</div>
-      <div className={clsx("num mt-1 text-2xl font-semibold tracking-tight", tone === "bad" && "text-bad", tone === "ok" && "text-ok", tone === "warn" && "text-warn")}>{value}</div>
+      <div className="text-[12px] font-medium text-muted">{label}</div>
+      <div className={clsx("num mono mt-1 text-[22px] font-medium tracking-tight", tone === "bad" && "text-bad", tone === "ok" && "text-ok", tone === "warn" && "text-warn")}>{value}</div>
       <div className="num mt-0.5 min-h-4 text-[11px] text-muted">
         {ciLo !== undefined && ciHi !== undefined && <span>95% CI {pct(ciLo, 0)}–{pct(ciHi, 0)}</span>}
         {n !== undefined && <span>{ciLo !== undefined ? " · " : ""}n={n}</span>}
