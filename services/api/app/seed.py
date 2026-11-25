@@ -172,7 +172,7 @@ def seed_comparisons(s: Session, r: dict[str, Run]) -> None:
     ]
     for name, b, c, pol in plan:
         comp = comparisons.create_comparison(s, b.id, c.id, mode="strict", policy_name=pol, name=name)
-        comparisons.create_gate(s, comp, conservative=True)
+        comparisons.create_gate(s, comp, release=True)
     s.commit()
 
 
@@ -195,9 +195,10 @@ def seed_distilled(s: Session, r: dict[str, Run]) -> None:
         if smp is None or row is None:
             continue
         from evalcore.models import AgentResult
+        from evalcore.redaction import Redactor
 
         cand = distill_case(Case.model_validate(row.definition), AgentResult.model_validate(smp.result), run_id, 0, ok)
-        s.add(DistilledCandidate(source_sample_id=smp.id, case=cand, status="candidate"))
+        s.add(DistilledCandidate(source_sample_id=smp.id, case=Redactor().apply(cand), status="candidate"))
     s.commit()
 
 
@@ -210,4 +211,8 @@ def seed_all(s: Session) -> dict[str, Any]:
     r = seed_runs(s, cat, strict, lenient)
     seed_comparisons(s, r)
     seed_distilled(s, r)
+    from . import experiments  # published REAL live measurements (not synthetic); idempotent
+
+    experiments.import_experiment(s)
+    s.commit()
     return {"runs": len(r), "comparisons": s.scalar(select(func.count(Comparison.id)))}
