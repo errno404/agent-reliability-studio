@@ -1,0 +1,1 @@
+{"agent": "support", "version": "v3", "notes": "PROOF: behaviour identical to v2 (disposable PR). Expected: the real baseline/candidate comparison runs and finds no regression."}
