@@ -48,7 +48,7 @@ test("compare: strict mode, declared intent, controlled variables and coverage a
   await page.goto(`/compare/${held.id}`);
   await expect(page.getByText(/STRICT · release-grade evidence/)).toBeVisible();
   await expect(page.getByText("intent: prompt change").first()).toBeVisible();
-  await expect(page.getByText("live model").first()).toBeVisible();
+  await expect(page.locator("main").getByText("live model").first()).toBeVisible();
   await expect(page.getByText("Provenance and controlled variables")).toBeVisible();
   await expect(page.getByText("nothing but the agent / prompt itself")).toBeVisible();
   await expect(page.getByText("End-to-end sensitivity")).toBeVisible();
@@ -117,6 +117,6 @@ for (const tag of ["@tablet", "@mobile"]) {
       expect(o, `horizontal overflow on ${path} (${tag})`).toBeLessThanOrEqual(1);
     }
     await page.goto("/experiments");
-    await expect(page.getByText("live model").first()).toBeVisible();
+    await expect(page.locator("main").getByText("live model").first()).toBeVisible();
   });
 }

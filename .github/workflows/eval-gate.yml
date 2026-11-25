@@ -37,6 +37,12 @@ jobs:
         with: { ref: "${{ github.base_ref }}", path: trusted, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { fetch-depth: 0, path: pr, persist-credentials: false }
+      - name: Bootstrap guard (trusted base must already contain this gate)
+        run: |
+          if [ ! -f trusted/scripts/ci_select_suites.py ] || [ ! -f trusted/scripts/ci_eval_gate.py ]; then
+            echo "::error title=Trusted base has no eval gate::BOOTSTRAP PR. The base branch does not yet contain the trusted gate tooling this workflow needs, so it cannot measure this PR. This is intentionally a FAILURE, never a pass. The one-time owner action is in docs/CI.md (Staged migration); after the tooling is on the base branch every later PR is gated normally."
+            exit 1
+          fi
       - name: Select suites from the diff (selector comes from the trusted checkout)
         id: sel
         run: |
@@ -57,6 +63,12 @@ jobs:
         with: { ref: "${{ github.base_ref }}", path: trusted, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { fetch-depth: 0, path: pr, persist-credentials: false }
+      - name: Bootstrap guard (trusted base must already contain this gate)
+        run: |
+          if [ ! -f trusted/scripts/ci_select_suites.py ] || [ ! -f trusted/scripts/ci_eval_gate.py ]; then
+            echo "::error title=Trusted base has no eval gate::BOOTSTRAP PR. The base branch does not yet contain the trusted gate tooling this workflow needs, so it cannot measure this PR. This is intentionally a FAILURE, never a pass. The one-time owner action is in docs/CI.md (Staged migration); after the tooling is on the base branch every later PR is gated normally."
+            exit 1
+          fi
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with: { enable-cache: true }
       - run: uv sync --python 3.13 --frozen

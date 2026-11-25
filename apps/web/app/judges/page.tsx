@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Badge, Card, ErrorState, HashChip, PageHeader, Stat, SyntheticBadge } from "@/components/ui";
+import { Badge, Card, ErrorState, HashChip, PageHeader, SyntheticBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { pct, shortDate } from "@/lib/format";
 import { releaseScope, scopeLabel } from "@/lib/live";
@@ -27,20 +27,20 @@ function JudgeCard({ j, errors }: { j: JudgeOut; errors: { item_id: string; cand
   return (
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
-        <div className="flex items-center gap-2 text-[14px] font-medium" role="status"><span aria-hidden className={`size-2 rounded-full ${j.admitted ? "bg-ok" : "bg-bad"}`} />{j.status_label}</div>
+        <div className="flex items-center gap-2 text-[14px] font-medium" role="status"><span aria-hidden className={`size-2 rounded-full ${j.admitted && rel.eligible ? "bg-ok" : j.admitted ? "bg-warn" : "bg-bad"}`} />{j.status_label}</div>
         <div className="flex flex-wrap items-center gap-2 text-xs"><Badge>{j.backend}</Badge><span className="font-mono font-medium">{j.model}</span><HashChip label="prompt" value={j.prompt_hash} /><Badge>{j.dimension}</Badge><Badge>rubric {j.rubric_version}</Badge><HashChip label="identity" value={j.identity} /></div>
       </div>
       {!latest || !m ? (
         <p className="p-4 text-sm text-muted">This exact configuration (backend + model + prompt hash) has <b>never been calibrated</b>. Changing any of the three requires a new calibration, so this judge is diagnostic-only and cannot gate a release.</p>
       ) : (
         <div className="space-y-4 p-4">
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-7">
-            <Stat label="Items" value={m.n} sub={`${m.n_pos} pass · ${m.n_neg} fail`} hint="Class balance of reference labels" />
-            <Stat label="Accuracy" value={pct(m.accuracy)} /><Stat label="Precision" value={pct(m.precision)} /><Stat label="Recall" value={pct(m.recall)} /><Stat label="F1" value={m.f1.toFixed(2)} />
-            <Stat label="Cohen's κ" value={m.kappa.toFixed(2)} tone={m.kappa >= Number(latest.policy.min_kappa) ? "ok" : "bad"} sub={`need ≥ ${latest.policy.min_kappa}`} />
-            <Stat label="False-positive rate" value={pct(m.fpr)} tone={m.fpr <= Number(latest.policy.max_fpr) ? "ok" : "bad"} sub={`need ≤ ${pct(Number(latest.policy.max_fpr), 0)} · FNR ${pct(m.fnr)} · upper ${rel.fprUpper === null ? "—" : pct(rel.fprUpper)}`} />
-          </div>
-          <div role="status" aria-label="Release eligibility" className={`border-l-2 px-3 py-2.5 text-[13px] ${rel.eligible ? "border-ok bg-ok-soft" : "border-warn bg-warn-soft"}`}>
+          <dl className="num grid grid-cols-2 gap-x-6 gap-y-2 text-[13px] sm:grid-cols-4 lg:grid-cols-7">
+            {([["Items", String(m.n), `${m.n_pos} pass · ${m.n_neg} fail`, ""], ["Accuracy", pct(m.accuracy), "", ""], ["Precision", pct(m.precision), "", ""], ["Recall", pct(m.recall), "", ""], ["F1", m.f1.toFixed(2), "", ""],
+              ["Cohen's κ", m.kappa.toFixed(2), `need ≥ ${latest.policy.min_kappa}`, m.kappa >= Number(latest.policy.min_kappa) ? "text-ok" : "text-bad"],
+              ["False-positive rate", pct(m.fpr), `need ≤ ${pct(Number(latest.policy.max_fpr), 0)} · upper ${rel.fprUpper === null ? "—" : pct(rel.fprUpper)}`, m.fpr <= Number(latest.policy.max_fpr) ? "text-ok" : "text-bad"]] as const).map(([k, v, sub, tone]) => (
+              <div key={k}><dt className="text-[12px] text-muted">{k}</dt><dd className={`mono text-[17px] font-medium ${tone}`}>{v}</dd>{sub && <div className="text-[11px] text-faint">{sub}</div>}</div>))}
+          </dl>
+          <div role="status" aria-label="Release eligibility" className={`border-l-2 px-3 py-2.5 text-[13px] ${rel.eligible ? "border-ok" : "border-warn"}`}>
             <div className="flex flex-wrap items-center gap-2"><Badge tone={rel.eligible ? "ok" : "warn"}>{scopeLabel(rel.scope)}</Badge>
               <span className="num">95% Wilson upper bound on FPR: <b>{rel.fprUpper === null ? "—" : pct(rel.fprUpper)}</b> <span className="text-muted">(point {pct(m.fpr)} from {m.fp} of {rel.nNegatives} negatives)</span></span></div>
             {rel.reasons.length > 0 && <ul className="mt-1.5 list-inside list-disc text-muted">{rel.reasons.map((x) => <li key={x}>{x}</li>)}</ul>}

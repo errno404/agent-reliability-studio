@@ -130,10 +130,11 @@ export const HashChip = ({ value, label }: { value: string; label?: string }) =>
   </span>
 );
 
-export function Delta({ v, invert = false, digits = 1 }: { v: number | null | undefined; invert?: boolean; digits?: number }) {
+/** `neutral`: draw the sign but no verdict colour (used when the overall interval includes zero, so no single delta is a proven change). */
+export function Delta({ v, invert = false, digits = 1, neutral = false }: { v: number | null | undefined; invert?: boolean; digits?: number; neutral?: boolean }) {
   if (v === null || v === undefined) return <span className="text-faint">—</span>;
-  const good = invert ? v < 0 : v > 0;
-  const bad = invert ? v > 0 : v < 0;
+  const good = !neutral && (invert ? v < 0 : v > 0);
+  const bad = !neutral && (invert ? v > 0 : v < 0);
   const txt = `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v * 100).toFixed(digits)}`;
   return <span className={clsx("num font-medium", good && "text-ok", bad && "text-bad", !good && !bad && "text-muted")}>{txt}</span>;
 }

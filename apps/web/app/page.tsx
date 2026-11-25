@@ -31,6 +31,7 @@ function ledgerRows(c: Sm, b: Sm): LedgerRow[] {
 function LiveVerdict({ comp }: { comp: ComparisonDetail }) {
   const r = comp.result as unknown as ComparisonResult;
   const bs = r.baseline_summary as Summary, cs = r.candidate_summary as Summary, boot = r.bootstrap;
+  const open = !boot || boot.ci_low <= 0; // interval includes zero: show signs, not verdict colours
   const rows: LedgerRow[] = [
     { label: "Task success", base: pct(bs.task_success.rate), cand: pct(cs.task_success.rate), delta: (cs.task_success.rate ?? 0) - (bs.task_success.rate ?? 0), note: `${cs.task_success.passed}/${cs.task_success.n} trials` },
     { label: "pass^k (every repeat passes)", base: pct(bs.pass_hat_k, 0), cand: pct(cs.pass_hat_k, 0), delta: cs.pass_hat_k - bs.pass_hat_k, note: `k=${cs.k}` },
@@ -50,16 +51,17 @@ function LiveVerdict({ comp }: { comp: ComparisonDetail }) {
       <div className="grid grid-cols-1 gap-x-10 gap-y-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2"><DecisionBadge decision={comp.decision} />{comp.gate_verdict && <Badge tone={comp.gate_verdict === "pass" ? "ok" : "bad"}>gate: {comp.gate_verdict}</Badge>}</div>
-          <p className="max-w-[62ch] text-[17px] leading-snug tracking-tight">{comp.explanation}</p>
-          {boot && boot.ci_low <= 0 && <p className="max-w-[62ch] text-[13px] text-muted">The interval includes zero. This supports “no meaningful regression”, not a demonstrated improvement.</p>}
-          <p className="text-[12.5px] text-muted">Real model decisions in a controlled synthetic environment. <Link className="text-accent hover:underline" href={`/compare/${comp.id}`}>Open the comparison</Link> · <Link className="text-accent hover:underline" href="/experiments">All live experiments</Link></p>
+          {boot && boot.ci_low <= 0 && <p className="text-[19px] font-semibold leading-snug tracking-tight">No regression detected. Improvement not established.</p>}
+          <p className="max-w-[62ch] text-[15px] leading-snug text-muted">{comp.explanation}</p>
+                    <p className="text-[12.5px] text-muted">Real model decisions in a controlled synthetic environment. <Link className="text-accent hover:underline" href={`/compare/${comp.id}`}>Open the comparison</Link> · <Link className="text-accent hover:underline" href="/experiments">All live experiments</Link></p>
         </div>
         <div className="space-y-2">
           {boot && <CiPlot delta={boot.delta} lo={boot.ci_low} hi={boot.ci_high} margin={comp.margin ?? 0.05} />}
           {boot && <p className="num mono text-[12px] text-muted">Δ {pts(boot.delta)} · 95% CI [{pts(boot.ci_low)}, {pts(boot.ci_high)}] · {boot.n_common_cases} matched cases · {boot.n_improved} better / {boot.n_regressed} worse</p>}
         </div>
       </div>
-      <Ledger rows={rows} />
+      <Ledger rows={rows.map((r) => ({ ...r, neutral: open }))} />
+      {open && <p className="text-[12px] text-faint">Changes are shown without colour because the overall interval includes zero: none of them is a demonstrated improvement or regression.</p>}
     </section>
   );
 }
@@ -85,7 +87,7 @@ export default async function OverviewPage() {
       <h1 className="max-w-[40ch] text-[22px] font-semibold leading-tight tracking-tight sm:text-[26px]">Did the latest change improve reliability, cause a regression, or leave us without enough evidence?</h1>
       {live && <LiveVerdict comp={live} />}
 
-      <section aria-labelledby="synthetic" className="space-y-4 pt-2">
+      <section aria-labelledby="synthetic" className="space-y-4 border-l-2 border-line-strong pl-4 pt-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-line pt-5">
           <h2 id="synthetic" className="text-[15px] font-semibold tracking-tight">Synthetic demonstration <span className="ml-1 align-middle"><KindBadge kind="synthetic" /></span></h2>
           <p className="max-w-xl text-[12.5px] text-muted">Scripted agents with injected faults. These numbers show how the instrument behaves; they say nothing about any real model.</p>
@@ -100,8 +102,8 @@ export default async function OverviewPage() {
               <Badge tone="info">{h.candidate_label}</Badge>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <DecisionBadge decision={h.decision} />
-              <Badge tone={gatePass ? "ok" : "bad"} title={o.gate?.reasons.join("; ")}>CI gate: {gatePass ? "PASS" : "FAIL"}</Badge>
+              <Badge tone="info">{h.decision.replace(/_/g, " ")} (synthetic)</Badge>
+              <Badge tone="info" title={o.gate?.reasons.join("; ")}>CI gate: {gatePass ? "PASS" : "FAIL"}</Badge>
               <Badge title="Statistical policy used for this comparison">policy {h.policy_name}</Badge>
             </div>
             <p id="headline" className="text-[15px] leading-relaxed">{h.explanation}</p>

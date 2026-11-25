@@ -8,7 +8,7 @@
 
 *Did this agent change actually improve reliability — or did we introduce a regression?*
 
-![Dashboard overview](docs/images/dashboard-overview.png)
+![Overview: the latest real-model experiment answers the question first; the synthetic demonstration is separate](docs/images/dashboard-overview.png)
 
 > **Two kinds of evidence, never blended.** The dashboard's demo suites use **scripted agents with seeded faults** — *synthetic fixture
 > evidence* that proves the measurement machinery, not any model. Separately, **experiment 001** measures a **real LLM** (Claude Haiku via
@@ -51,7 +51,8 @@ make demo            # installs, migrates, seeds the demo + the published live e
 # open http://localhost:3000
 ```
 
-1. **Overview** — baseline `support:v1` → candidate `support:v2`: `IMPROVEMENT`, CI gate `PASS`, with the CI drawn against the −5 pt margin.
+0. **Overview** — leads with the latest **real-model** experiment (research agent v1 → v2): *No regression detected. Improvement not established.* The +3.3 pt difference has a 95% CI of [−0.7, +8.5], so its deltas are drawn without verdict colour. Below it, separately labelled, the synthetic demonstration.
+1. **Synthetic comparison** — baseline `support:v1` → candidate `support:v2`: `IMPROVEMENT`, CI gate `PASS`, with the CI drawn against the −5 pt margin.
 2. Read **"What changed?"**: *v2 is +50 pts overall (19 cases improved, 3 regressed) — but `address` cases fell 11 pts*.
 3. **Compare → case** `sup-17-address-unit-apt`: the diff shows v2 passes `city: "Apt 5"` instead of `"Sollund"`. A localized regression hiding inside an overall win.
 4. **Judges**: the strict judge's metrics pass (`ADMITTED ON DEMONSTRATION LABELS — not release-eligible`, because the reference labels are synthetic), the lenient one is `NOT CALIBRATED — diagnostic only`; κ, FPR (with a Wilson upper bound) and a confusion matrix are shown.
@@ -64,6 +65,16 @@ make demo            # installs, migrates, seeds the demo + the published live e
 | Trace explorer (OTel GenAI spans) | Judge calibration |
 |---|---|
 | ![Trace](docs/images/trace.png) | ![Judge calibration](docs/images/judge-calibration.png) |
+
+| Real-model comparison (Experiment 001, held-out) | Failure analysis |
+|---|---|
+| ![Live comparison](docs/images/compare-live-heldout.png) | ![Failures](docs/images/failures.png) |
+
+| CI release gates | Mobile (390px) |
+|---|---|
+| ![Gates](docs/images/gates.png) | ![Mobile](docs/images/experiments-live-mobile.png) |
+
+The interface identity, tokens and chart conventions are documented in [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md); the pre-redesign screenshots are kept in `docs/images/before/` for comparison. All screenshots are captured from the running, seeded application (`make screenshots`).
 
 ## Core features
 
@@ -164,7 +175,7 @@ datasets/ fixtures/    versioned, hashed evidence (scripts/gen_datasets.py, scri
 evidence/              published, sanitized experiment and CI-proof evidence
 integrations/          Inspect AI (export + ingest) · Phoenix/OTLP
 infra/ .github/        Dockerfiles · CI + eval-gate workflows · render.yaml
-docs/                  ARCHITECTURE · EVAL_METHODOLOGY · SECURITY · CI · DEMO · LEARNING_GUIDE · INTERVIEW_GUIDE · EVALUATOR_CASE_STUDY · experiments/ · adr/
+docs/                  ARCHITECTURE · DESIGN_SYSTEM · EVAL_METHODOLOGY · SECURITY · CI · DEMO · LEARNING_GUIDE · INTERVIEW_GUIDE · EVALUATOR_CASE_STUDY · experiments/ · adr/
 ```
 
 ## Technology choices

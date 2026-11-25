@@ -7,8 +7,8 @@ test("overview loads with the headline comparison, KPIs and synthetic labelling"
   await expect(page.getByText(/CI gate: PASS/)).toBeVisible();
   await expect(page.getByText(/Localized regression: 'address'/).first()).toBeVisible();
   await expect(page.getByText("Task success", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("pass^k (every repeat passes)")).toBeVisible();
-  await expect(page.getByText("synthetic fixture evidence").first()).toBeVisible();
+  await expect(page.getByText("pass^k (every repeat passes)").first()).toBeVisible();
+  await expect(page.getByText("synthetic", { exact: true }).first()).toBeVisible();
   await expect(page.locator("svg.recharts-surface").first()).toBeVisible(); // charts hydrate and draw from stored data
 });
 
@@ -25,7 +25,7 @@ test("compare: decision, CI, validity and changed-case drill-down", async ({ pag
   await page.goto("/compare");
   await page.locator('a[href^="/compare/"]').filter({ has: page.getByRole("heading", { name: "Support v1 → v2", exact: true }) }).click();
   await page.waitForURL(/\/compare\/\d+$/);
-  await expect(page.getByText(/excludes zero/).first()).toBeVisible();
+  await expect(page.getByText(/entirely above zero/).first()).toBeVisible();
   await expect(page.getByText("Matched cases", { exact: true })).toBeVisible();
   await expect(page.getByText("Metric comparison")).toBeVisible();
   await page.getByRole("link", { name: "sup-17-address-unit-apt" }).click();
@@ -104,7 +104,7 @@ test("API docs are served", async ({ request }) => {
 
 test("@mobile layout does not overflow and navigation works", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Did this agent change/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Did the latest change/ })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "Open navigation" }).click();

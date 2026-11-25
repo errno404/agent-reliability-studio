@@ -17,6 +17,19 @@ measurement itself trustworthy?* Nothing here needs a model credential or a secr
 | Reports | `comparison.json`, `report.md`, `junit.xml`, `trace-diff.txt` and the throw-away DB (synthetic data only) are uploaded per suite, 14 days. |
 | A skipped comparison is not a pass | The required check `eval-gate-result` fails on any failed/cancelled job and prints "no agent comparison was performed" when nothing was compared. |
 
+## Staged migration (the trusted-base bootstrap)
+
+The gate measures a PR with scripts taken from the **base branch**, so the PR that first introduces the gate (PR #6) cannot be measured by a base that does not have it yet. The workflow now says this explicitly ("Trusted base has no eval gate") and **fails**: a bootstrap is never reported as a pass, and no threshold, check or branch-protection rule is relaxed.
+
+Safe order (each step is an owner action because it touches repository settings or merges a red check):
+
+1. Review PR #6. The checks that *can* run on it are green (python, web, e2e, docker); the evaluator code it changes is validated by those suites and by `evaluator-validation`.
+2. Merge it **once**, as the owner, before required checks exist. Branch protection is not enabled today, so no protection is bypassed; enabling it first would force a bypass, so do not.
+3. Immediately enable branch protection on `main`: require `eval-gate-result`, `python`, `web`, `e2e`, `docker`, require Code Owners review (needs a second maintainer for independence).
+4. Prove the gate on the real base: open a disposable PR from `main` with a compatible new agent version and one with a regressed version (the four scenarios in `evidence/ci-proofs/` can be repeated verbatim); expect pass / reject.
+
+From step 3 on, every PR is gated by trusted code that already lives on `main`.
+
 ## What this does NOT prove (read this)
 * **PR agent code runs in the same Python process as the trusted evaluator.** A malicious agent could patch the evaluator at import
   time. Mitigations here: no secrets, read-only token, throw-away DB, pinned lockfile. The real control is **independent human review of agent changes**, below. A subprocess/container boundary between the trusted scorer and the agent under test (so PR code never shares a process with the evaluator) is the next hardening step and is **not implemented**. Interim controls: trusted entries precede the PR's agent directory on `sys.path`; `check_pins.py` rejects any top-level module beside `demo_agents` (shadowing); suite selection fails closed (an agent-package change no suite claims selects every suite); NUL-separated, unquoted file lists.

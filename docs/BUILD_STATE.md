@@ -78,5 +78,9 @@ Evaluator case study (section 7): `docs/EVALUATOR_CASE_STUDY.md`.
 - String-anchored patch scripts silently no-op after ruff reflows code: always grep to verify a patch landed (it bit twice).
 - Docker Postgres for tests: `ARS_TEST_POSTGRES_URL=postgresql+psycopg://postgres:<pw>@127.0.0.1:5499/ars_test` (throw-away container; needs `DOCKER_CONFIG=/tmp/dockercfg DOCKER_HOST=unix:///Users/<you>/.colima/default/docker.sock`).
 
+## Design and release pass (2026-11-25)
+Redesigned dashboard (see `docs/DESIGN_SYSTEM.md`): measurement-instrument identity (CI-interval mark, cobalt accent, IBM Plex), grouped sidebar with evidence-kind legend, Overview leads with the latest valid live comparison and states "No regression detected. Improvement not established." when the interval includes zero (deltas drawn without verdict colour), `Ledger` replaces KPI tile grids, judge registry answers "which judges can gate a release", trace inspector (arrow-key nav, structured attributes, copy). Project skills added: dashboard-design (rewritten), data-visualization, visual-qa, accessibility-review. `apps/web/tests/visual-qa.mjs` renders 12 pages x 6 widths x 2 themes and fails on horizontal overflow; it found and we fixed real overflow bugs (a global `nowrap`, grid children without `min-w-0`). Independent visual review applied once. Before-screenshots kept in `docs/images/before/`.
+CI bootstrap: workflow now fails with an explicit "Trusted base has no eval gate" message on the bootstrap PR; owner procedure in `docs/CI.md` (Staged migration). Test-count audit: `pytest --collect-only` is 136 tests on the reviewed main (76189c9) and 263 now; per-file diff shows no file lost any test (only additions/increases). The figure 278 appears in no committed file.
+
 ## Next action
-Dashboard finishing (in progress, separate fork), README/ARCHITECTURE/EVAL_METHODOLOGY/DEMO/LEARNING_GUIDE/ADR updates, INTERVIEW_GUIDE, deployment assessment (not deployed; costs unverified), final verification, four read-only reviewers, secret re-scan, PR.
+Owner: merge PR #6 once (docs/CI.md Staged migration), enable branch protection, connect repo in Render. Not deployed; no public URL.
