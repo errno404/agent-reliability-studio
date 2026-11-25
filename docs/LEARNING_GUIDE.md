@@ -27,6 +27,20 @@ ideas, (3) justify each design decision, and (4) discuss trade-offs.
 | **Non-inferiority margin** | How much worse is still acceptable (5 pts) | "Not significantly worse" ≠ "equivalent"; the margin makes "acceptable" explicit |
 | **Regression gate** | CI check that blocks on regression / invalid / inconclusive | Turns "seems fine" into a repeatable, recorded decision |
 
+## New in the engineering pass (study these next)
+
+| Idea | One line | Why it exists |
+|---|---|---|
+| **Comparison intent** | You declare what changed (prompt / agent / model / tool / evaluator); everything else must match | A comparison where an *unlisted* thing also changed is not evidence about the change you claim |
+| **Evaluator hash** | A hash of the evaluator code is recorded per run | If the ruler changes between two runs, you cannot compare them (this happened in experiment 001 and was refused) |
+| **Selective missingness** | Errors that cluster on hard cases can make a worse agent look fine | So I also count errors as failures and refuse comparisons with too much missing evidence |
+| **Eligible cohort** | pass^k is computed only over cases with exactly k usable trials; the excluded ones are listed with reasons | Otherwise a dropped case silently improves the score |
+| **Dev vs held-out** | Investigate failures on dev; freeze; measure once on held-out | Tuning on the test set gives a result that will not repeat |
+| **Non-inferiority vs improvement** | "Not worse by more than 5 pts" is a different claim from "better" | The honest verdict of experiment 001 is the first, not the second |
+| **Trusted baseline** | Pins and the evaluator come from the base branch, not the PR | A PR must not be able to edit the rules it is judged by |
+| **Lease + fencing token** | A worker owns a job only while its lease is valid; stale workers are refused | Slow samples and crashed workers must not corrupt a run |
+| **Untrusted annotation** | Anonymous labels are shown but never count as evidence | You cannot call an unauthenticated handle a verified human |
+
 ## Walk through the demo regression (your best interview story)
 
 1. v2 fixes v1's sloppy behaviour (checks eligibility before refunds, asks instead of guessing, retrieves policy): **+50 pts** overall, CI [+26.7, +72.2].
@@ -54,7 +68,7 @@ ideas, (3) justify each design decision, and (4) discuss trade-offs.
 - *How do you know your LLM judge is trustworthy?* Calibration: κ, FPR, confusion matrix against reference labels; identity-hashed; the gate refuses non-admitted judges.
 - *What is pass^k and why not average accuracy?* Reliability across repeats; averages hide flaky tasks.
 - *How do you stop prompt injection tests being flaky or unsafe?* Deterministic frozen corpus, deterministic assertions, synthetic secret only.
-- *What would you do next?* Calibrate a real judge on human labels; bigger domain datasets; authenticated annotators.
+- *What would you do next?* A subprocess boundary between scorer and agent; calibrate a real judge on human labels (the annotation workflow exists); a larger, harder benchmark; more models. See `docs/INTERVIEW_GUIDE.md` for 20 grounded Q&As.
 
 ## Five things to study first
 
