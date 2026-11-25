@@ -1,21 +1,26 @@
 # support agent — version pins
 
 **Published versions are frozen.** Never edit a version after evaluation results exist for it. To change behaviour:
-1. copy `vN` to `vN+1`; 2. change `vN+1` only; 3. add a row here (`python scripts/check_pins.py --update`) with a
-note describing the change; 4. re-run the evaluation and compare against the previous version.
-CI (`scripts/check_pins.py --base origin/main`) fails if a frozen version changes or behaviour changes without this file.
+1. copy `vN` to `vN+1`; 2. change `vN+1` only; 3. add a row here (`python scripts/check_pins.py --update --evidence <ref>`)
+with a note describing the change; 4. re-run the evaluation and compare against the previous version.
+CI (`scripts/check_pins.py --base origin/main`) reads the pins from the TRUSTED BASELINE commit: published pins cannot be
+removed, rewritten or un-frozen, new versions must match their on-disk hash and cite evidence, and a change to shared
+behaviour-affecting dependencies must record new re-measurement evidence.
 
-| Version | Code hash | Prompt hash | Status | Pinned | Change note |
-|---|---|---|---|---|---|
-| v1 | `5ed3ce5c2cb20fe6` | `75fa5b49ce4bae33` | frozen | 2026-11-24 | Fast but sloppy: redundant lookups, skips eligibility checks, guesses missing information, answers policy from memory, trusts claimed authority. |
-| v2 | `c02b6bc43d04f3f2` | `a5fa40190d3c6a1c` | frozen | 2026-11-24 | Policy-first: eligibility check before refunds, clarification instead of guessing, retrieves policy, refuses extraction. KNOWN REGRESSION: address parser mishan |
+| Version | Code hash | Prompt hash | Status | Pinned | Evidence | Change note |
+|---|---|---|---|---|---|---|
+| v1 | `5ed3ce5c2cb20fe6` | `75fa5b49ce4bae33` | frozen | 2026-11-24 |  | Fast but sloppy: redundant lookups, skips eligibility checks, guesses missing information, answers policy from memory, trusts claimed authority. |
+| v2 | `c02b6bc43d04f3f2` | `a5fa40190d3c6a1c` | frozen | 2026-11-24 |  | Policy-first: eligibility check before refunds, clarification instead of guessing, retrieves policy, refuses extraction. KNOWN REGRESSION: address parser mishan |
 
-Hashes cover the version directory (code, prompt, metadata). Shared harness code in `demo_agents/runtime.py` and
-`demo_agents/<agent>/harness.py` is infrastructure only (spans, tool plumbing); policy and behaviour live in the version directories.
-The `coding` agent's hash covers its prompt and the scripted patch plans in `fixtures/code/solutions/`.
+Shared-dependency hash: `34e208b874c0ace9` (evidence: docs/experiments/001-research-agent-reliability.md). It covers the harness/runtime, fixtures
+and MCP server this agent's behaviour depends on, which are NOT inside any version directory.
 
 ```json ars-pins
 {
+  "_shared": {
+    "deps_hash": "34e208b874c0ace9",
+    "evidence": "docs/experiments/001-research-agent-reliability.md"
+  },
   "v1": {
     "agent_hash": "5ed3ce5c2cb20fe6",
     "frozen": true,
