@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="agent-eval-gate" tests="3" failures="1"><testcase classname="address" name="sup-20-address-missing-address-clarify"><failure message="pass rate 1.00 -&gt; 0.67" /></testcase><testcase classname="tool_failure" name="sup-29-lookup-transient-failure" /><testcase classname="gate" name="release-gate" /></testsuite>
