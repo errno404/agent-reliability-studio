@@ -132,3 +132,12 @@ def test_percentile():
     assert percentile([5], 95) == 5
     assert percentile([1, 2, 3, 4], 50) == pytest.approx(2.5)
     assert math.isclose(percentile(list(range(101)), 95), 95)
+
+
+def test_small_significant_drop_inside_margin_is_flagged_not_silent():
+    from evalcore.stats import Decision, classify_delta
+
+    d, why = classify_delta(-0.049, -0.001, 0.05)
+    assert d == Decision.NO_MEANINGFUL_REGRESSION and "small regression is likely" in why
+    d2, why2 = classify_delta(-0.01, 0.04, 0.05)
+    assert d2 == Decision.NO_MEANINGFUL_REGRESSION and "likely" not in why2

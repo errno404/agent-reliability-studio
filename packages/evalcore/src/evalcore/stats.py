@@ -46,48 +46,93 @@ def per_case_outcomes(samples: Iterable[SampleResult]) -> dict[str, list[bool]]:
 
 @dataclass(frozen=True)
 class RepeatedRunStats:
-    n_cases: int
-    n_samples: int
-    k: int  # min samples per case actually used
-    single_run_pass_rate: float
-    single_run_ci: tuple[float, float]
-    pass_hat_k: float  # pass^k: passes EVERY repetition (reliability)
-    pass_at_k: float  # passes AT LEAST ONCE (capability)
+    """Repeated-run metrics over an EXPLICIT eligible cohort.
+
+    * ``intended_k``: repetitions the run was supposed to have per case.
+    * ``eligible_cases``: cases that have exactly ``intended_k`` usable (passed/failed) samples. ``pass_hat_k`` (all k
+      pass) and ``pass_at_k`` (at least one passes) are BOTH computed over this same cohort and the same k.
+    * ``excluded``: reason -> case ids that were left out (execution errors, missing repetitions, ...). Nothing is dropped
+      silently; a hard case that crashed is reported as excluded, never as a pass.
+    * ``mean_trial_pass_rate``: the average of individual trials over ALL usable samples (a mean over repeated trials, which
+      is not the same quantity as a single run's pass rate). ``mean_trial_ci`` is a Wilson interval that treats trials as
+      independent: it is optimistic because repetitions of one case are correlated; use the case-level bootstrap to decide.
+    """
+
+    n_cases: int  # cases with at least one usable sample
+    n_samples: int  # usable samples
+    k: int  # eligible k (== intended_k when given)
+    intended_k: int
+    eligible_cases: int
+    excluded: dict[str, list[str]]
+    mean_trial_pass_rate: float
+    mean_trial_ci: tuple[float, float]
+    pass_hat_k: float
+    pass_at_k: float
     flaky_cases: list[str] = field(default_factory=list)
     flips_by_category: dict[str, int] = field(default_factory=dict)
+    ci_method: str = "wilson_pooled_trials_ignores_case_clustering"
+
+    @property
+    def single_run_pass_rate(self) -> float:  # backwards-compatible alias; see mean_trial_pass_rate
+        return self.mean_trial_pass_rate
+
+    @property
+    def single_run_ci(self) -> tuple[float, float]:
+        return self.mean_trial_ci
+
+    @property
+    def n_excluded(self) -> int:
+        return sum(len(v) for v in self.excluded.values())
 
 
-def repeated_run_stats(samples: Sequence[SampleResult]) -> RepeatedRunStats:
-    """Single-run pass rate, pass^k, pass@k and flaky detection.
-
-    pass^k uses the cases' full repetition set; cases with differing numbers of usable
-    samples are compared on what they have (k reported as the minimum).
-    """
+def repeated_run_stats(
+    samples: Sequence[SampleResult], intended_k: int | None = None, case_ids: Sequence[str] | None = None
+) -> RepeatedRunStats:
     outs = per_case_outcomes(samples)
     cat = {s.case_id: s.category for s in samples}
-    n_cases = len(outs)
-    if n_cases == 0:
-        return RepeatedRunStats(0, 0, 0, 0.0, (0.0, 1.0), 0.0, 0.0)
+    k = intended_k or max((len(v) for v in outs.values()), default=0)
+    all_cases = list(case_ids) if case_ids is not None else sorted({s.case_id for s in samples})
+    excluded: dict[str, list[str]] = {}
+    status_of: dict[str, set[str]] = {}
+    for s in samples:
+        status_of.setdefault(s.case_id, set()).add(s.status.value)
+    eligible: dict[str, list[bool]] = {}
+    for c in all_cases:
+        v = outs.get(c, [])
+        if len(v) == k and k > 0:
+            eligible[c] = v
+            continue
+        sts = status_of.get(c, set())
+        reason = (
+            "no_samples"
+            if c not in status_of
+            else "execution_error"
+            if "execution_error" in sts
+            else "invalid_or_skipped"
+            if sts & {"invalid", "skipped"}
+            else "missing_repetitions"
+        )
+        excluded.setdefault(reason, []).append(c)
     n_samples = sum(len(v) for v in outs.values())
     passes = sum(sum(v) for v in outs.values())
-    full = max(len(v) for v in outs.values())
-    complete = {c: v for c, v in outs.items() if len(v) == full}  # pass^k needs the same k for every case
-    pass_all = sum(1 for v in complete.values() if all(v))
-    pass_any = sum(1 for v in outs.values() if any(v))
-    flaky = sorted(c for c, v in outs.items() if any(v) and not all(v))
+    flaky = sorted(c for c, v in eligible.items() if any(v) and not all(v))
     flips: dict[str, int] = defaultdict(int)
     for c in flaky:
-        flips[cat[c]] += 1
+        flips[cat.get(c, "?")] += 1
+    ne = len(eligible)
     return RepeatedRunStats(
-        n_cases,
-        n_samples,
-        full,
-        passes / n_samples,
-        wilson_interval(passes, n_samples),
-        pass_all / len(complete),
-        pass_any / n_cases,
-        flaky,
-        dict(flips),
+        n_cases=len(outs),
+        n_samples=n_samples,
+        k=k,
+        intended_k=k,
+        eligible_cases=ne,
+        excluded=excluded,
+        mean_trial_pass_rate=(passes / n_samples) if n_samples else 0.0,
+        mean_trial_ci=wilson_interval(passes, n_samples) if n_samples else (0.0, 1.0),
+        pass_hat_k=(sum(1 for v in eligible.values() if all(v)) / ne) if ne else 0.0,
+        pass_at_k=(sum(1 for v in eligible.values() if any(v)) / ne) if ne else 0.0,
+        flaky_cases=flaky,
+        flips_by_category=dict(flips),
     )
 
 
@@ -111,10 +156,15 @@ class BootstrapPolicy:
     margin: float = 0.05  # practical non-inferiority margin (absolute pass-rate points)
     seed: int = 20260101
     max_candidate_only_drop: float = 0.05  # candidate-only dropped cases (errors) above this share => inconclusive
+    max_missing_share: float = (
+        0.0  # required observations that may be missing/errored/invalid before a release decision
+    )
 
     def __post_init__(self) -> None:
         if self.n_boot < 100 or not 0 < self.alpha < 1 or self.margin < 0 or self.min_cases < 1:
             raise ValueError("invalid BootstrapPolicy (n_boot >= 100, 0 < alpha < 1, margin >= 0, min_cases >= 1)")
+        if not 0 <= self.max_missing_share <= 1 or not 0 <= self.max_candidate_only_drop <= 1:
+            raise ValueError("invalid BootstrapPolicy (shares must be within [0, 1])")
 
 
 @dataclass(frozen=True)
@@ -146,8 +196,40 @@ def classify_delta(ci_low: float, ci_high: float, margin: float) -> tuple[Decisi
     if ci_high < -margin:
         return Decision.SIGNIFICANT_REGRESSION, f"CI is entirely below the -{margin:.3f} margin"
     if ci_low >= -margin:
+        if ci_high < 0:
+            # a real but small drop that the policy margin tolerates: say so instead of passing silently
+            return Decision.NO_MEANINGFUL_REGRESSION, (
+                f"CI is entirely below zero but within the -{margin:.3f} margin: a small regression is likely and is tolerated by policy"
+            )
         return Decision.NO_MEANINGFUL_REGRESSION, f"CI lower bound is within the -{margin:.3f} margin"
     return Decision.INCONCLUSIVE, "CI straddles the regression margin; more evidence needed"
+
+
+def bootstrap_delta(b: dict[str, float], c: dict[str, float], pol: BootstrapPolicy) -> tuple[float, float, float, int]:
+    """Case-level paired bootstrap of mean(c - b) over cases present in both mappings -> (delta, lo, hi, n)."""
+    common = sorted(set(b) & set(c))
+    n = len(common)
+    if n == 0:
+        return 0.0, -1.0, 1.0, 0
+    deltas = [c[i] - b[i] for i in common]
+    rng = random.Random(pol.seed)
+    means = sorted(sum(deltas[rng.randrange(n)] for _ in range(n)) / n for _ in range(pol.n_boot))
+    lo_i = int(math.floor((pol.alpha / 2) * pol.n_boot))
+    hi_i = int(math.ceil((1 - pol.alpha / 2) * pol.n_boot)) - 1
+    return sum(deltas) / n, means[max(0, lo_i)], means[min(pol.n_boot - 1, hi_i)], n
+
+
+def end_to_end_fractions(samples: Iterable[SampleResult], case_ids: Sequence[str], k: int) -> dict[str, float]:
+    """Per-case pass fraction over the INTENDED k observations: errored, invalid, skipped and missing count as FAILURES.
+
+    This is the conservative sensitivity analysis: it answers 'what if every unusable observation had failed?' so that
+    selective missingness cannot manufacture an improvement.
+    """
+    passes: dict[str, int] = defaultdict(int)
+    for s in samples:
+        if s.status == SampleStatus.PASSED:
+            passes[s.case_id] += 1
+    return {cid: min(passes.get(cid, 0), k) / k for cid in case_ids}
 
 
 def paired_cluster_bootstrap(

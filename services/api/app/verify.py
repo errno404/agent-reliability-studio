@@ -62,6 +62,13 @@ def verify_demo(s: Session) -> tuple[list[str], list[tuple[str, bool]]]:
     gates = list(s.scalars(select(CiGateDecision)))
     ck("gate has both pass and fail verdicts", {g.verdict for g in gates} == {"pass", "fail"})
     ck("a gate was blocked by an uncalibrated judge", any(not g.judge_ok for g in gates))
-    ck("synthetic runs are labelled synthetic", all(r.is_synthetic for r in runs.values()))
+    ck(
+        "synthetic runs are labelled synthetic and live runs are labelled live (never blended)",
+        all(
+            (r.is_synthetic and r.run_type != "live" and r.manifest.get("execution_kind", "synthetic") == "synthetic")
+            or (not r.is_synthetic and r.run_type == "live" and r.manifest.get("execution_kind") == "live")
+            for r in runs.values()
+        ),
+    )
     problems = [n for n, ok in checks if not ok]
     return problems, checks

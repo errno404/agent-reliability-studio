@@ -2,13 +2,13 @@ flowchart LR
   subgraph SUT["Systems under test (frozen, pinned versions)"]
     A1["support v1/v2<br/>scripted policy engine"]
     A2["research v1/v2<br/>v2 = LangGraph"]
-    A3["coding v1/v2<br/>real sandbox + unittest"]
+    A3["coding v1/v2<br/>temp-dir harness + unittest (not a sandbox)"]
     MCP[("Frozen MCP web<br/>.example corpus")]
     A2 --> MCP
   end
   subgraph CORE["evalcore (framework-agnostic)"]
     ADP["AgentAdapter<br/>callable · LangGraph · Claude Code CLI · LiteLLM"]
-    ASSERT["22 deterministic assertions"]
+    ASSERT["24 deterministic assertions"]
     SCORE["layers: outcome · trajectory · component · policy"]
     JUDGE["LLM judge + calibration<br/>admission policy"]
     STATS["Wilson · paired cluster bootstrap<br/>McNemar · pass^k / pass@k"]

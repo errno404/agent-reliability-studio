@@ -72,6 +72,7 @@ class DatasetDetail(DatasetVersionOut):
 
 
 class RunOut(Out):
+    execution_kind: str
     id: str
     name: str
     run_type: str
@@ -188,6 +189,7 @@ class ComparisonOut(Out):
     baseline_label: str
     candidate_label: str
     mode: str
+    intent: str
     policy_name: str
     policy: dict[str, Any]
     decision: str

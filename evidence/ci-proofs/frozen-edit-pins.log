@@ -1,0 +1,3 @@
+pins	Pins vs the TRUSTED baseline (frozen versions immutable; new versions need evidence; shared deps re-measured)	2026-11-25T00:59:39.6830205Z PIN VIOLATION: support:v2 baseline pin rewritten: agent_hash 'c02b6bc43d04f3f2' -> 'abc41bbc012f0eb3'
+pins	Pins vs the TRUSTED baseline (frozen versions immutable; new versions need evidence; shared deps re-measured)	2026-11-25T00:59:39.6830917Z PIN VIOLATION: support:v2 is frozen in the baseline but its on-disk content differs from the baseline pin
+pins	Pins vs the TRUSTED baseline (frozen versions immutable; new versions need evidence; shared deps re-measured)	2026-11-25T00:59:39.6831575Z PIN VIOLATION: support:v2 is frozen but files under packages/demo_agents/demo_agents/support/v2/ changed in this diff

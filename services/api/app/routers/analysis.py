@@ -104,8 +104,10 @@ def overview(s: Session = Depends(get_session)) -> dict[str, Any]:
 
 # ------------------------------------------------------------------ comparisons
 @router.get("/comparisons", response_model=list[sc.ComparisonOut])
-def list_comparisons(s: Session = Depends(get_session)) -> list[sc.ComparisonOut]:
-    return [queries.comparison_out(c, g) for c, g in queries.comparisons_with_gates(s)]
+def list_comparisons(
+    limit: int = Query(200, ge=1, le=500), s: Session = Depends(get_session)
+) -> list[sc.ComparisonOut]:
+    return [queries.comparison_out(c, g) for c, g in queries.comparisons_with_gates(s)[:limit]]
 
 
 @router.get("/comparisons/{cid}", response_model=sc.ComparisonDetail)
@@ -174,10 +176,10 @@ def case_comparison(cid: int, case_id: str, s: Session = Depends(get_session)) -
 
 # ------------------------------------------------------------------------- gates
 @router.get("/gates", response_model=list[sc.GateOut])
-def gates(s: Session = Depends(get_session)) -> list[sc.GateOut]:
+def gates(limit: int = Query(200, ge=1, le=500), s: Session = Depends(get_session)) -> list[sc.GateOut]:
     out = []
     pairs = {c.id: c for c, _ in queries.comparisons_with_gates(s)}
-    for g in s.scalars(select(CiGateDecision).order_by(CiGateDecision.id.desc())):
+    for g in s.scalars(select(CiGateDecision).order_by(CiGateDecision.id.desc()).limit(limit)):
         c = pairs[g.comparison_id]
         boot = c.result.get("bootstrap") or {}
         out.append(

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import path from "node:path";
 
 // Reproducible README screenshots. Skipped in normal runs; `python scripts/capture_screenshots.py` sets CAPTURE=1.
-const OUT = path.resolve(process.cwd(), "../../docs/images"); // tests run from apps/web
+const OUT = process.env.SHOT_OUT ?? path.resolve(process.cwd(), "../../docs/images"); // tests run from apps/web
 test.skip(!process.env.CAPTURE, "set CAPTURE=1 to capture screenshots");
 test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.5, colorScheme: "dark" });
 
@@ -39,7 +39,7 @@ test("capture", async ({ page, request }) => {
   await shot("trace.png");
 
   await page.goto("/judges");
-  await expect(page.getByText("CALIBRATED — allowed for gating")).toBeVisible();
+  await expect(page.getByText("Which judges can gate a release?")).toBeVisible();
   await shot("judge-calibration.png");
 
   await page.goto("/failures");
@@ -47,11 +47,37 @@ test("capture", async ({ page, request }) => {
   await shot("failures.png");
 
   await page.goto("/gates");
-  await expect(page.getByText(/GATE (PASS|FAIL)/).first()).toBeVisible();
+  await expect(page.getByText(/gate:? (pass|fail)/i).first()).toBeVisible();
   await shot("gates.png");
+
+  // live experiment (real model) vs synthetic evidence: separate, labelled, never blended
+  const comps = (await (await request.get("/api/comparisons")).json()) as { id: number; name: string }[];
+  await page.goto("/experiments");
+  await expect(page.getByRole("heading", { name: /Experiment 001/ })).toBeVisible();
+  await shot("experiments-live.png", { fullPage: true });
+  await page.goto(`/compare/${comps.find((c) => /held-out/.test(c.name))!.id}`);
+  await expect(page.getByText("Provenance and controlled variables")).toBeVisible();
+  await shot("compare-live-heldout.png", { fullPage: true });
+  await page.goto(`/compare/${comps.find((c) => /\(dev\)/.test(c.name))!.id}`);
+  await expect(page.getByText(/Why this is INVALID/)).toBeVisible();
+  await shot("compare-live-invalid.png", { fullPage: true });
+  await page.addInitScript(() => localStorage.setItem("annotator", "shot-annotator"));
+  await page.goto("/judges/annotate");
+  await expect(page.getByText("Public annotation is untrusted.")).toBeVisible();
+  await shot("annotate-untrusted.png");
 
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");
   await page.evaluate(() => { document.documentElement.classList.remove("dark"); });
   await shot("dashboard-overview-light.png");
+});
+
+test.describe("mobile 390px", () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  test("capture mobile", async ({ page }) => {
+    await page.goto("/experiments");
+    await expect(page.getByRole("heading", { name: /Experiment 001/ })).toBeVisible();
+    await settle(page);
+    await page.screenshot({ path: path.join(OUT, "experiments-live-mobile.png"), fullPage: false });
+  });
 });

@@ -10,10 +10,13 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -25,31 +28,127 @@ from .runner import RunContext
 # ---------------------------------------------------------------- sandbox --
 
 
+MAX_STREAM_BYTES = 40_000_000  # live CLI stdout cap; beyond this the run is an adapter error
+MAX_OUTPUT_BYTES = 1_000_000  # captured per stream; the process is also bounded by RLIMIT_FSIZE on its output files
+LIMITS = {"cpu_s": 60, "fsize_mb": 16, "nproc": 256}  # applied by the launcher; best effort per platform
+
+_LAUNCHER = (
+    "import os,resource,sys\n"
+    "cpu,fs,np=int(sys.argv[1]),int(sys.argv[2]),int(sys.argv[3])\n"
+    "def lim(r,v):\n"
+    "    try: resource.setrlimit(r,(v,v))\n"
+    "    except (ValueError,OSError): pass\n"
+    "lim(resource.RLIMIT_CPU,cpu); lim(resource.RLIMIT_FSIZE,fs*1024*1024)\n"
+    "if sys.platform.startswith('linux'): lim(resource.RLIMIT_NPROC,np)\n"
+    "os.execvp(sys.argv[4],sys.argv[4:])\n"
+)
+
+
 def run_command(
     argv: list[str], cwd: Path, timeout_s: float, env: dict[str, str] | None = None, stdin: str | None = None
 ) -> tuple[int | None, str, str, bool]:
-    """Run a command with a timeout and kill the WHOLE process tree on expiry.
+    """Run a command with limits and kill the WHOLE process tree on expiry.
 
-    Returns (exit_code | None, stdout, stderr, timed_out). Never uses a shell.
+    Returns (exit_code | None, stdout, stderr, timed_out). Never uses a shell. CPU time and the size of any file the process writes
+    (including its captured output) are bounded by rlimits; captured output is truncated to ``MAX_OUTPUT_BYTES`` per stream.
+
+    THIS IS NOT A SANDBOX. It does not restrict the filesystem outside ``cwd`` or the network, and on macOS it cannot cap memory.
+    It is only ever used for repo-authored fixtures and pinned test commands (see ``trusted_test_command``), never for
+    user-supplied text.
     """
-    proc = subprocess.Popen(
-        argv,
-        cwd=cwd,
-        env=env,
-        stdin=subprocess.PIPE if stdin is not None else None,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        start_new_session=True,
-    )
-    try:
-        out, err = proc.communicate(stdin, timeout=timeout_s)
-        return proc.returncode, out, err, False
-    except subprocess.TimeoutExpired:
-        with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        out, err = proc.communicate()
-        return None, out or "", err or "", True
+    import tempfile
+
+    wrapped = [
+        sys.executable,
+        "-c",
+        _LAUNCHER,
+        str(LIMITS["cpu_s"]),
+        str(LIMITS["fsize_mb"]),
+        str(LIMITS["nproc"]),
+        *argv,
+    ]
+    with tempfile.TemporaryFile() as fo, tempfile.TemporaryFile() as fe:
+        proc = subprocess.Popen(
+            wrapped,
+            cwd=cwd,
+            env=env,
+            stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
+            stdout=fo,
+            stderr=fe,
+            text=True,
+            start_new_session=True,
+        )
+        timed_out = False
+        try:
+            proc.communicate(stdin, timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            proc.communicate()
+
+        def read(f) -> str:  # type: ignore[no-untyped-def]
+            f.seek(0)
+            return f.read(MAX_OUTPUT_BYTES).decode("utf-8", "replace")
+
+        return (None if timed_out else proc.returncode), read(fo), read(fe), timed_out
+
+
+TRUSTED_TEST_MODULES = ("pytest", "unittest")
+
+
+_VALUE_FLAGS = {"unittest": {"-s", "-t", "-p", "-k"}, "pytest": {"-k"}}
+_BARE_FLAGS = {"unittest": {"-v", "-q", "-b"}, "pytest": {"-q", "-v", "-vv", "-x", "--tb=short", "--tb=line"}}
+
+
+_SAFE_VALUE = re.compile(r"[A-Za-z0-9_./:\[\]*?=,+-]+")  # no '@' (pytest argfiles), no spaces, no shell metacharacters
+
+
+def _safe_value(v: str) -> bool:
+    return bool(_SAFE_VALUE.fullmatch(v)) and not v.startswith(("-", "/", "~", "@")) and ".." not in Path(v).parts
+
+
+def trusted_test_command(argv: list[str]) -> list[str]:
+    """Allow only ``PYTHON -m pytest|unittest`` with an explicit allow-list of flags and *relative, safe* values.
+
+    Everything else is rejected, notably ``-c``, ``-p`` for pytest (plugin loading), ``--basetemp``/``--rootdir``/``-o`` and any
+    option spelled ``--x=/abs`` or ``-pevil``. Raises ValueError.
+    """
+    if len(argv) < 3 or argv[0] != "PYTHON" or argv[1] != "-m" or argv[2] not in TRUSTED_TEST_MODULES:
+        raise ValueError(f"untrusted test command {argv[:3]!r}: only 'PYTHON -m pytest|unittest ...' is allowed")
+    mod, rest, i = argv[2], argv[3:], 0
+    while i < len(rest):
+        tok = rest[i]
+        if tok in _VALUE_FLAGS[mod]:
+            if i + 1 >= len(rest) or not _safe_value(rest[i + 1]):
+                raise ValueError(f"untrusted value for {tok}")
+            i += 2
+        elif tok in _BARE_FLAGS[mod]:
+            i += 1
+        elif tok.startswith("-"):
+            raise ValueError(f"untrusted test option {tok!r}")
+        elif _safe_value(tok):
+            i += 1
+        else:
+            raise ValueError(f"untrusted test argument {tok!r}")
+    return argv
+
+
+def inside(root: Path, rel: str) -> Path:
+    """Resolve ``rel`` under ``root``; reject absolute paths, traversal, and anything that resolves through a symlink outside."""
+    if not rel or Path(rel).is_absolute() or ".." in Path(rel).parts:
+        raise ValueError(f"path escapes the workspace: {rel!r}")
+    target = (root / rel).resolve()
+    if not target.is_relative_to(root.resolve()):
+        raise ValueError(f"path escapes the workspace: {rel!r}")
+    return target
+
+
+def assert_no_symlinks(root: Path) -> None:
+    """A fixture repository may not contain symlinks (they could point outside the sandbox directory)."""
+    bad = [p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_symlink()]
+    if bad:
+        raise ValueError(f"symlinks are not allowed in a workspace: {bad[:3]}")
 
 
 def safe_env() -> dict[str, str]:
@@ -300,3 +399,288 @@ def result_from_langgraph_messages(messages: list[Any], model: str | None = None
                     call.result = content
     res.final_output = final
     return res
+
+
+# ------------------------------------------------- Claude Code as a tool-using research agent (live LLM)
+def _strip_mcp_prefix(name: str) -> str:
+    """`mcp__fixture__web_search` -> `web_search` (the server prefix is an transport detail, not the tool identity)."""
+    return name.split("__", 2)[2] if name.startswith("mcp__") and name.count("__") >= 2 else name
+
+
+def _msg_blocks(ev: dict[str, Any]) -> list[dict[str, Any]]:
+    """Content blocks of an event's message, tolerant of null/odd shapes (a malformed event must not discard a valid answer)."""
+    m = ev.get("message")
+    c = m.get("content") if isinstance(m, dict) else None
+    return [b for b in c if isinstance(b, dict)] if isinstance(c, list) else []
+
+
+def parse_claude_stream(
+    events: list[tuple[float, dict[str, Any]]], redactor: Any = None, model_requested: str | None = None
+) -> AgentResult:
+    """Convert Claude Code ``--output-format stream-json`` events into an :class:`AgentResult`.
+
+    ``events`` are ``(arrival_seconds_since_start, event_dict)``. Nothing is synthesized: tool calls come from real
+    ``tool_use`` blocks, results from the matching ``tool_result`` blocks, timings from event arrival, tokens/model from
+    the provider-reported ``result``/``modelUsage``. Reasoning/thinking content is never read or stored.
+    """
+    from . import semconv as sc
+    from .redaction import Redactor
+    from .tracing import TraceRecorder
+
+    rd = redactor or Redactor()
+    rec = TraceRecorder(rd)
+    res = AgentResult(model=None)
+    pending: dict[str, tuple[ToolCall, float]] = {}
+    init_model: str | None = None
+    final_text = ""
+    result_event: dict[str, Any] | None = None
+    t_prev = 0.0
+    with rec.span(
+        sc.span_name(sc.OP_INVOKE_AGENT, "claude-code-research"),
+        {sc.OPERATION_NAME: sc.OP_INVOKE_AGENT, sc.PROVIDER_NAME: "anthropic", sc.AGENT_NAME: "claude-code-research"},
+    ) as root:
+        for t, ev in events:
+            rec.advance(max(0.0, (t - t_prev) * 1000))
+            t_prev = t
+            typ = ev.get("type")
+            if typ == "system" and ev.get("subtype") == "init":
+                init_model = ev.get("model")
+            elif typ == "assistant":
+                for b in _msg_blocks(ev):
+                    if b.get("type") == "tool_use":
+                        call = ToolCall(
+                            name=_strip_mcp_prefix(str(b.get("name", ""))), arguments=dict(b.get("input") or {})
+                        )
+                        pending[str(b.get("id"))] = (call, t)
+                        res.tool_calls.append(call)
+                    elif b.get("type") == "text":
+                        final_text = str(b.get("text", ""))  # the last text block of the last assistant turn
+                res.steps += 1
+            elif typ == "user":
+                for b in _msg_blocks(ev):
+                    if b.get("type") != "tool_result":
+                        continue
+                    call, started = pending.pop(str(b.get("tool_use_id")), (None, t))
+                    if call is None:
+                        continue
+                    content = b.get("content")
+                    text = (
+                        content
+                        if isinstance(content, str)
+                        else "".join(c.get("text", "") for c in content or [] if isinstance(c, dict))
+                    )
+                    try:
+                        parsed: Any = json.loads(text)
+                        parsed = (
+                            json.loads(parsed["result"])
+                            if isinstance(parsed, dict) and isinstance(parsed.get("result"), str)
+                            else parsed
+                        )
+                    except (json.JSONDecodeError, TypeError, KeyError):
+                        parsed = text
+                    call.result = parsed
+                    if b.get("is_error") or (isinstance(parsed, dict) and parsed.get("ok") is False):
+                        call.error = str((parsed.get("error") if isinstance(parsed, dict) else parsed) or "tool error")[
+                            :300
+                        ]
+                    call.latency_ms = round((t - started) * 1000, 1)
+                    op = sc.OP_RETRIEVAL if call.name in ("web_search", "web_fetch") else sc.OP_EXECUTE_TOOL
+                    # tool span reconstructed from the REAL start/end arrival times
+                    with rec.span(
+                        sc.span_name(op, call.name),
+                        {sc.OPERATION_NAME: op, sc.TOOL_NAME: call.name, sc.TOOL_CALL_ARGUMENTS: call.arguments},
+                    ) as sp:
+                        rec.advance(0)
+                        rec.set_attr(sp, sc.TOOL_CALL_RESULT, call.result if not call.error else {"error": call.error})
+                        if call.error:
+                            rec.mark_error(sp, call.error)
+            elif typ == "result":
+                result_event = ev
+        usage = (result_event or {}).get("usage")
+        usage = usage if isinstance(usage, dict) else {}
+        mu = (result_event or {}).get("modelUsage")
+        mu = mu if isinstance(mu, dict) else {}
+
+        def num(v: Any) -> int:  # null / odd token counts must not discard a valid answer
+            return int(v) if isinstance(v, int | float) and not isinstance(v, bool) else 0
+
+        resolved = next(iter(mu), None) or init_model
+        res.model = resolved
+        res.input_tokens = (
+            num(usage.get("input_tokens"))
+            + num(usage.get("cache_read_input_tokens"))
+            + num(usage.get("cache_creation_input_tokens"))
+        )
+        res.output_tokens = num(usage.get("output_tokens"))
+        res.turns = num((result_event or {}).get("num_turns")) or 1
+        dur = (result_event or {}).get("duration_ms")
+        res.latency_ms = (
+            float(dur) if isinstance(dur, int | float) and not isinstance(dur, bool) and dur else t_prev * 1000
+        )
+        rec.set_attr(root, sc.REQUEST_MODEL, model_requested or "")
+        rec.set_attr(root, sc.RESPONSE_MODEL, resolved or "")
+        rec.set_attr(root, sc.INPUT_TOKENS, res.input_tokens)
+        rec.set_attr(root, sc.OUTPUT_TOKENS, res.output_tokens)
+    if result_event is None:
+        res.error, res.error_kind = "no result event in the CLI stream (process ended early)", "adapter"
+    elif result_event.get("is_error") or result_event.get("subtype") != "success":
+        res.error, res.error_kind = str(result_event.get("result") or result_event.get("subtype"))[:400], "provider"
+    else:
+        res.final_output = str(result_event.get("result") or final_text)
+    res.metadata = {
+        "execution_kind": "live",
+        "provider": "anthropic",
+        "model_requested": model_requested,
+        "model_resolved": resolved,
+        "api_equivalent_cost_usd": (result_event or {}).get("total_cost_usd"),
+        "duration_api_ms": (result_event or {}).get("duration_api_ms"),
+        "cost_note": "API-equivalent estimate reported by the CLI; subscription runs are not billed per token",
+    }
+    res.spans = rec.records()
+    return res
+
+
+class ClaudeCodeToolAgent:
+    """A real LLM agent: Claude Code with ONLY the supplied MCP tools (no shell, files or web), isolated from user settings.
+
+    The model's decisions and answers are the provider's; the tool environment is the frozen synthetic fixture web. Run with
+    the user's own authenticated CLI (no credentials are read or extracted). Local/admin execution only.
+    """
+
+    agent_hash: str = ""  # set by the factory: content hash of the frozen version directory
+    prompt_hash: str = ""
+    requested_model: str = ""
+
+    def __init__(
+        self,
+        name: str,
+        version: str,
+        system_prompt: str,
+        mcp_servers: dict[str, Any],
+        allowed_tools: list[str],
+        model: str = "haiku",
+        timeout_s: float = 180.0,
+        max_budget_usd: float = 0.50,
+        binary: str | None = None,
+        redactor: Any = None,
+    ):
+        self.name, self.version, self.system_prompt = name, version, system_prompt
+        self.mcp_servers, self.allowed_tools, self.model = mcp_servers, allowed_tools, model
+        self.timeout_s, self.max_budget_usd, self.redactor = timeout_s, max_budget_usd, redactor
+        self.binary = binary or os.environ.get("ARS_CLAUDE_BIN") or shutil.which("claude")
+
+    @property
+    def available(self) -> bool:
+        return bool(self.binary and Path(self.binary).exists())
+
+    def build_argv(self, prompt: str) -> list[str]:
+        assert self.binary
+        return [
+            self.binary,
+            "-p",  # the task text is sent on stdin, never as an argv element (a leading "-" cannot be parsed as a flag)
+            "--output-format",
+            "stream-json",
+            "--verbose",
+            "--mcp-config",
+            json.dumps({"mcpServers": self.mcp_servers}),
+            "--strict-mcp-config",
+            "--tools",
+            "",
+            "--allowedTools",
+            *self.allowed_tools,
+            "--model",
+            self.model,
+            "--no-session-persistence",
+            "--system-prompt",
+            self.system_prompt,
+            "--setting-sources",
+            "",
+            "--disable-slash-commands",
+            "--settings",
+            '{"hooks":{},"enabledPlugins":{}}',
+            "--max-budget-usd",
+            f"{self.max_budget_usd:.2f}",
+        ]
+
+    def run(self, case: Case, ctx: RunContext) -> AgentResult:
+        if not self.available:
+            return AgentResult(error="claude CLI not found", error_kind="adapter", metadata={"execution_kind": "live"})
+        with tempfile.TemporaryDirectory(prefix="ars-live-") as tmp:
+            events: list[tuple[float, dict[str, Any]]] = []
+            t0 = time.monotonic()
+            # stderr goes to a file: a full pipe could otherwise block the child (deadlock). Closed explicitly below.
+            errf = tempfile.TemporaryFile()  # noqa: SIM115
+            proc = subprocess.Popen(
+                self.build_argv(case.input),
+                cwd=tmp,
+                env=safe_env(),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=errf,
+                text=True,
+                start_new_session=True,
+            )
+            try:
+                assert proc.stdin is not None
+                proc.stdin.write(case.input)
+                proc.stdin.close()
+            except (BrokenPipeError, OSError):
+                pass  # the process died early; its exit status is reported below
+            fired = threading.Event()
+
+            def _timeout() -> None:
+                fired.set()
+                _kill_group(proc)
+
+            timer = threading.Timer(self.timeout_s, _timeout)
+            timer.start()
+            try:
+                assert proc.stdout is not None
+                n_bytes = 0
+                for line in proc.stdout:
+                    n_bytes += len(line)
+                    if n_bytes > MAX_STREAM_BYTES:
+                        _kill_group(proc)
+                        return AgentResult(
+                            error="live output exceeded the stream size limit",
+                            error_kind="adapter",
+                            metadata={"execution_kind": "live"},
+                        )
+                    line = line.strip()
+                    if line.startswith("{"):
+                        try:
+                            events.append((time.monotonic() - t0, json.loads(line)))
+                        except json.JSONDecodeError:
+                            continue
+                proc.wait()
+            except UnicodeDecodeError as exc:  # garbage on stdout is an adapter error, not a crash
+                return AgentResult(
+                    error=f"undecodable CLI output: {exc}"[:200],
+                    error_kind="adapter",
+                    metadata={"execution_kind": "live"},
+                )
+            finally:
+                timer.cancel()
+                if proc.poll() is None:  # never orphan the CLI (and its MCP children) on ANY exit path
+                    _kill_group(proc)
+                    proc.wait()
+            if fired.is_set() and proc.returncode not in (0,):
+                errf.close()
+                return AgentResult(
+                    error=f"timeout after {self.timeout_s}s",
+                    error_kind="timeout",
+                    latency_ms=(time.monotonic() - t0) * 1000,
+                    metadata={"execution_kind": "live"},
+                )
+            res = parse_claude_stream(events, self.redactor, self.model)
+            if res.error and proc.returncode not in (0, None) and not events:
+                errf.seek(0)
+                tail = errf.read()[-200:].decode("utf-8", "replace")
+                res.error = f"{res.error}; exit {proc.returncode}; stderr: {tail}"
+            errf.close()
+            return res
+
+
+def _kill_group(proc: subprocess.Popen[str]) -> None:
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)

@@ -21,6 +21,7 @@ COPY mcp mcp
 COPY services services
 COPY datasets datasets
 COPY fixtures fixtures
+COPY evidence evidence
 RUN uv sync --frozen --no-dev --all-packages
 
 FROM base AS runtime

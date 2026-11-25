@@ -1,0 +1,1314 @@
+{
+  "comparison": {
+    "name": "support:v2 -> support:v3",
+    "decision": "significant_regression",
+    "valid": true,
+    "explanation": "Candidate is 48.9 points lower than baseline; the 95% CI [-71.1, -25.6] points lies entirely below the \u22125-point non-inferiority boundary. Meaningful regression.",
+    "policy": "demo-20",
+    "validity": {
+      "valid": true,
+      "reasons": [],
+      "warnings": [],
+      "mode": "strict",
+      "intent": "agent_change"
+    },
+    "result": {
+      "bootstrap": {
+        "decision": "significant_regression",
+        "delta": -0.48888888888888893,
+        "ci_low": -0.711111111111111,
+        "ci_high": -0.2555555555555556,
+        "n_common_cases": 30,
+        "n_improved": 3,
+        "n_regressed": 20,
+        "n_unchanged": 7,
+        "baseline_rate": 0.888888888888889,
+        "candidate_rate": 0.4,
+        "reason": "CI is entirely below the -0.050 margin"
+      },
+      "mcnemar": {
+        "b": 17,
+        "c": 3,
+        "p_value": 0.0025768280029296875,
+        "note": "diagnostic only; not used as the regression decision"
+      },
+      "mcnemar_note": "diagnostic only: per-case MAJORITY outcome over repeated samples, not the regression decision",
+      "baseline_summary": {
+        "n_samples": 90,
+        "n_cases": 30,
+        "status_counts": {
+          "passed": 80,
+          "failed": 10
+        },
+        "task_success": {
+          "rate": 0.8888888888888888,
+          "n": 90,
+          "passed": 80,
+          "ci_low": 0.8074221497873896,
+          "ci_high": 0.9385168081070229
+        },
+        "outcome": {
+          "rate": 0.8928571428571429,
+          "n": 84,
+          "passed": 75,
+          "ci_low": 0.8087538548365549,
+          "ci_high": 0.9425997871233551
+        },
+        "trajectory": {
+          "rate": 0.9888888888888889,
+          "n": 90,
+          "passed": 89,
+          "ci_low": 0.9397159168824657,
+          "ci_high": 0.9980359158990818
+        },
+        "component": {
+          "rate": 0.85,
+          "n": 60,
+          "passed": 51,
+          "ci_low": 0.7388541093022145,
+          "ci_high": 0.9190255941983225
+        },
+        "policy": {
+          "rate": 1.0,
+          "n": 27,
+          "passed": 27,
+          "ci_low": 0.8754449702581328,
+          "ci_high": 0.9999999999999998
+        },
+        "execution_error_rate": 0.0,
+        "latency_p50_ms": 1029.92,
+        "latency_p95_ms": 1808.39215,
+        "total_tokens": 98440,
+        "input_tokens": 84466,
+        "output_tokens": 13974,
+        "cost_usd": 0.063193,
+        "cost_label": "API-equivalent estimated cost",
+        "pass_hat_k": 0.8666666666666667,
+        "pass_at_k": 0.9,
+        "k": 3,
+        "intended_k": 3,
+        "eligible_cases": 30,
+        "excluded_cases": 0,
+        "exclusion_reasons": {},
+        "excluded_case_ids": {},
+        "mean_trial_pass_rate": 0.8888888888888888,
+        "mean_trial_ci": [
+          0.8074221497873896,
+          0.9385168081070229
+        ],
+        "mean_trial_ci_method": "wilson_pooled_trials_ignores_case_clustering",
+        "single_run_pass_rate": 0.8888888888888888,
+        "single_run_ci": [
+          0.8074221497873896,
+          0.9385168081070229
+        ],
+        "execution_success_rate": 1.0,
+        "conditional_quality_rate": 0.8888888888888888,
+        "end_to_end_success_rate": 0.8888888888888888,
+        "flaky_cases": [
+          "sup-29-lookup-transient-failure"
+        ],
+        "flips_by_category": {
+          "tool_failure": 1
+        },
+        "failure_labels": {
+          "wrong_tool_arguments": 9,
+          "state_mutation_failure": 9,
+          "repeated_tool_loop": 1
+        }
+      },
+      "candidate_summary": {
+        "n_samples": 90,
+        "n_cases": 30,
+        "status_counts": {
+          "failed": 54,
+          "passed": 36
+        },
+        "task_success": {
+          "rate": 0.4,
+          "n": 90,
+          "passed": 36,
+          "ci_low": 0.3048901987533748,
+          "ci_high": 0.5032969263594906
+        },
+        "outcome": {
+          "rate": 0.5833333333333334,
+          "n": 84,
+          "passed": 49,
+          "ci_low": 0.4765264298684706,
+          "ci_high": 0.6828516153957529
+        },
+        "trajectory": {
+          "rate": 0.6,
+          "n": 90,
+          "passed": 54,
+          "ci_low": 0.4967030736405094,
+          "ci_high": 0.6951098012466252
+        },
+        "component": {
+          "rate": 0.38333333333333336,
+          "n": 60,
+          "passed": 23,
+          "ci_low": 0.27088272374082023,
+          "ci_high": 0.5098240417590008
+        },
+        "policy": {
+          "rate": 0.5555555555555556,
+          "n": 27,
+          "passed": 15,
+          "ci_low": 0.3731302451322448,
+          "ci_high": 0.72414141822977
+        },
+        "execution_error_rate": 0.0,
+        "latency_p50_ms": 1099.813,
+        "latency_p95_ms": 1534.07935,
+        "total_tokens": 107197,
+        "input_tokens": 91809,
+        "output_tokens": 15388,
+        "cost_usd": 0.068988,
+        "cost_label": "API-equivalent estimated cost",
+        "pass_hat_k": 0.3,
+        "pass_at_k": 0.4666666666666667,
+        "k": 3,
+        "intended_k": 3,
+        "eligible_cases": 30,
+        "excluded_cases": 0,
+        "exclusion_reasons": {},
+        "excluded_case_ids": {},
+        "mean_trial_pass_rate": 0.4,
+        "mean_trial_ci": [
+          0.3048901987533748,
+          0.5032969263594906
+        ],
+        "mean_trial_ci_method": "wilson_pooled_trials_ignores_case_clustering",
+        "single_run_pass_rate": 0.4,
+        "single_run_ci": [
+          0.3048901987533748,
+          0.5032969263594906
+        ],
+        "execution_success_rate": 1.0,
+        "conditional_quality_rate": 0.4,
+        "end_to_end_success_rate": 0.4,
+        "flaky_cases": [
+          "sup-05-refund-already-refunded",
+          "sup-15-address-processing-simple",
+          "sup-20-address-missing-address-clarify",
+          "sup-21-cancel-sub-by-id",
+          "sup-29-lookup-transient-failure"
+        ],
+        "flips_by_category": {
+          "refund": 1,
+          "address": 2,
+          "subscription": 1,
+          "tool_failure": 1
+        },
+        "failure_labels": {
+          "missing_tool": 12,
+          "wrong_tool_order": 3,
+          "cost_budget": 11,
+          "repeated_tool_loop": 10,
+          "incorrect_final_answer": 32,
+          "policy_violation": 12,
+          "state_mutation_failure": 8,
+          "wrong_tool_arguments": 7,
+          "fabricated_claim": 3
+        }
+      },
+      "category_deltas": {
+        "address": {
+          "baseline": 0.5,
+          "candidate": 0.6666666666666666,
+          "delta": 0.16666666666666663,
+          "n_baseline": 18,
+          "n_candidate": 18
+        },
+        "escalation": {
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "n_baseline": 6,
+          "n_candidate": 6
+        },
+        "policy": {
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "n_baseline": 9,
+          "n_candidate": 9
+        },
+        "refund": {
+          "baseline": 1.0,
+          "candidate": 0.3333333333333333,
+          "delta": -0.6666666666666667,
+          "n_baseline": 24,
+          "n_candidate": 24
+        },
+        "subscription": {
+          "baseline": 1.0,
+          "candidate": 0.2222222222222222,
+          "delta": -0.7777777777777778,
+          "n_baseline": 9,
+          "n_candidate": 9
+        },
+        "tool_failure": {
+          "baseline": 0.8333333333333334,
+          "candidate": 0.8333333333333334,
+          "delta": 0.0,
+          "n_baseline": 6,
+          "n_candidate": 6
+        },
+        "tracking": {
+          "baseline": 1.0,
+          "candidate": 0.5,
+          "delta": -0.5,
+          "n_baseline": 18,
+          "n_candidate": 18
+        }
+      },
+      "case_changes": [
+        {
+          "case_id": "sup-01-refund-eligible-simple",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "refund",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "check_refund_eligibility",
+              "issue_refund"
+            ],
+            "candidate": [
+              "lookup_order",
+              "lookup_order",
+              "issue_refund"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "replace",
+                "baseline": [
+                  "check_refund_eligibility"
+                ],
+                "candidate": [
+                  "lookup_order"
+                ]
+              },
+              {
+                "op": "equal",
+                "tool": "issue_refund"
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "check_refund_eligibility"
+            ],
+            "added_tools": [],
+            "latency_delta_ms": -115.48000000000002,
+            "token_delta": 200,
+            "cost_delta": 0.00012600000000000003
+          }
+        },
+        {
+          "case_id": "sup-02-refund-final-sale",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "refund",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "check_refund_eligibility"
+            ],
+            "candidate": [
+              "lookup_order",
+              "lookup_order",
+              "issue_refund"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "replace",
+                "baseline": [
+                  "check_refund_eligibility"
+                ],
+                "candidate": [
+                  "lookup_order",
+                  "issue_refund"
+                ]
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "check_refund_eligibility"
+            ],
+            "added_tools": [
+              "issue_refund"
+            ],
+            "latency_delta_ms": 272.64599999999996,
+            "token_delta": 167,
+            "cost_delta": 0.00010999999999999996
+          }
+        },
+        {
+          "case_id": "sup-03-refund-outside-window",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "refund",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "check_refund_eligibility"
+            ],
+            "candidate": [
+              "lookup_order",
+              "lookup_order",
+              "issue_refund"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "replace",
+                "baseline": [
+                  "check_refund_eligibility"
+                ],
+                "candidate": [
+                  "lookup_order",
+                  "issue_refund"
+                ]
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "check_refund_eligibility"
+            ],
+            "added_tools": [
+              "issue_refund"
+            ],
+            "latency_delta_ms": -46.21799999999985,
+            "token_delta": 212,
+            "cost_delta": 0.00012799999999999997
+          }
+        },
+        {
+          "case_id": "sup-04-refund-over-500-escalate",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "refund",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "check_refund_eligibility",
+              "create_escalation_ticket"
+            ],
+            "candidate": [
+              "lookup_order",
+              "lookup_order",
+              "issue_refund"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "replace",
+                "baseline": [
+                  "check_refund_eligibility",
+                  "create_escalation_ticket"
+                ],
+                "candidate": [
+                  "lookup_order",
+                  "issue_refund"
+                ]
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "check_refund_eligibility",
+              "create_escalation_ticket"
+            ],
+            "added_tools": [
+              "issue_refund"
+            ],
+            "latency_delta_ms": 138.36200000000008,
+            "token_delta": 171,
+            "cost_delta": 9.999999999999994e-05
+          }
+        },
+        {
+          "case_id": "sup-05-refund-already-refunded",
+          "baseline": 1.0,
+          "candidate": 0.6666666666666666,
+          "delta": -0.33333333333333337,
+          "kind": "regressed",
+          "category": "refund",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "check_refund_eligibility"
+            ],
+            "candidate": [
+              "lookup_order"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "delete",
+                "baseline": [
+                  "check_refund_eligibility"
+                ],
+                "candidate": []
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "check_refund_eligibility"
+            ],
+            "added_tools": [],
+            "latency_delta_ms": -38.648000000000025,
+            "token_delta": 80,
+            "cost_delta": 3.0999999999999995e-05
+          }
+        },
+        {
+          "case_id": "sup-07-refund-missing-order-clarify",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "refund",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "check_refund_eligibility",
+              "issue_refund"
+            ],
+            "candidate": [
+              "lookup_customer",
+              "lookup_order",
+              "lookup_order",
+              "issue_refund"
+            ],
+            "ops": [
+              {
+                "op": "insert",
+                "baseline": [],
+                "candidate": [
+                  "lookup_customer"
+                ]
+              },
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "replace",
+                "baseline": [
+                  "check_refund_eligibility"
+                ],
+                "candidate": [
+                  "lookup_order"
+                ]
+              },
+              {
+                "op": "equal",
+                "tool": "issue_refund"
+              }
+            ],
+            "changed_arguments": [
+              {
+                "tool": "lookup_order",
+                "baseline": {
+                  "order_id": "O-5001"
+                },
+                "candidate": {
+                  "order_id": "O-5002"
+                }
+              },
+              {
+                "tool": "issue_refund",
+                "baseline": {
+                  "order_id": "O-5001",
+                  "amount": 89.0
+                },
+                "candidate": {
+                  "order_id": "O-5002",
+                  "amount": 24.5
+                }
+              }
+            ],
+            "identical": false,
+            "removed_tools": [
+              "check_refund_eligibility"
+            ],
+            "added_tools": [
+              "lookup_customer"
+            ],
+            "latency_delta_ms": -1157.373,
+            "token_delta": -716,
+            "cost_delta": -0.00045700000000000005
+          }
+        },
+        {
+          "case_id": "sup-09-track-in-transit",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "tracking",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "track_shipment"
+            ],
+            "candidate": [
+              "lookup_order",
+              "lookup_order",
+              "track_shipment"
+            ],
+            "ops": [
+              {
+                "op": "insert",
+                "baseline": [],
+                "candidate": [
+                  "lookup_order"
+                ]
+              },
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "equal",
+                "tool": "track_shipment"
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [],
+            "added_tools": [],
+            "latency_delta_ms": 301.0250000000001,
+            "token_delta": 112,
+            "cost_delta": 7.300000000000004e-05
+          }
+        },
+        {
+          "case_id": "sup-10-track-out-for-delivery",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "tracking",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "track_shipment"
+            ],
+            "candidate": [
+              "lookup_order",
+              "lookup_order",
+              "track_shipment"
+            ],
+            "ops": [
+              {
+                "op": "insert",
+                "baseline": [],
+                "candidate": [
+                  "lookup_order"
+                ]
+              },
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "equal",
+                "tool": "track_shipment"
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [],
+            "added_tools": [],
+            "latency_delta_ms": 35.66300000000001,
+            "token_delta": 122,
+            "cost_delta": 8.100000000000002e-05
+          }
+        },
+        {
+          "case_id": "sup-13-track-missing-order-clarify",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "tracking",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "track_shipment"
+            ],
+            "candidate": [],
+            "ops": [
+              {
+                "op": "delete",
+                "baseline": [
+                  "lookup_order",
+                  "track_shipment"
+                ],
+                "candidate": []
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "lookup_order",
+              "track_shipment"
+            ],
+            "added_tools": [],
+            "latency_delta_ms": -288.86199999999985,
+            "token_delta": 97,
+            "cost_delta": 6.100000000000007e-05
+          }
+        },
+        {
+          "case_id": "sup-15-address-processing-simple",
+          "baseline": 1.0,
+          "candidate": 0.3333333333333333,
+          "delta": -0.6666666666666667,
+          "kind": "regressed",
+          "category": "address",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "candidate": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "equal",
+                "tool": "update_shipping_address"
+              }
+            ],
+            "changed_arguments": [],
+            "identical": true,
+            "removed_tools": [],
+            "added_tools": [],
+            "latency_delta_ms": -128.12400000000002,
+            "token_delta": 178,
+            "cost_delta": 0.00011200000000000001
+          }
+        },
+        {
+          "case_id": "sup-16-address-shipped-locked",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "address",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order"
+            ],
+            "candidate": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "insert",
+                "baseline": [],
+                "candidate": [
+                  "update_shipping_address"
+                ]
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [],
+            "added_tools": [
+              "update_shipping_address"
+            ],
+            "latency_delta_ms": 269.773,
+            "token_delta": 202,
+            "cost_delta": 0.000134
+          }
+        },
+        {
+          "case_id": "sup-17-address-unit-apt",
+          "baseline": 0.0,
+          "candidate": 1.0,
+          "delta": 1.0,
+          "kind": "improved",
+          "category": "address",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "candidate": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "equal",
+                "tool": "update_shipping_address"
+              }
+            ],
+            "changed_arguments": [
+              {
+                "tool": "update_shipping_address",
+                "baseline": {
+                  "order_id": "O-5009",
+                  "street": "22 Cedar Way",
+                  "city": "Apt 5",
+                  "zip": "50005"
+                },
+                "candidate": {
+                  "order_id": "O-5009",
+                  "street": "22 Cedar Way, Apt 5",
+                  "city": "Sollund",
+                  "zip": "50005"
+                }
+              }
+            ],
+            "identical": false,
+            "removed_tools": [],
+            "added_tools": [],
+            "latency_delta_ms": 314.5730000000001,
+            "token_delta": 113,
+            "cost_delta": 7.200000000000002e-05
+          }
+        },
+        {
+          "case_id": "sup-18-address-unit-suite",
+          "baseline": 0.0,
+          "candidate": 1.0,
+          "delta": 1.0,
+          "kind": "improved",
+          "category": "address",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "candidate": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "equal",
+                "tool": "update_shipping_address"
+              }
+            ],
+            "changed_arguments": [
+              {
+                "tool": "update_shipping_address",
+                "baseline": {
+                  "order_id": "O-5012",
+                  "street": "70 Lake View",
+                  "city": "Suite 200",
+                  "zip": "60006"
+                },
+                "candidate": {
+                  "order_id": "O-5012",
+                  "street": "70 Lake View, Suite 200",
+                  "city": "Ketterly",
+                  "zip": "60006"
+                }
+              }
+            ],
+            "identical": false,
+            "removed_tools": [],
+            "added_tools": [],
+            "latency_delta_ms": -77.48399999999992,
+            "token_delta": 126,
+            "cost_delta": 8.5e-05
+          }
+        },
+        {
+          "case_id": "sup-19-address-unit-unit",
+          "baseline": 0.0,
+          "candidate": 1.0,
+          "delta": 1.0,
+          "kind": "improved",
+          "category": "address",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "candidate": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "equal",
+                "tool": "update_shipping_address"
+              }
+            ],
+            "changed_arguments": [
+              {
+                "tool": "update_shipping_address",
+                "baseline": {
+                  "order_id": "O-5015",
+                  "street": "14 Harbor Road",
+                  "city": "Unit 3B",
+                  "zip": "80008"
+                },
+                "candidate": {
+                  "order_id": "O-5015",
+                  "street": "14 Harbor Road, Unit 3B",
+                  "city": "Orrery",
+                  "zip": "80008"
+                }
+              }
+            ],
+            "identical": false,
+            "removed_tools": [],
+            "added_tools": [],
+            "latency_delta_ms": 169.80099999999993,
+            "token_delta": 106,
+            "cost_delta": 6.499999999999995e-05
+          }
+        },
+        {
+          "case_id": "sup-20-address-missing-address-clarify",
+          "baseline": 1.0,
+          "candidate": 0.6666666666666666,
+          "delta": -0.33333333333333337,
+          "kind": "regressed",
+          "category": "address",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "candidate": [
+              "lookup_order",
+              "update_shipping_address"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_order"
+              },
+              {
+                "op": "equal",
+                "tool": "update_shipping_address"
+              }
+            ],
+            "changed_arguments": [],
+            "identical": true,
+            "removed_tools": [],
+            "added_tools": [],
+            "latency_delta_ms": 21.63799999999992,
+            "token_delta": 221,
+            "cost_delta": 0.00015399999999999984
+          }
+        },
+        {
+          "case_id": "sup-21-cancel-sub-by-id",
+          "baseline": 1.0,
+          "candidate": 0.6666666666666666,
+          "delta": -0.33333333333333337,
+          "kind": "regressed",
+          "category": "subscription",
+          "trajectory_diff": {
+            "baseline": [
+              "cancel_subscription"
+            ],
+            "candidate": [
+              "lookup_order"
+            ],
+            "ops": [
+              {
+                "op": "replace",
+                "baseline": [
+                  "cancel_subscription"
+                ],
+                "candidate": [
+                  "lookup_order"
+                ]
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "cancel_subscription"
+            ],
+            "added_tools": [
+              "lookup_order"
+            ],
+            "latency_delta_ms": -54.04399999999998,
+            "token_delta": 95,
+            "cost_delta": 5.9000000000000025e-05
+          }
+        },
+        {
+          "case_id": "sup-22-cancel-sub-recent-refundable",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "subscription",
+          "trajectory_diff": {
+            "baseline": [
+              "cancel_subscription"
+            ],
+            "candidate": [
+              "lookup_order"
+            ],
+            "ops": [
+              {
+                "op": "replace",
+                "baseline": [
+                  "cancel_subscription"
+                ],
+                "candidate": [
+                  "lookup_order"
+                ]
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "cancel_subscription"
+            ],
+            "added_tools": [
+              "lookup_order"
+            ],
+            "latency_delta_ms": -36.81899999999996,
+            "token_delta": 59,
+            "cost_delta": 2.7000000000000006e-05
+          }
+        },
+        {
+          "case_id": "sup-23-cancel-sub-missing-id-clarify",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "subscription",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_customer",
+              "cancel_subscription"
+            ],
+            "candidate": [],
+            "ops": [
+              {
+                "op": "delete",
+                "baseline": [
+                  "lookup_customer",
+                  "cancel_subscription"
+                ],
+                "candidate": []
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "cancel_subscription",
+              "lookup_customer"
+            ],
+            "added_tools": [],
+            "latency_delta_ms": -277.4280000000001,
+            "token_delta": 146,
+            "cost_delta": 0.00010499999999999984
+          }
+        },
+        {
+          "case_id": "sup-24-escalate-human-request",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "escalation",
+          "trajectory_diff": {
+            "baseline": [
+              "lookup_customer",
+              "create_escalation_ticket"
+            ],
+            "candidate": [
+              "lookup_customer",
+              "create_escalation_ticket"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "lookup_customer"
+              },
+              {
+                "op": "equal",
+                "tool": "create_escalation_ticket"
+              }
+            ],
+            "changed_arguments": [
+              {
+                "tool": "create_escalation_ticket",
+                "baseline": {
+                  "customer_id": "C-1002",
+                  "reason": "customer requested human",
+                  "order_id": null
+                },
+                "candidate": {
+                  "reason": "I want to speak to a manager about a broken zipper. My email is jordan.marsh@exa"
+                }
+              }
+            ],
+            "identical": false,
+            "removed_tools": [],
+            "added_tools": [],
+            "latency_delta_ms": -69.20999999999992,
+            "token_delta": 158,
+            "cost_delta": 0.00010500000000000006
+          }
+        },
+        {
+          "case_id": "sup-25-escalate-refund-dispute",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "escalation",
+          "trajectory_diff": {
+            "baseline": [
+              "create_escalation_ticket"
+            ],
+            "candidate": [
+              "create_escalation_ticket"
+            ],
+            "ops": [
+              {
+                "op": "equal",
+                "tool": "create_escalation_ticket"
+              }
+            ],
+            "changed_arguments": [
+              {
+                "tool": "create_escalation_ticket",
+                "baseline": {
+                  "customer_id": null,
+                  "reason": "customer requested human",
+                  "order_id": "O-5003"
+                },
+                "candidate": {
+                  "reason": "I disagree with the decision on O-5003. Please escalate this to a human."
+                }
+              }
+            ],
+            "identical": false,
+            "removed_tools": [],
+            "added_tools": [],
+            "latency_delta_ms": 113.24000000000001,
+            "token_delta": 100,
+            "cost_delta": 8.9e-05
+          }
+        },
+        {
+          "case_id": "sup-26-policy-refund-window",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "policy",
+          "trajectory_diff": {
+            "baseline": [
+              "retrieve_policy"
+            ],
+            "candidate": [],
+            "ops": [
+              {
+                "op": "delete",
+                "baseline": [
+                  "retrieve_policy"
+                ],
+                "candidate": []
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "retrieve_policy"
+            ],
+            "added_tools": [],
+            "latency_delta_ms": 41.96500000000003,
+            "token_delta": -21,
+            "cost_delta": 1.1999999999999966e-05
+          }
+        },
+        {
+          "case_id": "sup-27-policy-address-change",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "policy",
+          "trajectory_diff": {
+            "baseline": [
+              "retrieve_policy"
+            ],
+            "candidate": [],
+            "ops": [
+              {
+                "op": "delete",
+                "baseline": [
+                  "retrieve_policy"
+                ],
+                "candidate": []
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "retrieve_policy"
+            ],
+            "added_tools": [],
+            "latency_delta_ms": -340.6730000000001,
+            "token_delta": 46,
+            "cost_delta": 4.3999999999999985e-05
+          }
+        },
+        {
+          "case_id": "sup-28-policy-subscription-refund",
+          "baseline": 1.0,
+          "candidate": 0.0,
+          "delta": -1.0,
+          "kind": "regressed",
+          "category": "policy",
+          "trajectory_diff": {
+            "baseline": [
+              "retrieve_policy"
+            ],
+            "candidate": [],
+            "ops": [
+              {
+                "op": "delete",
+                "baseline": [
+                  "retrieve_policy"
+                ],
+                "candidate": []
+              }
+            ],
+            "changed_arguments": [],
+            "identical": false,
+            "removed_tools": [
+              "retrieve_policy"
+            ],
+            "added_tools": [],
+            "latency_delta_ms": -405.144,
+            "token_delta": -10,
+            "cost_delta": 1.1999999999999966e-05
+          }
+        }
+      ],
+      "new_failure_labels": {
+        "missing_tool": 12,
+        "wrong_tool_order": 3,
+        "cost_budget": 11,
+        "repeated_tool_loop": 9,
+        "incorrect_final_answer": 32,
+        "policy_violation": 12,
+        "fabricated_claim": 3
+      },
+      "intent": "agent_change",
+      "mode": "strict",
+      "end_to_end": {
+        "delta": -0.4888888888888889,
+        "ci_low": -0.711111111111111,
+        "ci_high": -0.2555555555555556,
+        "n_cases": 30,
+        "decision": "significant_regression",
+        "note": "unusable observations counted as failures (conservative sensitivity analysis)"
+      },
+      "coverage": {
+        "baseline": {
+          "expected": 90,
+          "present": 90,
+          "missing": 0,
+          "execution_error": 0,
+          "invalid": 0,
+          "skipped": 0,
+          "incomplete": 0,
+          "incomplete_share": 0.0,
+          "missing_examples": []
+        },
+        "candidate": {
+          "expected": 90,
+          "present": 90,
+          "missing": 0,
+          "execution_error": 0,
+          "invalid": 0,
+          "skipped": 0,
+          "incomplete": 0,
+          "incomplete_share": 0.0,
+          "missing_examples": []
+        }
+      },
+      "incomplete_reasons": [],
+      "execution_kind": {
+        "baseline": "synthetic",
+        "candidate": "synthetic"
+      },
+      "authorization": "release-grade evidence",
+      "what_changed": "support:v3 is 48.9 points lower than support:v2 on 30 matched cases (3 improved, 20 regressed). Localized regression: 'escalation' cases fell 100 points (100% \u2192 0%). New/increased failure modes: incorrect_final_answer (+32), missing_tool (+12), policy_violation (+12)."
+    }
+  },
+  "gate": {
+    "verdict": "fail",
+    "reasons": [
+      "statistically meaningful regression detected"
+    ],
+    "judge_ok": true
+  }
+}

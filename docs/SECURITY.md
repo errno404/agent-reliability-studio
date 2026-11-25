@@ -7,31 +7,44 @@ A public, read-only dashboard + API backed by seeded synthetic data; optional lo
 the coding agent). Attackers: anonymous internet users (abuse public endpoints, spoof headers, inject content), malicious dataset/trace content, and
 accidental leakage of secrets into traces.
 
+## Trust boundaries (read this first)
+| Surface | Public demo | Local / operator |
+|---|---|---|
+| Browse seeded synthetic data and the published real experiment | yes | yes |
+| Anonymous annotation | yes, stored as `public_untrusted`, never evidence | yes |
+| Authenticated (trusted) human annotation / adjudication | **disabled** (403) | `POST /api/annotation/trusted[/adjudicate]` with `X-Admin-Token` |
+| Execute evaluations (synthetic) | no | admin token |
+| **Live LLM execution** (spends the operator's own CLI quota) | **no** | admin token **and** a server-side allowlist/clamp on model, budget and timeout; the CLI is operator-only |
+| Coding-agent execution | no | admin token **and** `ENABLE_CODING_EXECUTION=true`; **not a sandbox** (see below) |
+| Calibrate a judge over HTTP | no | admin token, capped items and wall-clock deadline (504, nothing recorded) |
+
 ## Controls
 
-| Area | Control |
+| Area | Control (and the test that proves it) |
 |---|---|
-| Persisted content | Everything free-form stored for a sample (input, output, tool args/results, assertion evidence, error text) is redacted **before** it is written, not just span attributes. Key matching is normalised (`x-api-key`, `passwordHash`), patterns cover API keys, JWTs, Slack/Stripe/Google keys, credentialed URLs and Basic auth; usage counters like `input_tokens` are exempt. A test scans the database for the demo canary. |
-| Secrets | None committed; `.env*` git-ignored except `.env.example`; redaction (key names, regex patterns for API keys/tokens/PEM, known-secret replacement, truncation) runs **before** traces are stored or exported (`evalcore/redaction.py`, applied in `tracing.py`); no chain-of-thought is requested or stored. Run a secret scanner (e.g. gitleaks) in your own CI. |
-| Public demo mode | `DEMO_MODE=true` (default): every mutating endpoint returns 403 via `require_admin`; non-demo mutation needs `X-Admin-Token` (constant-time compare). Coding-agent execution is additionally off unless `ENABLE_CODING_EXECUTION=true`. |
-| Public writes | Only annotation/adjudication are open: rate-limited (30/min/client key), capped (5,000 human rows), strict id validation (`fullmatch` + schema pattern, so a trailing newline can't slip through), **append-only** (an existing label is never overwritten, so annotator ids can't be hijacked), stored separately and never used for gating. |
-| Command execution | No shell from the web. Subprocesses use argv lists (never `shell=True`), timeouts, **process-group kill** on timeout, temp sandbox directories, and snapshot-based change accounting. Coding runs are local/admin only. |
-| Path safety | File assertions reject absolute paths and `..`; the web proxy rejects `..` segments and forwards only under `/api`. |
-| Client identity | The web proxy **drops all client-supplied forwarding headers** (`X-Forwarded-*`, `Forwarded`, `X-Real-IP`, …). It re-asserts one address only when `TRUSTED_PROXY_HOPS ≥ 1` (the Nth-from-last `X-Forwarded-For` entry, added by your edge). uvicorn trusts forwarded IPs only from `FORWARDED_ALLOW_IPS` (default loopback; never `*` on a public API). Compose binds the API to loopback; Render runs it as a **private service**. |
-| CORS | Allow-list from `CORS_ORIGINS`; methods limited to GET/POST. Browsers talk to the same-origin `/api` proxy anyway. |
-| Errors | In `ENVIRONMENT=production` the API returns `internal server error` + a request id; stack traces stay in logs. |
-| Logging | Structured JSON with request/run/job/case ids; prompt content is not logged. |
-| Containers | Non-root users, slim base images, health checks, `.dockerignore` excludes env files. |
-| Dependencies | Versions pinned by `uv.lock` / `package-lock.json`; Node/uv reviewed at pin time; run `pip-audit` / `npm audit` in CI. |
-| Supply chain | `check_pins.py` blocks silent changes to published agent versions; datasets are hash-frozen. |
+| Persisted content | Everything free-form stored for a sample - input, output, tool args/results, **span names/attributes**, assertion evidence, judge rationale, error text - is redacted **before** it is written; exported artifacts (distilled candidates, experiment bundles) are redacted too. Structure and numerics survive. `test_redaction_canary.py` plants 7 canary secrets in every agent-influenced field, runs the real pipeline, and scans **every column of every table, every read endpoint and the distill output**. (Writing it found a real leak: span attributes were stored unredacted.) Stored strings are capped at 20,000 chars and 500 spans/sample; the redactor itself truncates free text at 4,000 chars (so very long outputs in the published evidence are cut). |
+| Secrets | None committed; `.env*` git-ignored except `.env.example`; no chain-of-thought is requested or stored (thinking blocks from the live harness are never read). |
+| Public demo mode | `DEMO_MODE=true` (default): every mutating endpoint returns 403. Non-demo mutation needs `X-Admin-Token` (constant-time compare). **Failed attempts are rate-limited** (10/min/client); while the window is full even the right token is refused, so there is no oracle. **Trade-off:** an attacker sharing the admin's client key (e.g. behind a proxy with `TRUSTED_PROXY_HOPS=0`) can lock the admin out; admin mutations are never proxied by the web tier, so use direct/edge access with a real client address. |
+| Public writes | Anonymous annotation is rate-limited, capped, validated, append-only and **stored as `public_untrusted`**. Anonymous adjudication is never flagged adjudicated. Untrusted handles never count toward a consensus claim and never change a reference label or gate. |
+| API hardening | Request ids are validated (`[A-Za-z0-9._-]{1,64}`, else replaced); request bodies are capped at 64 KB by a pure-ASGI limiter (Content-Length **and** streamed/chunked bytes -> 413); only successful anonymous GETs are publicly cacheable (errors, POSTs and admin traffic are `no-store`); all list endpoints take a bounded `limit`; no response contains an absolute filesystem path (`test_api_hardening.py`). |
+| Errors | **`ENVIRONMENT` defaults to `production`**: clients get `internal server error` + request id; details stay in logs. Dev scripts opt in with `ENVIRONMENT=development`. |
+| Regex | Patterns come only from trusted, versioned datasets (no API accepts one). Defence in depth: length cap, **nested unbounded repetition and back-references rejected** (the assertion becomes INVALID, never a hang or a silent pass), and the scanned subject is capped at 100k chars. Not a timeout: a pathological-but-accepted pattern is still possible, hence "trusted datasets only". |
+| Coding-agent execution | **A temp directory is not a sandbox, and this is not one either.** What exists: dataset commands must match `PYTHON -m pytest|unittest` with an explicit flag allow-list and relative, safe values (no `-c`, `-p`, `--basetemp`, `--rootdir`, `-o`, absolute/parent paths or metacharacters); plan write/read paths are resolved inside the workspace; fixture repos may contain no symlinks; the environment is scrubbed; CPU-time and written-file-size rlimits; output captured to size-limited files and truncated; process-group kill on timeout. What does **not** exist: filesystem confinement outside the workspace, network isolation, memory caps on macOS. Therefore it is repo-authored scripted plans only, admin-gated, off by default, and must never be exposed publicly; a real sandbox (container/VM with no network) is required before running untrusted agent code. |
+| Live LLM harness | The CLI runs with only the three fixture MCP tools (`--strict-mcp-config --tools ""`), no user settings/hooks/plugins, a scrubbed environment, per-run budget and timeout, process-group kill, stdin task text (a task beginning with `-` cannot become a flag). It reads no credentials: it uses the operator's own login. Live specs are clamped server-side (model allowlist, budget <= $2, timeout <= 300 s). |
+| Worker | Leases with fencing tokens, independent heartbeat, atomic stale recovery, bounded attempts (`test_worker_leases.py`, SQLite and PostgreSQL). Single-database lease: **no distributed-consensus claim**. |
+| Command execution | No shell anywhere. Subprocesses use argv lists, timeouts and process-group kill. |
+| Client identity | The web proxy drops client-supplied forwarding headers; `TRUSTED_PROXY_HOPS` defaults to 0 everywhere (including the Render blueprint) because Render's `X-Forwarded-For` behaviour is **not verified** from its docs. uvicorn trusts forwarded IPs only from `FORWARDED_ALLOW_IPS`. |
+| CORS | Allow-list from `CORS_ORIGINS`; methods GET/POST. |
+| Containers / deploy | Non-root users, slim images, health checks, compose binds API and web to loopback, `.dockerignore` excludes env files. Compose DB credentials are local-only defaults (DB is not published). `arizephoenix/phoenix:latest` is optional and unpinned (flagged). Render blueprint: free-tier compatible (private services have no free tier), free Postgres expires after 30 days. **Nothing is deployed by this repository's tooling.** |
+| Supply chain | `check_pins.py` reads pins from the **trusted git baseline** and fails closed (no removal/rewrite/un-freeze; new versions need matching hash + evidence; shared-dependency changes need new re-measurement evidence). Datasets are hash-frozen. |
 
 ## Known limitations
-- **The eval-gate workflow trusts the PR checkout** for the evaluator, `check_pins.py` and datasets, so a PR could change the evaluator to pass itself. Mitigate with CODEOWNERS on `packages/evalcore/**`, `scripts/**`, `datasets/**`, `.github/**`, branch protection, and by pinning third-party actions to commit SHAs.
-- The web proxy only forwards `POST /api/annotation*` (8 KB cap, 20 s timeout); failed admin-token guesses are not separately rate-limited (use an edge limiter if you ever expose `DEMO_MODE=false` publicly).
-- Annotation rate limiting is per client key; with `TRUSTED_PROXY_HOPS=0` every user shares one bucket, and the 5,000-row cap is global. Self-declared ids can be created in bulk, which could skew agreement statistics: treat them as untrusted.
-- Dataset-supplied regexes run without a timeout (ReDoS on a malicious dataset). Datasets are trusted input; the Claude Code adapter also trusts `fixture.commands`, so only run trusted datasets locally.
-Annotator identities are self-declared handles (no authentication) — treat annotation data as untrusted crowd input. Rate limiting is per-process; use an
-edge limiter for multi-instance deployments. The coding agent runs scripts on the host: do not enable it on a shared server without a real sandbox (container/VM).
+- Coding execution and the legacy `ClaudeCodeAdapter` are **not sandboxed** (above). Do not expose them.
+- Anonymous annotation is per-process rate limited and shares one bucket behind a proxy with `TRUSTED_PROXY_HOPS=0`; the 5,000-row cap is global. Treat all of it as untrusted crowd input.
+- Rate limiters are in-process (single API instance). Use an edge limiter when scaling out.
+- Lease fencing leaves a small check-then-write window; the unique `(run, case, sample)` constraint and token-conditional completion bound the damage.
+- The live harness depends on a third-party CLI whose behaviour can change; the resolved model and harness config are recorded per run, and alias drift fails validation.
+- CI trust model: see `docs/CI.md` (evaluator code is taken from the trusted base, never from the PR).
 
 ## Reporting
 Open a private security advisory on the repository.

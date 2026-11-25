@@ -9,17 +9,14 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from demo_agents import agent_info, get_adapter
 from evalcore import RunManifest, SampleResult, SampleStatus, execute_sample, summarize
 from evalcore.hashing import hash_obj
 from evalcore.models import AgentResult, AssertionResult, Case, Dataset
-from evalcore.pricing import SYNTHETIC_PRICES
 from evalcore.redaction import Redactor
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..models import (
-    AgentVersion,
     AssertionResultRow,
     DatasetVersion,
     EvalCase,
@@ -33,6 +30,7 @@ from ..models import (
 from ..models import (
     JudgeConfig as JudgeRow,
 )
+from ..registry import ResolvedAgent, resolve
 from . import judges
 from .catalog import git_info
 
@@ -60,41 +58,79 @@ def load_dataset_from_db(s: Session, dv: DatasetVersion) -> Dataset:
     return ds
 
 
+class LeaseLost(RuntimeError):
+    """This worker no longer owns the job (a stale-recovery handed it to someone else); it must stop writing."""
+
+
+def _evaluator_config_hash(ds: Dataset, judge: JudgeRow | None) -> tuple[str, str]:
+    from evalcore.assertions import ASSERTION_TYPES
+
+    rubric = hash_obj(sorted((c.id, c.rubric) for c in ds.cases if c.rubric), 16)
+    cfg = hash_obj(
+        {
+            "assertions": sorted(ASSERTION_TYPES),
+            "judge": judge.identity if judge else None,
+            "judge_params": judge.params if judge else None,
+            "scoring": "layers-v2",
+        },
+        16,
+    )
+    return cfg, rubric
+
+
 def build_manifest(
     run_id: str,
     run_type: str,
-    av: AgentVersion,
+    resolved: ResolvedAgent,
     dv: DatasetVersion,
     ds: Dataset,
     samples: int,
     seed: int,
     judge: JudgeRow | None,
     concurrency: int = 1,
+    run_budget_usd: float | None = None,
 ) -> RunManifest:
+    from evalcore.manifest import evaluator_hash
+
     sha, dirty = git_info()
+    cfg_hash, rubric_hash = _evaluator_config_hash(ds, judge)
     return RunManifest(
         run_id=run_id,
         run_type=run_type,
-        agent=av.agent.name,
-        agent_version=av.version,
-        agent_hash=av.agent_hash,
+        agent=resolved.agent,
+        agent_version=resolved.version,
+        agent_hash=resolved.agent_hash,
         dataset_name=dv.dataset.name,
         dataset_path=dv.source_path,
         dataset_hash=dv.hash,
         fixture_hash=dv.fixture_hash,
         case_ids=[c.id for c in ds.cases],
         samples_per_case=samples,
-        model_provider="synthetic",
-        model=av.model,
-        model_params={"temperature": 0, "seed": seed},
+        model_provider=resolved.provider,
+        model=resolved.model,
+        model_params={"temperature": 0, "seed": seed}
+        if resolved.execution_kind == "synthetic"
+        else {"harness_defaults": True},
         judge_backend=judge.backend if judge else "",
         judge_model=judge.model if judge else "",
         judge_prompt_hash=judge.prompt_hash if judge else "",
-        tool_schema_hash=av.tool_schema_hash,
+        tool_schema_hash=resolved.tool_schema_hash,
         git_commit=sha,
         git_dirty=dirty,
         concurrency=concurrency,
         seed=seed,
+        execution_kind=resolved.execution_kind,
+        model_resolved=resolved.model
+        if resolved.execution_kind == "synthetic"
+        else "",  # live: filled from provider-reported data
+        evaluator_hash=evaluator_hash(),
+        evaluator_config_hash=cfg_hash,
+        rubric_hash=rubric_hash,
+        agent_config={
+            **resolved.config,
+            "spec": resolved.spec,
+            **({"run_budget_usd": run_budget_usd} if run_budget_usd else {}),
+        },
     )
 
 
@@ -107,22 +143,30 @@ def create_run(
     dv: DatasetVersion,
     samples: int = 1,
     seed: int = 0,
-    run_type: str = "synthetic_demo",
+    run_type: str | None = None,
     judge: JudgeRow | None = None,
     queue: bool = True,
+    concurrency: int = 1,
+    run_budget_usd: float | None = None,
 ) -> Run:
     existing = s.get(Run, run_id)
     if existing is not None:
         return existing
     from .catalog import sync_agent_version
 
+    resolved = resolve(agent_spec)
+    kind = "live" if resolved.execution_kind == "live" else "synthetic_demo"
+    if run_type and run_type != kind and run_type != "ci_gate":
+        raise ValueError(
+            f"run_type '{run_type}' contradicts the resolved agent ({resolved.execution_kind}); it is derived, not chosen"
+        )
     av = sync_agent_version(s, agent_spec)
     ds = load_dataset_from_db(s, dv)
-    man = build_manifest(run_id, run_type, av, dv, ds, samples, seed, judge)
+    man = build_manifest(run_id, run_type or kind, resolved, dv, ds, samples, seed, judge, concurrency, run_budget_usd)
     run = Run(
         id=run_id,
         name=name,
-        run_type=run_type,
+        run_type=run_type or kind,
         status="queued",
         agent_version_id=av.id,
         dataset_version_id=dv.id,
@@ -132,7 +176,7 @@ def create_run(
         manifest=man.to_dict(),
         manifest_hash=man.content_hash(),
         progress_total=len(ds.cases) * samples,
-        is_synthetic=run_type == "synthetic_demo",
+        is_synthetic=resolved.execution_kind == "synthetic",
     )
     s.add(run)
     s.flush()
@@ -143,6 +187,25 @@ def create_run(
 
 
 _REDACTOR = Redactor(max_text=20_000)
+
+
+MAX_STR_CHARS = 20_000  # any single stored string; agent/tool output is untrusted and may be enormous
+MAX_SPANS_PER_SAMPLE = 500
+
+
+def _cap(obj: Any) -> Any:
+    """Bound the size of free-form stored values (structure, numbers and booleans are preserved)."""
+    if isinstance(obj, str):
+        return (
+            obj
+            if len(obj) <= MAX_STR_CHARS
+            else obj[:MAX_STR_CHARS] + f"...[truncated {len(obj) - MAX_STR_CHARS} chars]"
+        )
+    if isinstance(obj, dict):
+        return {k: _cap(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_cap(v) for v in obj[:2000]]
+    return obj
 
 
 def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample:
@@ -157,17 +220,17 @@ def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample
         sample_index=smp.sample_index,
         status=smp.status.value,
         error_kind=res.error_kind,
-        input_text=rd.text(input_text),
-        final_output=rd.text(res.final_output),
-        tool_sequence=res.tool_names,
+        input_text=_cap(rd.text(input_text)),
+        final_output=_cap(rd.text(res.final_output)),
+        tool_sequence=rd.apply(res.tool_names),
         latency_ms=res.latency_ms,
         input_tokens=res.input_tokens,
         output_tokens=res.output_tokens,
         cost_usd=res.cost_usd,
         turns=res.turns,
         steps=res.steps,
-        result=rd.apply(json.loads(res.model_dump_json(exclude={"spans"}))),
-        judge=smp.judge,
+        result=_cap(rd.apply(json.loads(res.model_dump_json(exclude={"spans"})))),
+        judge=rd.apply(smp.judge) if smp.judge else None,
         seed=smp.seed,
         trace_id=trace_id,
     )
@@ -191,19 +254,19 @@ def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample
                 label=a.label,
             )
         )
-    for sp in res.spans:
+    for sp in res.spans[:MAX_SPANS_PER_SAMPLE]:
         s.add(
             SpanRow(
                 sample_id=row.id,
                 trace_id=sp.trace_id,
                 span_id=sp.span_id,
                 parent_id=sp.parent_id,
-                name=sp.name,
+                name=rd.text(sp.name),
                 kind=sp.kind,
                 start_ms=sp.start_ms,
                 duration_ms=sp.duration_ms,
                 status=sp.status,
-                attributes=sp.attributes,
+                attributes=_cap(rd.apply(sp.attributes)),
             )
         )
     for lab in smp.failure_labels:
@@ -216,38 +279,83 @@ def execute_run(
     run: Run,
     on_progress: Callable[[int, int], None] | None = None,
     heartbeat: Callable[[], None] | None = None,
-    commit_every: int = 10,
+    commit_every: int = 5,
+    owner_check: Callable[[], bool] | None = None,
+    concurrency: int | None = None,
 ) -> None:
-    """Execute every missing (case, sample_index). Idempotent: existing samples are skipped (resume-safe)."""
+    """Execute every missing (case, sample_index). Idempotent and resume-safe.
+
+    * ``owner_check`` is the FENCE: called before every write batch; if the worker lost its lease it raises
+      :class:`LeaseLost` and nothing further is committed.
+    * An optional per-run budget (``manifest.agent_config.run_budget_usd``, API-equivalent estimate) stops a live run early;
+      the run is then marked failed/incomplete (never silently "succeeded").
+    """
     dv = run.dataset_version
     ds = load_dataset_from_db(s, dv)
-    spec = f"{run.agent_version.agent.name}:{run.agent_version.version}"
-    adapter = get_adapter(spec)
+    cfg = run.manifest.get("agent_config", {})
+    resolved = resolve(cfg.get("spec") or f"{run.agent_version.agent.name}:{run.agent_version.version}")
     judge = judge_admitted = None
     if run.judge is not None:
         judge, judge_admitted = judges.build_judge(run.judge), judges.judge_admitted(s, run.judge_config_id)
         run.judge_admitted = bool(judge_admitted)
     done = {(c, i) for c, i in s.execute(select(Sample.case_id, Sample.sample_index).where(Sample.run_id == run.id))}
     run.status = "running"
-    total = len(ds.cases) * run.samples_per_case
-    run.progress_total = total
-    n = len(done)
-    for case in ds.cases:
-        for i in range(run.samples_per_case):
-            if (case.id, i) in done:
-                continue
-            smp = execute_sample(adapter, case, run.id, i, run.seed, SYNTHETIC_PRICES, judge, bool(judge_admitted))
-            _persist(s, run, smp, case.input)
-            n += 1
-            run.progress_done = n
-            if n % commit_every == 0:
-                s.commit()
-                if heartbeat:
-                    heartbeat()
-                if on_progress:
-                    on_progress(n, total)
+    run.progress_total = len(ds.cases) * run.samples_per_case
+    pending = [(c, i) for c in ds.cases for i in range(run.samples_per_case) if (c.id, i) not in done]
+    n, spent, budget = len(done), 0.0, cfg.get("run_budget_usd")
+    workers = max(1, concurrency or int(run.manifest.get("concurrency", 1)))
+
+    def one(job: tuple[Case, int]) -> tuple[Case, SampleResult]:
+        case, i = job
+        return case, execute_sample(
+            resolved.adapter, case, run.id, i, run.seed, resolved.price_table, judge, bool(judge_admitted)
+        )
+
+    def handle(case: Case, smp: SampleResult) -> bool:
+        nonlocal n, spent
+        if owner_check is not None and not owner_check():
+            raise LeaseLost(f"lost the lease on run {run.id}")
+        _persist(s, run, smp, case.input)
+        n += 1
+        run.progress_done = n
+        spent += float(smp.result.metadata.get("api_equivalent_cost_usd") or smp.result.cost_usd or 0.0)
+        if n % commit_every == 0:
+            s.commit()
+            if heartbeat:
+                heartbeat()
+            if on_progress:
+                on_progress(n, run.progress_total)
+        return not (budget and spent > float(budget))
+
+    stopped = False
+    if workers == 1:
+        for job in pending:
+            case, smp = one(job)
+            if not handle(case, smp):
+                stopped = True
+                break
+    else:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futs = [pool.submit(one, j) for j in pending]
+            try:
+                for f in as_completed(futs):
+                    case, smp = f.result()
+                    if not handle(case, smp):
+                        stopped = True
+                        break
+            finally:
+                if stopped or any(not f.done() for f in futs):
+                    for g in futs:  # LeaseLost / any error / budget stop: do not keep spending on queued samples
+                        g.cancel()
     s.flush()
     finalize_run(s, run)
+    if stopped:
+        run.status, run.error = (
+            "failed",
+            f"run budget exceeded (~${spent:.2f} of ${float(budget):.2f} API-equivalent); evidence is incomplete",
+        )
 
 
 def load_samples(s: Session, run_id: str) -> list[SampleResult]:
@@ -300,7 +408,14 @@ def load_samples(s: Session, run_id: str) -> list[SampleResult]:
 
 def finalize_run(s: Session, run: Run) -> None:
     samples = load_samples(s, run.id)
-    run.summary = _json_safe(summarize(samples))
+    run.summary = _json_safe(summarize(samples, run.samples_per_case, run.manifest.get("case_ids")))
+    observed = sorted({x.result.model for x in samples if x.result.model and x.status != SampleStatus.EXECUTION_ERROR})
+    if run.manifest.get("execution_kind") == "live" and observed:
+        man = dict(run.manifest)
+        man["model_resolved"] = (
+            observed[0] if len(observed) == 1 else "mixed:" + "+".join(observed)
+        )  # alias drift stays visible
+        run.manifest = man
     run.progress_done = len(samples)
     run.status = "succeeded"
     run.finished_at = datetime.now(UTC)
@@ -358,11 +473,13 @@ def agent_spec(run: Run) -> str:
 
 
 def pinned_identity(run: Run) -> dict[str, Any]:
-    info = agent_info(agent_spec(run))
+    r = resolve(run.manifest.get("agent_config", {}).get("spec") or agent_spec(run))
     return {
-        **info,
+        "agent": r.agent,
+        "version": r.version,
+        "agent_hash": r.agent_hash,
         "stored_agent_hash": run.agent_version.agent_hash,
-        "matches": info["agent_hash"] == run.agent_version.agent_hash,
+        "matches": r.agent_hash == run.agent_version.agent_hash,
     }
 
 

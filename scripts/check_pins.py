@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
-"""Enforce agent version pinning.
+"""Enforce agent version pinning against a TRUSTED BASELINE (never against the PR's own working tree).
 
-A published agent version is FROZEN. Each agent keeps a PINS.md with a machine-readable block of content hashes
-(code + prompt + metadata). This script fails when:
-  1. a frozen version's recomputed hash differs from the recorded one (someone edited a published version);
-  2. a version exists on disk but is not pinned yet (run --update after its evaluation evidence exists);
-  3. (--base REF) files of a frozen version changed in the diff, or agent behaviour changed without a PINS.md update.
+A published agent version is FROZEN. Each agent keeps a PINS.md with a machine-readable block of content hashes. Checks:
 
-Usage:  python scripts/check_pins.py            # verify hashes
-        python scripts/check_pins.py --base origin/main   # CI: also inspect the git diff
-        python scripts/check_pins.py --update   # pin NEW versions only (never rewrites an existing pin)
+  Local (always):
+    1. a frozen version's recomputed hash must equal its recorded pin;
+    2. every version on disk must be pinned (pin new versions with ``--update --evidence <ref>``);
+    3. the recorded SHARED-DEPENDENCY hash (harness/runtime/fixtures/MCP server that affect behaviour) must match disk.
+
+  Against the baseline (``--base REF``, CI): pins are read with ``git show REF:path`` - a PR cannot rewrite its own
+  rulebook - and the check FAILS CLOSED if the baseline cannot be read.
+    4. every baseline pin must still exist, unchanged (no removal, rewriting, hash change, or un-freezing);
+    5. a NEW version is allowed only if its pin equals its on-disk hash and cites evaluation evidence;
+    6. if shared behaviour-affecting dependencies changed, the PR must record new evidence for the re-measurement;
+    7. files under a frozen version directory must not appear in the diff; behaviour files must not change without PINS.md.
+
+Usage:  python scripts/check_pins.py                                   # local checks
+        python scripts/check_pins.py --base origin/main                # CI (adds the baseline checks)
+        python scripts/check_pins.py --update --evidence docs/...      # pin NEW versions (never rewrites an existing pin)
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -23,130 +32,364 @@ from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-AGENT_ROOT = ROOT / "packages/demo_agents/demo_agents"
-AGENTS = ("support", "research", "coding")
+AGENT_REL = "packages/demo_agents/demo_agents"
+AGENTS = ("support", "research", "coding", "live_research")
 BLOCK = re.compile(r"```json ars-pins\n(.*?)\n```", re.S)
+HASH_FIELDS = ("agent_hash", "prompt_hash", "tool_schema_hash")
+SHARED = "_shared"
 
 
-def current_hashes(agent: str) -> dict[str, dict[str, str]]:
-    from demo_agents import VERSIONS, agent_info
-
-    out = {}
-    for v in VERSIONS[agent]:
-        info = agent_info(f"{agent}:{v}")
-        out[v] = {
-            "agent_hash": info["agent_hash"],
-            "prompt_hash": info["prompt_hash"],
-            "tool_schema_hash": info["tool_schema_hash"],
-        }
-    return out
+class BaselineUnreadable(RuntimeError):
+    """The trusted baseline could not be read: the check must fail closed."""
 
 
-def read_pins(agent: str) -> dict[str, dict[str, object]]:
-    p = AGENT_ROOT / agent / "PINS.md"
-    if not p.exists():
+# ----------------------------------------------------------------------------- git (real, fail-closed)
+def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+
+
+def baseline_pins(root: Path, agent: str, base: str) -> dict[str, dict[str, object]]:
+    """Pins of ``agent`` as committed at ``base``. A missing file at a readable base means "no pins yet"."""
+    ref = _git(root, "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}")
+    if ref.returncode != 0:
+        raise BaselineUnreadable(f"baseline ref '{base}' does not resolve to a commit (is the checkout shallow?)")
+    rel = f"{AGENT_REL}/{agent}/PINS.md"
+    exists = _git(root, "cat-file", "-e", f"{base}:{rel}")
+    if exists.returncode != 0:
         return {}
-    m = BLOCK.search(p.read_text())
+    shown = _git(root, "show", f"{base}:{rel}")
+    if shown.returncode != 0:
+        raise BaselineUnreadable(f"git show {base}:{rel} failed: {shown.stderr.strip()[:200]}")
+    return parse_pins(shown.stdout)
+
+
+def changed_files(root: Path, base: str) -> list[str]:
+    r = _git(root, "-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", "-z", f"{base}...HEAD")
+    if r.returncode != 0:
+        raise BaselineUnreadable(f"git diff {base}...HEAD failed: {r.stderr.strip()[:200]}")
+    return [f for f in r.stdout.split("\0") if f]
+
+
+# ----------------------------------------------------------------------------- pins file
+def parse_pins(text: str) -> dict[str, dict[str, object]]:
+    m = BLOCK.search(text)
     return json.loads(m.group(1)) if m else {}
 
 
-def write_pins(agent: str, pins: dict[str, dict[str, object]]) -> None:
+def read_pins(agent: str, root: Path = ROOT) -> dict[str, dict[str, object]]:
+    p = root / AGENT_REL / agent / "PINS.md"
+    return parse_pins(p.read_text()) if p.exists() else {}
+
+
+def _versions(pins: dict[str, dict[str, object]]) -> dict[str, dict[str, object]]:
+    return {k: v for k, v in pins.items() if not k.startswith("_")}
+
+
+def write_pins(agent: str, pins: dict[str, dict[str, object]], root: Path = ROOT) -> None:
     rows = "\n".join(
-        f"| {v} | `{d['agent_hash']}` | `{d['prompt_hash']}` | {'frozen' if d.get('frozen') else 'candidate'} | {d.get('pinned', '')} | {d.get('note', '')} |"
-        for v, d in sorted(pins.items())
+        f"| {v} | `{d['agent_hash']}` | `{d['prompt_hash']}` | {'frozen' if d.get('frozen') else 'candidate'} "
+        f"| {d.get('pinned', '')} | {d.get('evidence', '')} | {d.get('note', '')} |"
+        for v, d in sorted(_versions(pins).items())
     )
+    sh = pins.get(SHARED, {})
     text = f"""# {agent} agent — version pins
 
 **Published versions are frozen.** Never edit a version after evaluation results exist for it. To change behaviour:
-1. copy `vN` to `vN+1`; 2. change `vN+1` only; 3. add a row here (`python scripts/check_pins.py --update`) with a
-note describing the change; 4. re-run the evaluation and compare against the previous version.
-CI (`scripts/check_pins.py --base origin/main`) fails if a frozen version changes or behaviour changes without this file.
+1. copy `vN` to `vN+1`; 2. change `vN+1` only; 3. add a row here (`python scripts/check_pins.py --update --evidence <ref>`)
+with a note describing the change; 4. re-run the evaluation and compare against the previous version.
+CI (`scripts/check_pins.py --base origin/main`) reads the pins from the TRUSTED BASELINE commit: published pins cannot be
+removed, rewritten or un-frozen, new versions must match their on-disk hash and cite evidence, and a change to shared
+behaviour-affecting dependencies must record new re-measurement evidence.
 
-| Version | Code hash | Prompt hash | Status | Pinned | Change note |
-|---|---|---|---|---|---|
+| Version | Code hash | Prompt hash | Status | Pinned | Evidence | Change note |
+|---|---|---|---|---|---|---|
 {rows}
 
-Hashes cover the version directory (code, prompt, metadata). Shared harness code in `demo_agents/runtime.py` and
-`demo_agents/<agent>/harness.py` is infrastructure only (spans, tool plumbing); policy and behaviour live in the version directories.
-The `coding` agent's hash covers its prompt and the scripted patch plans in `fixtures/code/solutions/`.
+Shared-dependency hash: `{sh.get("deps_hash", "")}` (evidence: {sh.get("evidence", "")}). It covers the harness/runtime, fixtures
+and MCP server this agent's behaviour depends on, which are NOT inside any version directory.
 
 ```json ars-pins
 {json.dumps(pins, indent=2, sort_keys=True)}
 ```
 """
-    (AGENT_ROOT / agent / "PINS.md").write_text(text)
+    (root / AGENT_REL / agent / "PINS.md").write_text(text)
 
 
-def verify() -> list[str]:
+# ----------------------------------------------------------------------------- hashing of what exists on disk
+def dir_files(d: Path) -> list[Path]:
+    return sorted(p for p in d.rglob("*") if p.is_file() and "__pycache__" not in p.parts and p.name != "PINS.md")
+
+
+def shared_files(agent: str, root: Path = ROOT) -> list[Path]:
+    """Behaviour-affecting files that live OUTSIDE the version directories."""
+    a = root / AGENT_REL
+    files: list[Path] = [
+        a / "runtime.py",
+        a / "__init__.py",
+    ]  # __init__ holds the version registry (get_adapter routing)
+    files += sorted((a / agent).glob("*.py"))
+    if agent == "support":
+        files += [root / "fixtures/support/world.yaml"]
+    if agent in ("research", "live_research"):
+        files += dir_files(root / "mcp/fixture_web")
+        files += [root / "fixtures/web" / ("corpus-v2.yaml" if agent == "live_research" else "corpus-v1.yaml")]
+    if agent == "live_research":
+        files += [root / "packages/evalcore/src/evalcore/adapters.py"]
+    if agent == "coding":
+        files += dir_files(root / "fixtures/code")
+    return [f for f in files if f.exists()]
+
+
+def deps_hash(agent: str, root: Path = ROOT) -> str:
+    h = hashlib.sha256()
+    for f in shared_files(agent, root):
+        h.update(f.relative_to(root).as_posix().encode())
+        h.update(f.read_bytes())
+    return h.hexdigest()[:16]
+
+
+def _hashes_in_process(agent: str) -> dict[str, dict[str, str]]:
+    from evalcore.hashing import hash_obj
+
+    if agent == "live_research":
+        from demo_agents import live_research
+
+        return {
+            v: {
+                "agent_hash": (a := live_research.make_agent(v)).agent_hash,
+                "prompt_hash": a.prompt_hash,
+                "tool_schema_hash": hash_obj(sorted(live_research.TOOLS), 16),
+            }
+            for v in live_research.versions()
+        }
+    from demo_agents import VERSIONS, agent_info
+
+    out = {}
+    for v in VERSIONS[agent]:
+        info = agent_info(f"{agent}:{v}")
+        out[v] = {k: info[k] for k in HASH_FIELDS}
+    return out
+
+
+# ----------------------------------------------------------------------------- pure rule sets (unit-tested)
+def current_hashes(agent: str, root: Path | None = None) -> dict[str, dict[str, str]]:
+    """Version hashes as reported by the agent package under ``root``, computed in a CHILD process.
+
+    The PR's agent code is imported there, never in the process that makes the pass/fail decision, so it cannot patch the checker
+    in memory. It can still *report* misleading hashes, which is why frozen-version protection does not rely on them: the git diff
+    rule and the baseline comparison use file paths and the baseline's recorded hashes (see ``diff_problems``).
+    """
+    import os
+
+    root = (root or ROOT).resolve()
+    paths = (
+        ROOT / "packages/evalcore/src",
+        ROOT / "mcp/fixture_web",
+        ROOT / "services/api",
+        root / "packages/demo_agents",
+    )
+    # trusted entries first, the root's agent package directory last (no shadowing of evalcore/app/fixture_web)
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(str(p) for p in paths)}
+    cmd = [sys.executable, str(Path(__file__).resolve()), "--emit-hashes", agent]
+    r = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=root)
+    if r.returncode != 0:
+        raise BaselineUnreadable(f"could not compute hashes for {agent}: {r.stderr.strip()[-300:]}")
+    return json.loads(r.stdout)
+
+
+def local_problems(
+    agent: str, pins: dict[str, dict[str, object]], disk: dict[str, dict[str, str]], disk_deps: str | None = None
+) -> list[str]:
     problems: list[str] = []
-    for agent in AGENTS:
-        pins, cur = read_pins(agent), current_hashes(agent)
-        for v, h in cur.items():
-            if v not in pins:
-                problems.append(
-                    f"{agent}:{v} exists but is not pinned (run --update once its evaluation evidence exists)"
-                )
-            elif pins[v]["agent_hash"] != h["agent_hash"] and pins[v].get("frozen"):
-                problems.append(
-                    f"{agent}:{v} is FROZEN but its content changed ({pins[v]['agent_hash']} -> {h['agent_hash']}). "
-                    f"Create {agent}:v{int(v[1:]) + 1} instead of editing a published version."
-                )
-        for v in pins:
-            if v not in cur:
-                problems.append(f"{agent}:{v} is pinned but missing on disk")
+    vp = _versions(pins)
+    for v, h in disk.items():
+        if v not in vp:
+            problems.append(
+                f"{agent}:{v} exists but is not pinned (run --update --evidence <ref> once evidence exists)"
+            )
+        elif vp[v]["agent_hash"] != h["agent_hash"] and vp[v].get("frozen"):
+            problems.append(
+                f"{agent}:{v} is FROZEN but its content changed ({vp[v]['agent_hash']} -> {h['agent_hash']}). "
+                f"Create a new version instead of editing a published one."
+            )
+    for v in vp:
+        if v not in disk:
+            problems.append(f"{agent}:{v} is pinned but missing on disk")
+    if disk_deps is not None and SHARED in pins and pins[SHARED].get("deps_hash") != disk_deps:
+        problems.append(
+            f"{agent}: shared behaviour-affecting dependencies changed ({pins[SHARED].get('deps_hash')} -> {disk_deps}); "
+            f"re-measure and record it with --update --evidence <ref>"
+        )
     return problems
 
 
-def diff_problems(base: str) -> list[str]:
-    files = subprocess.run(
-        ["git", "diff", "--name-only", f"{base}...HEAD"], cwd=ROOT, capture_output=True, text=True
-    ).stdout.split()
+def baseline_problems(
+    agent: str,
+    base: dict[str, dict[str, object]],
+    cur: dict[str, dict[str, object]],
+    disk: dict[str, dict[str, str]],
+    disk_deps: str | None,
+    evidence_exists=lambda ref: True,
+) -> list[str]:
     problems: list[str] = []
-    for agent in AGENTS:
-        pins = read_pins(agent)
-        prefix = f"packages/demo_agents/demo_agents/{agent}/"
-        touched = [f for f in files if f.startswith(prefix) and not f.endswith("PINS.md")]
-        if agent == "coding":
-            touched += [f for f in files if f.startswith("fixtures/code/solutions/")]
-        for v, d in pins.items():
-            if d.get("frozen") and any(f.startswith(f"{prefix}{v}/") for f in files):
-                problems.append(f"{agent}:{v} is frozen but files under {prefix}{v}/ changed in this diff")
-        if touched and f"{prefix}PINS.md" not in files:
-            problems.append(f"{agent} behaviour files changed without a PINS.md entry/new version: {touched[:3]}")
+    bv, cv = _versions(base), _versions(cur)
+    for v, b in bv.items():
+        if v not in cv:
+            problems.append(f"{agent}:{v} was published in the baseline but its pin was REMOVED")
+            continue
+        for f in (*HASH_FIELDS, "frozen"):
+            if b.get(f) != cv[v].get(f):
+                problems.append(f"{agent}:{v} baseline pin rewritten: {f} {b.get(f)!r} -> {cv[v].get(f)!r}")
+        if b.get("frozen") and v in disk and disk[v]["agent_hash"] != b["agent_hash"]:
+            problems.append(
+                f"{agent}:{v} is frozen in the baseline but its on-disk content differs from the baseline pin"
+            )
+    for v, c in cv.items():
+        if v in bv:
+            continue
+        if v not in disk or disk[v]["agent_hash"] != c.get("agent_hash"):
+            problems.append(f"{agent}:{v} (new) pin does not match the version on disk")
+            continue
+        ev = str(c.get("evidence", "")).strip()
+        if not ev:
+            problems.append(f"{agent}:{v} (new) must cite evaluation evidence (--evidence <ref>)")
+        elif not evidence_exists(ev):
+            problems.append(f"{agent}:{v} (new) cites evidence '{ev}' that does not exist in the repository")
+    b_sh, c_sh = base.get(SHARED, {}), cur.get(SHARED, {})
+    if disk_deps is not None:
+        if c_sh.get("deps_hash") != disk_deps:
+            problems.append(f"{agent}: recorded shared-dependency hash does not match disk")
+        elif b_sh.get("deps_hash") and b_sh.get("deps_hash") != c_sh.get("deps_hash"):
+            ev = str(c_sh.get("evidence", "")).strip()
+            if not ev or ev == b_sh.get("evidence"):
+                problems.append(
+                    f"{agent}: shared behaviour-affecting dependencies changed vs the baseline without NEW re-measurement "
+                    f"evidence (every frozen version must be re-evaluated; cite it with --update --evidence)"
+                )
     return problems
 
 
-def update() -> int:
+def diff_problems(agent: str, pins: dict[str, dict[str, object]], files: list[str]) -> list[str]:
+    """``pins`` must be the TRUSTED BASELINE pins: only versions frozen THERE are protected (a version added by this very PR is new,
+    its files are expected in the diff and are validated by ``baseline_problems`` instead)."""
+    problems: list[str] = []
+    prefix = f"{AGENT_REL}/{agent}/"
+    touched = [f for f in files if f.startswith(prefix) and not f.endswith("PINS.md")]
+    if agent == "coding":
+        touched += [f for f in files if f.startswith("fixtures/code/solutions/")]
+    for v, d in _versions(pins).items():
+        if d.get("frozen") and any(f.startswith(f"{prefix}{v}/") for f in files):
+            problems.append(f"{agent}:{v} is frozen but files under {prefix}{v}/ changed in this diff")
+    if touched and f"{prefix}PINS.md" not in files:
+        problems.append(f"{agent} behaviour files changed without a PINS.md entry/new version: {touched[:3]}")
+    return problems
+
+
+ALLOWED_AGENT_PKG_ENTRIES = {"demo_agents", "tests", "pyproject.toml", "README.md", ".gitignore", "uv.lock"}
+
+
+def layout_problems(root: Path) -> list[str]:
+    """Only the ``demo_agents`` package may live beside the agent code: any other top-level module/package in that directory
+    could shadow trusted modules (evalcore, app, fixture_web) once the directory is on ``sys.path``."""
+    d = root / "packages/demo_agents"
+    if not d.exists():
+        return []
+    extra = sorted(p.name for p in d.iterdir() if p.name not in ALLOWED_AGENT_PKG_ENTRIES and p.name != "__pycache__")
+    return [f"unexpected entries beside the agent package (import-shadowing risk): {extra}"] if extra else []
+
+
+# ----------------------------------------------------------------------------- orchestration
+def verify(root: Path = ROOT, base: str | None = None) -> list[str]:
+    problems: list[str] = layout_problems(root)
+    if problems:  # stop BEFORE any agent code can be imported into this interpreter
+        return problems
+    files = changed_files(root, base) if base else []
+    for agent in AGENTS:
+        if not (root / AGENT_REL / agent).exists():
+            if base and baseline_pins(root, agent, base):
+                problems.append(
+                    f"{agent}: the whole agent directory (and its published pins) was REMOVED vs the baseline"
+                )
+            continue
+        cur, disk, dd = read_pins(agent, root), current_hashes(agent, root), deps_hash(agent, root)
+        problems += local_problems(agent, cur, disk, dd)
+        if base:
+            base_pins = baseline_pins(root, agent, base)
+            problems += baseline_problems(
+                agent, base_pins, cur, disk, dd, lambda ref: (root / ref).exists() or "://" in ref
+            )
+            problems += diff_problems(agent, base_pins, files)  # only versions frozen in the BASELINE are protected
+    return problems
+
+
+def update(evidence: str, root: Path = ROOT) -> int:
     n = 0
     for agent in AGENTS:
-        pins, cur = read_pins(agent), current_hashes(agent)
-        for v, h in cur.items():
-            if v in pins:
-                if pins[v]["agent_hash"] != h["agent_hash"]:
+        if not (root / AGENT_REL / agent).exists():
+            continue
+        pins, disk, dd = read_pins(agent, root), current_hashes(agent, root), deps_hash(agent, root)
+        vp = _versions(pins)
+        for v, h in disk.items():
+            if v in vp:
+                if vp[v]["agent_hash"] != h["agent_hash"]:
                     print(f"refusing to rewrite pin {agent}:{v}: content changed (frozen)", file=sys.stderr)
                     return 1
                 continue
-            meta = ROOT / "packages/demo_agents/demo_agents" / agent / v / "meta.json"
+            if not evidence:
+                print(f"{agent}:{v} is new: pass --evidence <ref to evaluation evidence>", file=sys.stderr)
+                return 1
+            meta = root / AGENT_REL / agent / v / "meta.json"
             note = json.loads(meta.read_text()).get("notes", "") if meta.exists() else ""
-            pins[v] = {**h, "frozen": True, "pinned": date.today().isoformat(), "note": note[:160]}
+            pins[v] = {
+                **h,
+                "frozen": True,
+                "pinned": date.today().isoformat(),
+                "evidence": evidence,
+                "note": note[:160],
+            }
             n += 1
-        write_pins(agent, pins)
+        if pins.get(SHARED, {}).get("deps_hash") != dd:
+            if not evidence:
+                print(f"{agent}: shared dependencies changed or unrecorded: pass --evidence <ref>", file=sys.stderr)
+                return 1
+            pins[SHARED] = {"deps_hash": dd, "evidence": evidence}
+        write_pins(agent, pins, root)
     print(f"pinned {n} new version(s)")
     return 0
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", help="git ref to diff against (CI)")
+    ap.add_argument("--base", help="trusted baseline git ref (CI), e.g. origin/main")
     ap.add_argument("--update", action="store_true")
+    ap.add_argument("--emit-hashes", metavar="AGENT", help=argparse.SUPPRESS)
+    ap.add_argument(
+        "--layout-only", action="store_true", help="only check the agent-package layout (imports nothing from --root)"
+    )
+    ap.add_argument("--evidence", default="", help="reference to evaluation evidence for new versions / shared changes")
+    ap.add_argument(
+        "--root", type=Path, default=ROOT, help="checkout to inspect (CI: the PR tree; this script is the trusted one)"
+    )
     a = ap.parse_args()
+    if a.emit_hashes:
+        print(json.dumps(_hashes_in_process(a.emit_hashes)))
+        return 0
+    if a.layout_only:
+        out = layout_problems(a.root.resolve())
+        for p in out:
+            print(f"PIN VIOLATION: {p}")
+        return 1 if out else 0
     if a.update:
-        return update()
-    problems = verify() + (diff_problems(a.base) if a.base else [])
+        return update(a.evidence, a.root.resolve())
+    try:
+        problems = verify(a.root.resolve(), a.base)
+    except BaselineUnreadable as exc:
+        print(f"PIN CHECK FAILED CLOSED: {exc}")
+        return 2
     for p in problems:
         print(f"PIN VIOLATION: {p}")
     if not problems:
-        print("pins OK: every published agent version matches its recorded hash")
+        print("pins OK: every published agent version matches the trusted baseline and its recorded hash")
     return 1 if problems else 0
 
 

@@ -31,6 +31,10 @@ ignore = ["RUF012", "B008", "RUF005", "RUF046"]
 "scripts/*.py" = ["E501"]
 "services/api/alembic/**" = ["E501"]
 "mcp/fixture_web/fixture_web/corpus.py" = ["E501"]
+# prose-heavy statistical docstrings/explanations (wrapping them harms readability)
+"packages/evalcore/src/evalcore/{compare,stats,calibration,adapters,assertions,redaction}.py" = ["E501", "RUF001"]
+"services/api/app/{registry,models,main,routers/judges,services/runs,services/comparisons,services/jobs}.py" = ["E501"]
+"packages/demo_agents/demo_agents/live_research/__init__.py" = ["E501"]
 
 [tool.pyright]
 include = ["packages", "services", "mcp", "scripts", "integrations"]

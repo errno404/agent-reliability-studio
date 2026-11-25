@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from evalcore.calibration import AdmissionPolicy, admit, calibration_metrics
@@ -34,6 +35,7 @@ def calibrate(
     cset: CalibrationSet,
     policy: AdmissionPolicy | None = None,
     limit: int | None = None,
+    deadline_s: float | None = None,
 ) -> CalibrationRun:
     """Run a judge over a calibration set and record metrics + admission. Never trusts an uncalibrated judge."""
     policy = policy or AdmissionPolicy()
@@ -45,7 +47,10 @@ def calibrate(
     judge = build_judge(judge_row)
     preds: dict[str, bool] = {}
     failures = 0
+    t_end = time.monotonic() + deadline_s if deadline_s else None
     for it in items:
+        if t_end is not None and time.monotonic() > t_end:
+            raise TimeoutError(f"calibration exceeded its {deadline_s:.0f}s deadline")
         rubric = "\n".join(
             [f"MUST: {m}" for m in it.rubric.get("must", [])]
             + [f"MUST_NOT: {m}" for m in it.rubric.get("must_not", [])]
@@ -107,9 +112,15 @@ def annotation_summary(s: Session, set_id: int) -> dict[str, Any]:
     ).all()
     by_annot: dict[str, dict[str, bool]] = {}
     sources: set[str] = set()
+    annot_source: dict[str, str] = {}
+    untrusted: dict[str, int] = {}
     for a, it in rows:
-        by_annot.setdefault(a.annotator, {})[it.item_id] = bool(a.label)
         sources.add(a.source)
+        annot_source[a.annotator] = a.source
+        if a.source == "public_untrusted":
+            untrusted[a.annotator] = untrusted.get(a.annotator, 0) + 1  # reported separately, NEVER used as evidence
+            continue
+        by_annot.setdefault(a.annotator, {})[it.item_id] = bool(a.label)
     kappa, n = mean_pairwise_kappa(by_annot)
     return {
         "annotators": sorted(by_annot),
@@ -118,4 +129,18 @@ def annotation_summary(s: Session, set_id: int) -> dict[str, Any]:
         "items_compared": n,
         "disagreements": find_disagreements(by_annot),
         "sources": sorted(sources),
+        "annotator_sources": annot_source,
+        "untrusted_label_counts": untrusted,
     }
+
+
+def release_status(s: Session, judge_id: int):  # type: ignore[no-untyped-def]
+    """Release eligibility of the judge's latest calibration (None if never calibrated)."""
+    from evalcore.calibration import AdmissionPolicy, CalibrationMetrics, release_eligibility
+
+    c = latest_calibration(s, judge_id)
+    if c is None:
+        return None
+    m = CalibrationMetrics(**c.metrics)
+    pol = AdmissionPolicy(**{k: v for k, v in c.policy.items() if k in AdmissionPolicy.__dataclass_fields__})
+    return release_eligibility(c.admitted, m, c.reference_sources, pol)

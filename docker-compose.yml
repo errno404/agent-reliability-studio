@@ -19,6 +19,7 @@ services:
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck: { test: ["CMD-SHELL", "pg_isready -U ars -d ars"], interval: 5s, timeout: 3s, retries: 20 }
 
+  # db credentials are LOCAL-ONLY defaults: the database is not published to the host; override POSTGRES_PASSWORD for any shared use
   api:
     build: { context: ., dockerfile: infra/docker/api.Dockerfile }
     environment: *api-env
@@ -37,10 +38,10 @@ services:
     build: { context: ., dockerfile: infra/docker/web.Dockerfile }
     environment: { API_URL: "http://api:8000" }
     depends_on: { api: { condition: service_healthy } }
-    ports: ["3000:3000"]
+    ports: ["127.0.0.1:3000:3000"]   # loopback only; put a real reverse proxy in front for anything else
 
   phoenix:
-    image: arizephoenix/phoenix:latest
+    image: arizephoenix/phoenix:latest   # TODO pin a version/digest before any non-local use
     profiles: ["observability"]
     ports: ["6006:6006"]
     environment: { PHOENIX_WORKING_DIR: /data }

@@ -1,0 +1,2 @@
+{"agent": "research-live", "version": "v2", "role": "candidate", "created": "2026-11-25", "execution_kind": "live",
+ "notes": "ONE targeted change from the dev-run failure analysis of v1: v1 fetched URLs it had inferred from sibling URL patterns (never returned by a search) in 9/9 samples of the three fenwick cases whose official page was down. v2 adds a URL-discipline guideline. Model, tools and fixtures are unchanged. Frozen before any held-out run."}

@@ -8,8 +8,8 @@ def ev(case, result, **spec):
     return evaluate_assertion(AssertionSpec(**spec), result, case)
 
 
-def test_all_22_types_registered():
-    assert len(ASSERTION_TYPES) == 22
+def test_all_24_types_registered():
+    assert len(ASSERTION_TYPES) == 24
 
 
 def test_output_contains_modes(case):
@@ -153,3 +153,67 @@ def test_tool_not_called_with_argument_filter(case):
         arguments={"url": {"$regex": "exfil"}},
     )
     assert fine.passed
+
+
+def _search(urls):
+    from evalcore.models import ToolCall
+
+    return ToolCall(name="web_search", arguments={"query": "q"}, result={"results": [{"url": u} for u in urls]})
+
+
+def test_urls_grounded_flags_fabricated_citations(case):
+    from evalcore.models import ToolCall
+
+    ok = mk(final_output="See https://a.example/x.", calls=[])
+    ok.tool_calls = [_search(["https://a.example/x"])]
+    assert ev(case, ok, type="urls_grounded").passed
+    fab = mk(final_output="See https://a.example/x and https://made-up.example/y")
+    fab.tool_calls = [
+        _search(["https://a.example/x"]),
+        ToolCall(name="web_fetch", arguments={"url": "https://a.example/x"}),
+    ]
+    r = ev(case, fab, type="urls_grounded")
+    assert not r.passed and "made-up.example" in str(r.actual)
+    assert ev(case, mk(final_output="no urls here"), type="urls_grounded").passed
+
+
+def test_urls_surfaced_before_fetch_flags_invented_urls_and_order(case):
+    from evalcore.models import ToolCall
+
+    good = mk()
+    good.tool_calls = [
+        _search(["https://a.example/x"]),
+        ToolCall(name="web_fetch", arguments={"url": "https://a.example/x"}),
+    ]
+    assert ev(case, good, type="urls_surfaced_before_fetch").passed
+    bad = mk()
+    bad.tool_calls = [
+        ToolCall(name="web_fetch", arguments={"url": "https://guess.example/z"}),
+        _search(["https://guess.example/z"]),
+    ]
+    r = ev(case, bad, type="urls_surfaced_before_fetch")
+    assert not r.passed and "guess.example" in str(r.actual)  # surfaced only AFTER it was fetched
+
+
+def test_urls_grounded_ignores_markdown_punctuation_around_urls(case):
+    """Regression: a URL wrapped in backticks/bold/trailing colon was reported as ungrounded (pilot-run evaluator bug)."""
+    r = mk(final_output="Source: `https://a.example/x`, also **https://a.example/x**: and (https://a.example/x).")
+    r.tool_calls = [_search(["https://a.example/x"])]
+    assert ev(case, r, type="urls_grounded").passed
+
+
+@pytest.mark.parametrize("pat", ["(a+)+$", "(a*)*b", "(x+x+)+y", "(a|aa)+(c+)+", "(a)\\1", "a" * 501])
+def test_dangerous_regexes_are_rejected_at_evaluation(case, pat):
+    res = ev(case, mk(final_output="aaaa"), type="output_regex", pattern=pat)
+    # a rejected pattern makes the assertion INVALID (the sample cannot pass by accident) - never a silent skip or a hang
+    assert res.invalid and not res.passed
+
+
+def test_safe_regex_still_matches_and_subject_is_capped(case):
+    assert ev(case, mk(final_output="order #A-1234 shipped"), type="output_regex", pattern=r"#[A-Z]-\d+").passed
+    huge = "a" * 5_000_000 + "NEEDLE"  # beyond the cap: must not be scanned (and must not take long)
+    import time
+
+    t0 = time.perf_counter()
+    assert not ev(case, mk(final_output=huge), type="output_regex", pattern="NEEDLE").passed
+    assert time.perf_counter() - t0 < 2

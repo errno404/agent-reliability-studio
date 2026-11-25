@@ -516,9 +516,31 @@ export interface paths {
         put?: never;
         /**
          * Annotate
-         * @description Store a human label. Rate-limited and capped; seeded demo annotators are separate (source=synthetic_demo).
+         * @description PUBLIC, UNTRUSTED annotation. Handles are unauthenticated, so rows are stored as ``public_untrusted``: they are shown with
+         *     that label, never counted as human calibration evidence and never able to change a reference label or a gate. The trusted,
+         *     authenticated human workflow is ``POST /annotation/trusted`` (admin only).
          */
         post: operations["annotate_api_annotation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/annotation/trusted": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Annotate Trusted
+         * @description AUTHENTICATED human annotation (admin token): the only path that creates ``source="human"`` rows.
+         */
+        post: operations["annotate_trusted_api_annotation_trusted_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -553,12 +575,30 @@ export interface paths {
         put?: never;
         /**
          * Adjudicate
-         * @description Record an adjudication. Same guards as /annotation: rate limit, capacity cap, reserved ids, append-only.
-         *
-         *     Adjudication rows are stored separately (annotator ``adjudicator:<id>``) and never change a calibration set's
-         *     reference labels or any gate decision.
+         * @description PUBLIC, UNTRUSTED adjudication: stored as ``public_untrusted`` and NOT flagged adjudicated (an anonymous handle cannot
+         *     adjudicate). Never changes a reference label or a gate. Authenticated adjudication: ``POST /annotation/trusted/adjudicate``.
          */
         post: operations["adjudicate_api_annotation_adjudicate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/annotation/trusted/adjudicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adjudicate Trusted
+         * @description AUTHENTICATED adjudication (admin token): the only path that creates ``adjudicated=True`` rows.
+         */
+        post: operations["adjudicate_trusted_api_annotation_trusted_adjudicate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -748,6 +788,8 @@ export interface components {
             candidate_label: string;
             /** Mode */
             mode: string;
+            /** Intent */
+            intent: string;
             /** Policy Name */
             policy_name: string;
             /** Policy */
@@ -804,6 +846,8 @@ export interface components {
             candidate_label: string;
             /** Mode */
             mode: string;
+            /** Intent */
+            intent: string;
             /** Policy Name */
             policy_name: string;
             /** Policy */
@@ -1020,6 +1064,8 @@ export interface components {
         };
         /** RunDetail */
         RunDetail: {
+            /** Execution Kind */
+            execution_kind: string;
             /** Id */
             id: string;
             /** Name */
@@ -1109,6 +1155,8 @@ export interface components {
         };
         /** RunOut */
         RunOut: {
+            /** Execution Kind */
+            execution_kind: string;
             /** Id */
             id: string;
             /** Name */
@@ -1382,7 +1430,9 @@ export interface operations {
     };
     agents_api_agents_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1398,11 +1448,22 @@ export interface operations {
                     "application/json": components["schemas"]["AgentVersionOut"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     datasets_api_datasets_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1418,11 +1479,22 @@ export interface operations {
                     "application/json": components["schemas"]["DatasetVersionOut"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     dataset_detail_api_datasets__name___version__get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+            };
             header?: never;
             path: {
                 name: string;
@@ -1454,7 +1526,9 @@ export interface operations {
     };
     distilled_api_candidates_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1470,6 +1544,15 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1748,7 +1831,9 @@ export interface operations {
     };
     list_comparisons_api_comparisons_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1762,6 +1847,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComparisonOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1888,7 +1982,9 @@ export interface operations {
     };
     gates_api_gates_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1902,6 +1998,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2033,7 +2138,9 @@ export interface operations {
     };
     judges_api_judges_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2047,6 +2154,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JudgeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2251,6 +2367,43 @@ export interface operations {
             };
         };
     };
+    annotate_trusted_api_annotation_trusted_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-admin-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     summary_api_annotation_summary_get: {
         parameters: {
             query?: {
@@ -2288,6 +2441,43 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjudicationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adjudicate_trusted_api_annotation_trusted_adjudicate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-admin-token"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };

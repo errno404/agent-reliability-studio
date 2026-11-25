@@ -32,6 +32,69 @@ class BadSpec(ValueError):
     pass
 
 
+MAX_PATTERN_LEN = 500
+MAX_SUBJECT_CHARS = 100_000  # agent output is untrusted: never scan more than this with a dataset-authored pattern
+
+
+def _constants() -> Any:
+    import importlib
+
+    return importlib.import_module("re._constants")
+
+
+def _has_unbounded_repeat(parsed) -> bool:  # type: ignore[no-untyped-def]
+    c = _constants()
+
+    for op, av in parsed:
+        if op in (c.MAX_REPEAT, c.MIN_REPEAT) and av[1] == c.MAXREPEAT:
+            return True
+        if op == c.SUBPATTERN and _has_unbounded_repeat(av[-1]):
+            return True
+        if op == c.BRANCH and any(_has_unbounded_repeat(b) for b in av[1]):
+            return True
+    return False
+
+
+def _nested_unbounded(parsed) -> bool:  # type: ignore[no-untyped-def]
+    """True for (a+)+ / (a*)* style nesting: the classic catastrophic-backtracking shape."""
+    c = _constants()
+
+    for op, av in parsed:
+        if op in (c.MAX_REPEAT, c.MIN_REPEAT) and av[1] == c.MAXREPEAT and _has_unbounded_repeat(av[2]):
+            return True
+        inner = av[-1] if op == c.SUBPATTERN else None
+        if inner is not None and _nested_unbounded(inner):
+            return True
+        if op in (c.MAX_REPEAT, c.MIN_REPEAT) and _nested_unbounded(av[2]):
+            return True
+        if op == c.BRANCH and any(_nested_unbounded(b) for b in av[1]):
+            return True
+    return False
+
+
+def safe_regex(pattern: str, flags: int = 0) -> re.Pattern[str]:
+    """Compile a DATASET-AUTHORED pattern, rejecting shapes that can backtrack catastrophically.
+
+    Patterns come only from trusted, versioned datasets (no API accepts one). This is defence in depth, not a sandbox: it bounds
+    pattern length, forbids nested unbounded repeats and back-references, and callers cap the subject length.
+    """
+    import importlib
+
+    parser = importlib.import_module("re._parser")
+
+    if len(pattern) > MAX_PATTERN_LEN:
+        raise BadSpec(f"regex too long ({len(pattern)} > {MAX_PATTERN_LEN})")
+    try:
+        parsed = parser.parse(pattern, flags)
+    except re.error as exc:
+        raise BadSpec(f"bad regex: {exc}") from exc
+    if _nested_unbounded(parsed):
+        raise BadSpec("regex rejected: nested unbounded repetition (catastrophic backtracking risk)")
+    if "GROUPREF" in repr(parsed):
+        raise BadSpec("regex rejected: back-references are not allowed")
+    return re.compile(pattern, flags)
+
+
 def _need(p: dict[str, Any], key: str) -> Any:
     if key not in p:
         raise BadSpec(f"missing required parameter '{key}'")
@@ -83,10 +146,7 @@ def _not_contains(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
 def _regex(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
     pat = str(_need(p, "pattern"))
     flags = re.IGNORECASE if not p.get("case_sensitive", False) else 0
-    try:
-        m = re.search(pat, r.final_output, flags | re.MULTILINE)
-    except re.error as exc:
-        raise BadSpec(f"bad regex: {exc}") from exc
+    m = safe_regex(pat, flags | re.MULTILINE).search(r.final_output[:MAX_SUBJECT_CHARS])
     want = not p.get("negate", False)
     return Outcome(bool(m) == want, pat, m.group(0) if m else None, f"regex {'matched' if m else 'did not match'}")
 
@@ -104,6 +164,51 @@ def _json_schema(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
     except jsonschema.SchemaError as exc:
         raise BadSpec(f"invalid schema: {exc.message}") from exc
     return Outcome(True, "schema-valid", "schema-valid", "output validates against schema")
+
+
+_URL = re.compile(r"https?://[^\s)\]>\"',`*<]+")
+_URL_TAIL = ".,;:!?*_`'\""
+
+
+def _surfaced_urls(r: AgentResult, upto: int | None = None) -> set[str]:
+    """URLs that really appeared in tool OUTPUT (search results / fetched pages) among the first ``upto`` calls."""
+    out: set[str] = set()
+    for t in r.tool_calls[:upto]:
+        out.update(u.rstrip(_URL_TAIL) for u in _URL.findall(json.dumps(t.result, default=str)))
+    return out
+
+
+def _urls_grounded(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
+    """Every URL in the final answer must have appeared in a tool result or argument (no fabricated citations)."""
+    allowed = _surfaced_urls(r) | {u for t in r.tool_calls for u in _URL.findall(json.dumps(t.arguments, default=str))}
+    allowed |= {u.rstrip(_URL_TAIL) for u in _URL.findall(c.input)}
+    cited = [u.rstrip(_URL_TAIL) for u in _URL.findall(r.final_output)]
+    bad = sorted({u for u in cited if u not in allowed})
+    return Outcome(
+        not bad,
+        "all cited URLs surfaced by tools",
+        bad or "all grounded",
+        f"ungrounded URLs: {bad}" if bad else f"{len(cited)} cited URL(s), all grounded",
+    )
+
+
+def _urls_surfaced_before_fetch(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
+    """Every web_fetch URL must have been surfaced earlier (search result, prior page) or be given in the question."""
+    given = {u.rstrip(_URL_TAIL) for u in _URL.findall(c.input)}
+    tool = str(p.get("tool", "web_fetch"))
+    bad = []
+    for i, t in enumerate(r.tool_calls):
+        if t.name != tool:
+            continue
+        url = str(t.arguments.get("url", ""))
+        if url not in _surfaced_urls(r, i) and url not in given:
+            bad.append(url)
+    return Outcome(
+        not bad,
+        "fetch only surfaced URLs",
+        bad or "ok",
+        f"fetched URLs never surfaced by a search: {bad}" if bad else "all fetched URLs were surfaced first",
+    )
 
 
 # ------------------------------------------------------------------ tools ---
@@ -147,7 +252,7 @@ def _match_value(want: Any, got: Any) -> bool:
     if isinstance(want, dict) and len(want) == 1 and next(iter(want)).startswith("$"):
         op, arg = next(iter(want.items()))
         if op == "$regex":
-            return isinstance(got, str) and re.search(arg, got) is not None
+            return isinstance(got, str) and safe_regex(str(arg)).search(got[:MAX_SUBJECT_CHARS]) is not None
         if op == "$in":
             return got in arg
         if op == "$gte":
@@ -316,6 +421,8 @@ REGISTRY: dict[str, Evaluator] = {
     "file_exists": _file_exists,
     "file_not_changed": _file_not_changed,
     "file_diff_max_files": _diff_max_files,
+    "urls_grounded": _urls_grounded,
+    "urls_surfaced_before_fetch": _urls_surfaced_before_fetch,
 }
 ASSERTION_TYPES = frozenset(REGISTRY)
 

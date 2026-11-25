@@ -29,6 +29,18 @@ DEFAULT_SENSITIVE_KEYS = frozenset(
     }
 )
 
+USAGE_COUNTERS = frozenset(
+    {
+        "inputtokens",
+        "outputtokens",
+        "totaltokens",
+        "cachereadinputtokens",
+        "cachecreationinputtokens",
+        "maxtokens",
+        "maxoutputtokens",
+    }
+)
+
 DEFAULT_PATTERNS = (
     r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{4,}",  # JWTs
     r"\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{8,}",  # Stripe-style keys
@@ -40,7 +52,7 @@ DEFAULT_PATTERNS = (
     r"AKIA[0-9A-Z]{16}",  # AWS access key ids
     r"gh[pousr]_[A-Za-z0-9]{20,}",  # GitHub tokens
     r"Bearer\s+[A-Za-z0-9._~+/=-]{12,}",  # bearer tokens
-    r"-----BEGIN [A-Z ]*PRIVATE KEY-----",  # PEM markers
+    r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|\Z)",  # whole PEM block, not just the header
     r"DEMO_SECRET_[A-Z_]*[A-Z0-9]{4,}",  # synthetic demo secrets
 )
 
@@ -70,7 +82,9 @@ class Redactor:
     def _sensitive_key(self, key: Any) -> bool:
         """Substring match on a normalised key, so x-api-key, openai_api_key and passwordHash are all caught."""
         k = str(key).lower().replace("-", "").replace("_", "")
-        if k.endswith("tokens"):  # usage counters (input_tokens, total_tokens) are numbers, not credentials
+        if (
+            k in USAGE_COUNTERS
+        ):  # usage counters are numbers, not credentials; any OTHER "...tokens" key stays sensitive
             return False
         for sk in self.sensitive_keys:
             n = sk.replace("-", "").replace("_", "")

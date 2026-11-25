@@ -1,5 +1,14 @@
-# Render blueprint: managed Postgres + API + web (+ optional worker). Public demo is read-only (DEMO_MODE=true)
-# and uses synthetic data only. Deploy: Render dashboard -> New -> Blueprint -> select this repo.
+# Render blueprint - FREE-TIER-COMPATIBLE, read-only synthetic demo. NOT deployed by this repository's tooling.
+#
+# Verified against Render docs (render.com/docs/free, /private-network) on 2026-11-24:
+#   * Private services (pserv) have NO free instance type, and free web services cannot receive private-network traffic.
+#     So the API is a free *web* service reachable over HTTPS; the web tier proxies to it (confirm the API_URL the dashboard resolves for `hostport`: on a free tier it must be the API's *public* https URL, not a private-network address; this blueprint has NOT been deployed or validated by Render). It is safe to expose because
+#     DEMO_MODE=true makes every mutation 403, there is no shell/coding execution, and only synthetic data is served.
+#   * Free Postgres EXPIRES 30 days after creation (14-day grace, then deleted); 1 GB; no backups. Free web services spin down
+#     after 15 minutes idle (~1 minute cold start) and share 750 instance-hours/month. Re-seed is automatic (idempotent).
+#   * NOT verified in the docs read: how many X-Forwarded-For hops Render adds. TRUSTED_PROXY_HOPS therefore defaults to 0
+#     (client-supplied forwarding headers are ignored; rate limits key on the proxy). Raise it only after verifying your host.
+# Deploy: Render dashboard -> New -> Blueprint -> select this repo. Costs: none on the free types above; upgrading is your choice.
 databases:
   - name: ars-db
     plan: free
@@ -7,30 +16,30 @@ databases:
     user: ars
 
 services:
-  # The API is a PRIVATE service: unreachable from the internet, only from the web service on Render's private network.
-  - type: pserv
+  - type: web
     name: ars-api
     runtime: docker
+    plan: free
     dockerfilePath: ./infra/docker/api.Dockerfile
     dockerContext: .
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         fromDatabase: { name: ars-db, property: connectionString }
       - { key: DEMO_MODE, value: "true" }
       - { key: ENVIRONMENT, value: production }
-      - { key: CORS_ORIGINS, sync: false }          # browsers never call the API directly (the web app proxies /api), so CORS can stay tight
-      # Only private-network peers (the web service) can reach this API, so trusting their forwarded address is sound.
-      - { key: FORWARDED_ALLOW_IPS, value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16" }
-      - { key: ADMIN_TOKEN, generateValue: true }   # only used when DEMO_MODE=false
+      - { key: CORS_ORIGINS, sync: false }       # browsers call the web tier's /api proxy, so CORS can stay tight
+      - { key: FORWARDED_ALLOW_IPS, value: "127.0.0.1" }   # never trust forwarded headers from arbitrary peers
+      - { key: ADMIN_TOKEN, generateValue: true }          # only used when DEMO_MODE=false
 
   - type: web
     name: ars-web
     runtime: docker
+    plan: free
     dockerfilePath: ./infra/docker/web.Dockerfile
     dockerContext: .
     healthCheckPath: /
     envVars:
       - key: API_URL
-        fromService: { type: pserv, name: ars-api, property: hostport }   # host:port; the app adds http://
-      # Render's load balancer appends the real client address to X-Forwarded-For: one trusted hop. Verify this for any other host.
-      - { key: TRUSTED_PROXY_HOPS, value: "1" }
+        fromService: { type: web, name: ars-api, property: hostport }   # confirm in the dashboard; prefix with https:// if needed
+      - { key: TRUSTED_PROXY_HOPS, value: "0" }

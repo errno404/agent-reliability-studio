@@ -4,6 +4,8 @@ import { apiBase } from "./config";
 const HOP_BY_HOP = new Set(["connection", "keep-alive", "transfer-encoding", "te", "upgrade", "host", "content-length", "accept-encoding"]);
 // Client-supplied forwarding headers are untrusted: drop them all; re-assert one address only if a trusted edge exists.
 const MAX_BODY = 8 * 1024; // annotation payloads are tiny
+// ONLY the public, untrusted annotation endpoints are proxied. /api/annotation/trusted* (admin) is deliberately NOT reachable from the web tier.
+const PUBLIC_POSTS = new Set(["/api/annotation", "/api/annotation/adjudicate"]);
 
 /** Read a request body, aborting once MAX bytes are exceeded. Counts real bytes, so chunked uploads (no Content-Length) are capped too. */
 export async function readLimited(req: Request, max: number): Promise<Uint8Array | null> {
@@ -46,11 +48,11 @@ export async function proxy(req: Request, upstreamPath: string): Promise<Respons
   const url = new URL(req.url);
   const target = `${base}${upstreamPath}${url.search}`;
   const headers = new Headers();
-  req.headers.forEach((v, k) => { if (!HOP_BY_HOP.has(k.toLowerCase()) && !FORWARDING.test(k)) headers.set(k, v); });
+  req.headers.forEach((v, k) => { if (!HOP_BY_HOP.has(k.toLowerCase()) && !FORWARDING.test(k) && k.toLowerCase() !== "x-admin-token") headers.set(k, v); });  // an admin token from a browser is never forwarded
   const client = forwardedClient(req.headers, Number(process.env.TRUSTED_PROXY_HOPS ?? 0));
   if (client) headers.set("x-forwarded-for", client);
   const hasBody = req.method !== "GET" && req.method !== "HEAD";
-  if (hasBody && !upstreamPath.startsWith("/api/annotation")) return Response.json({ detail: "read-only: POST is only proxied for /api/annotation*" }, { status: 405 });
+  if (hasBody && !PUBLIC_POSTS.has(upstreamPath)) return Response.json({ detail: "read-only: POST is only proxied for the public (untrusted) annotation endpoints" }, { status: 405 });
   const body = hasBody ? await readLimited(req, MAX_BODY) : undefined;
   if (body === null) return Response.json({ detail: "request body too large" }, { status: 413 });
   try {

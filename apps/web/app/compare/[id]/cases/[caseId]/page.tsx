@@ -15,13 +15,13 @@ function Side({ title, tone, samples }: { title: string; tone: "neutral" | "info
         sub={samples.length > 1 ? `${samples.length} samples: ${samples.map((x) => x.status[0]).join(" ")}` : undefined} />
       {!s ? <p className="p-4 text-sm text-muted">This run has no sample for this case.</p> : (
         <div className="space-y-4 p-4 text-[13px]">
-          <section><h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-faint">Input</h3><p className="whitespace-pre-wrap">{s.input_text}</p></section>
-          <section><h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-faint">Output</h3><p className="whitespace-pre-wrap rounded bg-panel2 px-3 py-2">{s.final_output || <span className="text-faint">(empty)</span>}</p></section>
-          <section><h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-faint">Tool sequence &amp; arguments</h3>
+          <section><h3 className="mb-1 text-[12px] font-medium text-muted">Input</h3><p className="whitespace-pre-wrap">{s.input_text}</p></section>
+          <section><h3 className="mb-1 text-[12px] font-medium text-muted">Output</h3><p className="whitespace-pre-wrap rounded bg-panel2 px-3 py-2">{s.final_output || <span className="text-faint">(empty)</span>}</p></section>
+          <section><h3 className="mb-1 text-[12px] font-medium text-muted">Tool sequence &amp; arguments</h3>
             <ol className="space-y-1 font-mono text-[11.5px]">{(s.result.tool_calls as { name: string; arguments: object; error?: string }[] | undefined ?? []).map((t, i) => (
               <li key={i} className="rounded border border-line px-2 py-1"><span className="font-semibold">{t.name}</span>{t.error && <span className="ml-2 text-bad">{t.error}</span>}<div className="break-all text-muted">{JSON.stringify(t.arguments)}</div></li>))}</ol>
           </section>
-          <section><h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-faint">Assertions</h3>
+          <section><h3 className="mb-1 text-[12px] font-medium text-muted">Assertions</h3>
             <ul className="space-y-1">{s.assertions.map((a) => (
               <li key={a.name} className="flex items-start gap-2"><Badge tone={a.skipped ? "neutral" : a.passed ? "ok" : a.gating ? "bad" : "warn"}>{a.skipped ? "skip" : a.passed ? "pass" : a.gating ? "FAIL" : "warn"}</Badge>
                 <span><span className="font-mono text-[11.5px]">{a.type}</span> <span className="text-faint">· {a.layer}{!a.gating ? " · informational" : ""}</span><div className="text-xs text-muted">{a.evidence}</div></span></li>))}</ul>
@@ -51,10 +51,10 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
             <div className="flex flex-wrap items-center gap-2">{d.changed_outcome ? <Badge tone="warn">outcome changed: {d.baseline_status} → {d.candidate_status}</Badge> : <Badge>outcome unchanged ({d.baseline_status})</Badge>}
               {d.added_tools?.map((t) => <Badge key={t} tone="info">+ {t}</Badge>)}{d.removed_tools?.map((t) => <Badge key={t} tone="neutral">− {t}</Badge>)}
               <span className="num text-muted">latency {d.latency_delta_ms >= 0 ? "+" : ""}{ms(d.latency_delta_ms)} · tokens {d.token_delta >= 0 ? "+" : ""}{num(d.token_delta)}</span></div>
-            <div className="grid gap-2 md:grid-cols-2"><div><div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Baseline trajectory</div><Trajectory tools={d.baseline ?? []} max={12} /></div><div><div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Candidate trajectory</div><Trajectory tools={d.candidate ?? []} max={12} /></div></div>
+            <div className="grid gap-2 md:grid-cols-2"><div><div className="text-[12px] font-medium text-muted">Baseline trajectory</div><Trajectory tools={d.baseline ?? []} max={12} /></div><div><div className="text-[12px] font-medium text-muted">Candidate trajectory</div><Trajectory tools={d.candidate ?? []} max={12} /></div></div>
             {d.changed_arguments?.map((c, i) => (
               <div key={i} className="rounded-md border border-warn/40 bg-warn-soft p-3"><div className="mb-1 font-semibold text-warn">Changed arguments to <span className="font-mono">{c.tool}</span></div>
-                <div className="grid gap-2 font-mono text-xs md:grid-cols-2"><div><div className="mb-1 font-sans text-[10px] font-semibold uppercase tracking-wider text-faint">baseline</div><pre className="overflow-x-auto whitespace-pre-wrap rounded bg-panel p-2 text-muted">{JSON.stringify(c.baseline, null, 1)}</pre></div><div><div className="mb-1 font-sans text-[10px] font-semibold uppercase tracking-wider text-faint">candidate</div><pre className="overflow-x-auto whitespace-pre-wrap rounded bg-panel p-2">{JSON.stringify(c.candidate, null, 1)}</pre></div></div></div>))}
+                <div className="grid gap-2 font-mono text-xs md:grid-cols-2"><div><div className="mb-1 font-sans text-[10px] font-semibold text-faint">baseline</div><pre className="overflow-x-auto whitespace-pre-wrap rounded bg-panel p-2 text-muted">{JSON.stringify(c.baseline, null, 1)}</pre></div><div><div className="mb-1 font-sans text-[10px] font-semibold text-faint">candidate</div><pre className="overflow-x-auto whitespace-pre-wrap rounded bg-panel p-2">{JSON.stringify(c.candidate, null, 1)}</pre></div></div></div>))}
             {(d.assertions_newly_failing?.length ?? 0) > 0 && <div><span className="text-bad">Newly failing:</span> <span className="font-mono text-xs">{d.assertions_newly_failing?.join(", ")}</span></div>}
             {(d.assertions_fixed?.length ?? 0) > 0 && <div><span className="text-ok">Fixed:</span> <span className="font-mono text-xs">{d.assertions_fixed?.join(", ")}</span></div>}
           </div></Card>

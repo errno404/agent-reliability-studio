@@ -187,13 +187,20 @@ class RunExecution(Base):
     """One attempt to execute a run. Also the job queue (claimed with an atomic UPDATE)."""
 
     __tablename__ = "run_executions"
-    __table_args__ = (Index("ix_exec_status", "status", "created_at"),)
+    __table_args__ = (
+        Index("ix_exec_status", "status", "created_at"),
+        Index("ix_exec_lease", "status", "lease_expires_at"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("runs.id"), index=True)
     status: Mapped[str] = mapped_column(String(16), default="queued")  # queued|running|succeeded|failed
     attempt: Mapped[int] = mapped_column(Integer, default=0)
     worker_id: Mapped[str] = mapped_column(String(64), default="")
     heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # LEASE: the claimant's random token + expiry. Every state change by a worker is conditional on still holding the token
+    # (compare-and-set), so a stale or partitioned worker cannot commit state over a newer attempt.
+    lease_token: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)

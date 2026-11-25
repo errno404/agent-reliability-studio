@@ -1,7 +1,7 @@
 """Generate scripted patch plans for the synthetic coding agents (v1 flawed / v2 mostly correct).
 
 A plan is {"reads": [...], "writes": {relative_path: new_content}}. The evaluation harness around
-them (isolated sandbox, real unit tests, real diff accounting) is genuine; the *patches* are
+them (temp-directory harness - not a sandbox - real unit tests, real diff accounting) is genuine; the *patches* are
 scripted so the demo needs no model. Re-running this script is idempotent.
 """
 

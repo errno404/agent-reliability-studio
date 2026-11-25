@@ -32,18 +32,25 @@ EXIT = {
 
 
 def pythonpath(agent_src: Path | None) -> str:
+    # TRUSTED entries first, the agent package directory LAST: a top-level module a PR adds beside ``demo_agents`` can never
+    # shadow evalcore / fixture_web / app. (scripts/check_pins.py also rejects unexpected entries there.)
     parts = [
         str(ROOT),
         str(ROOT / "packages/evalcore/src"),
-        str((agent_src or ROOT) / "packages/demo_agents"),
         str(ROOT / "mcp/fixture_web"),
         str(ROOT / "services/api"),
+        str((agent_src or ROOT) / "packages/demo_agents"),
     ]
     return os.pathsep.join(parts)
 
 
 def run_ars(args: list[str], db: Path, agent_src: Path | None) -> subprocess.CompletedProcess[str]:
-    env = {**os.environ, "PYTHONPATH": pythonpath(agent_src), "DATABASE_URL": f"sqlite:///{db}"}
+    env = {
+        **os.environ,
+        "PYTHONPATH": pythonpath(agent_src),
+        "DATABASE_URL": f"sqlite:///{db}",
+        "ARS_FIXTURE_ROOT": str(ROOT / "fixtures"),  # the environment is ALWAYS the trusted checkout's
+    }
     return subprocess.run([sys.executable, "-m", "app.cli", *args], cwd=ROOT, env=env, text=True, capture_output=True)
 
 
@@ -70,13 +77,21 @@ def main() -> int:
     ap.add_argument("--candidate-spec", required=True, help="e.g. support:v3")
     ap.add_argument("--dataset", required=True, help="e.g. support:v1 (published, frozen)")
     ap.add_argument(
-        "--baseline-src", type=Path, help="checkout of the target branch that supplies the BASELINE agent code"
+        "--baseline-src", type=Path, help="checkout supplying the BASELINE agent code (default: this trusted checkout)"
+    )
+    ap.add_argument(
+        "--candidate-src",
+        type=Path,
+        help="checkout supplying the CANDIDATE agent code (CI: the PR tree). Everything else "
+        "(evalcore, services, datasets, fixtures, this script) always comes from THIS trusted checkout.",
     )
     ap.add_argument("--samples", type=int, default=3)
     ap.add_argument("--seed", type=int, default=20260601)
     ap.add_argument("--policy", default="production", choices=["production", "demo-20", "demo-15", "demo-10"])
     ap.add_argument(
-        "--no-conservative", action="store_true", help="do not block on INCONCLUSIVE (still blocks invalid/regression)"
+        "--intent",
+        default="agent_change",
+        choices=["prompt_change", "agent_change", "model_change", "tool_change", "evaluator_change"],
     )
     ap.add_argument("--out-dir", type=Path, default=Path("gate-out"))
     a = ap.parse_args()
@@ -88,7 +103,7 @@ def main() -> int:
     steps = [(["db", "upgrade"], None), (["dataset", "sync", f"datasets/{a.dataset.replace(':', '/')}.yaml"], None)]
     for spec, rid, src in (
         (a.baseline_spec, "gate-baseline", a.baseline_src),
-        (a.candidate_spec, "gate-candidate", None),
+        (a.candidate_spec, "gate-candidate", a.candidate_src),
     ):
         steps.append(
             (
@@ -136,7 +151,7 @@ def main() -> int:
             policy_name=a.policy,
             name=f"{a.baseline_spec} -> {a.candidate_spec}",
         )
-        gate = comparisons.create_gate(s, comp, conservative=not a.no_conservative)
+        gate = comparisons.create_gate(s, comp, release=True)
         base, cand = s.get(Run, "gate-baseline"), s.get(Run, "gate-candidate")
         payload = {
             "name": comp.name,

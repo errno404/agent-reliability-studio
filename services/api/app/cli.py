@@ -177,6 +177,10 @@ def eval_run(
     name: str | None = None,
     queue_only: bool = False,
     judge_name: str | None = None,
+    concurrency: Annotated[int, typer.Option(help="parallel samples (live runs)")] = 1,
+    budget_usd: Annotated[
+        float | None, typer.Option(help="stop a LIVE run when the API-equivalent estimate exceeds this")
+    ] = None,
     database_url: DbOpt = None,
 ) -> None:
     """Run an evaluation now (or just queue it for the worker with --queue-only)."""
@@ -194,15 +198,15 @@ def eval_run(
             dv=dv,
             samples=samples,
             seed=seed,
-            run_type="live" if "synthetic" not in agent else "synthetic_demo",
             judge=jr,
             queue=queue_only,
+            concurrency=concurrency,
+            run_budget_usd=budget_usd,
         )
-        run.run_type, run.is_synthetic = "synthetic_demo", True  # all bundled agents are synthetic
         if queue_only:
             console.print(f"queued {rid}")
             return
-        run_svc.execute_run(s, run)
+        run_svc.execute_run(s, run, concurrency=concurrency)
         sm = run.summary
         console.print(
             f"[green]{rid}[/green] {agent} on {dataset_}: success {sm['task_success']['rate']:.1%} "
@@ -217,15 +221,18 @@ def eval_compare(
     candidate: Annotated[str, typer.Option(help="candidate RUN_ID")],
     policy: str = "production",
     mode: str = "strict",
-    conservative: bool = True,
+    intent: Annotated[
+        str, typer.Option(help="what changed: prompt_change|agent_change|model_change|tool_change|evaluator_change")
+    ] = "agent_change",
+    release: Annotated[bool, typer.Option("--release/--diagnostic", help="only --release can authorise")] = True,
     json_out: Path | None = None,
     database_url: DbOpt = None,
 ) -> None:
     """Statistically compare two runs and apply the release gate. See exit codes in `ars --help`."""
     _setup(database_url)
     with session_scope() as s:
-        comp = comparisons.create_comparison(s, baseline, candidate, mode=mode, policy_name=policy)
-        gate = comparisons.create_gate(s, comp, conservative)
+        comp = comparisons.create_comparison(s, baseline, candidate, mode=mode, policy_name=policy, intent=intent)
+        gate = comparisons.create_gate(s, comp, release)
         console.print(f"[bold]{comp.decision.upper()}[/bold]  gate={gate.verdict.upper()}")
         console.print(comp.explanation)
         for r in gate.reasons:
@@ -305,7 +312,8 @@ def judge_calibrate(
             f"fnr={m['fnr']:.1%} acc={m['accuracy']:.1%}"
         )
         console.print(
-            "[green]CALIBRATED — allowed for gating[/green]"
+            "[yellow]METRICS PASS on this set's labels; release-eligible only if they are trusted human labels "
+            "(synthetic fixture labels = demonstration only)[/yellow]"
             if c.admitted
             else "[red]NOT CALIBRATED — diagnostic only[/red]: " + "; ".join(c.reasons)
         )
@@ -326,6 +334,7 @@ def traces_distill(
     import yaml
     from evalcore.distill import distill_case
     from evalcore.models import AgentResult, Case
+    from evalcore.redaction import Redactor
 
     from .models import EvalCase
 
@@ -355,6 +364,7 @@ def traces_distill(
                 0,
                 smp.status == "passed",
             )
+            cand = Redactor().apply(cand)  # exported artifacts are redacted too
             (out / f"{cand['id']}.yaml").write_text(yaml.safe_dump(cand, sort_keys=False, width=120))
             n += 1
         console.print(f"wrote {n} candidate case(s) to {out} - review and edit before adding to a NEW dataset version")

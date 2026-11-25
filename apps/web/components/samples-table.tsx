@@ -7,7 +7,7 @@ export function Trajectory({ tools, max = 6 }: { tools: string[]; max?: number }
   if (!tools.length) return <span className="text-faint">(no tool calls)</span>;
   const shown = tools.slice(0, max);
   return (
-    <span className="font-mono text-[11.5px] text-muted">
+    <span className="font-mono text-[11.5px] text-muted [overflow-wrap:anywhere]">
       {shown.map((t, i) => <span key={i}>{i > 0 && <span className="px-1 text-faint">→</span>}{t}</span>)}
       {tools.length > max && <span className="text-faint"> +{tools.length - max}</span>}
     </span>
@@ -19,7 +19,7 @@ export function SamplesTable({ samples, linkCase }: { samples: SampleOut[]; link
   return (
     <div className="scroll-x">
       <table className="w-full min-w-[820px] text-left text-[13px]">
-        <thead className="border-b border-line text-[11px] uppercase tracking-wider text-faint">
+        <thead className="border-b border-line text-[11px] text-faint">
           <tr>{["Case", "#", "Status", "Failure labels", "Trajectory", "Latency", "Tokens", ""].map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr>
         </thead>
         <tbody className="divide-y divide-line">

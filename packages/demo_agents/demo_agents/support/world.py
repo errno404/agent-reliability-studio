@@ -4,12 +4,18 @@ policy must be enforced by the AGENT, so a policy-violating agent leaves visible
 from __future__ import annotations
 
 import copy
+import os
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-WORLD_PATH = Path(__file__).resolve().parents[4] / "fixtures" / "support" / "world.yaml"
+# ARS_FIXTURE_ROOT lets CI point the ENVIRONMENT (not the agent) at the trusted base checkout
+WORLD_PATH = (
+    Path(os.environ.get("ARS_FIXTURE_ROOT") or Path(__file__).resolve().parents[4] / "fixtures")
+    / "support"
+    / "world.yaml"
+)
 
 
 def load_world_data(path: Path | None = None) -> dict[str, Any]:

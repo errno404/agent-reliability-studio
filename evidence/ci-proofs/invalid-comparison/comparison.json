@@ -1,0 +1,235 @@
+{
+  "comparison": {
+    "name": "support:v2 -> support:v3",
+    "decision": "invalid",
+    "valid": false,
+    "explanation": "Comparison is INVALID: model_mismatch: model: baseline='synthetic-sim-small' candidate='synthetic-sim-xlarge' (controlled for intent 'agent_change'); model_resolved_mismatch: model_resolved: baseline='synthetic-sim-small' candidate='synthetic-sim-xlarge' (controlled for intent 'agent_change').",
+    "policy": "demo-20",
+    "validity": {
+      "valid": false,
+      "reasons": [
+        "model_mismatch: model: baseline='synthetic-sim-small' candidate='synthetic-sim-xlarge' (controlled for intent 'agent_change')",
+        "model_resolved_mismatch: model_resolved: baseline='synthetic-sim-small' candidate='synthetic-sim-xlarge' (controlled for intent 'agent_change')"
+      ],
+      "warnings": [],
+      "mode": "strict",
+      "intent": "agent_change"
+    },
+    "result": {
+      "bootstrap": null,
+      "mcnemar": null,
+      "mcnemar_note": "diagnostic only: per-case MAJORITY outcome over repeated samples, not the regression decision",
+      "baseline_summary": {
+        "n_samples": 90,
+        "n_cases": 30,
+        "status_counts": {
+          "passed": 80,
+          "failed": 10
+        },
+        "task_success": {
+          "rate": 0.8888888888888888,
+          "n": 90,
+          "passed": 80,
+          "ci_low": 0.8074221497873896,
+          "ci_high": 0.9385168081070229
+        },
+        "outcome": {
+          "rate": 0.8928571428571429,
+          "n": 84,
+          "passed": 75,
+          "ci_low": 0.8087538548365549,
+          "ci_high": 0.9425997871233551
+        },
+        "trajectory": {
+          "rate": 0.9888888888888889,
+          "n": 90,
+          "passed": 89,
+          "ci_low": 0.9397159168824657,
+          "ci_high": 0.9980359158990818
+        },
+        "component": {
+          "rate": 0.85,
+          "n": 60,
+          "passed": 51,
+          "ci_low": 0.7388541093022145,
+          "ci_high": 0.9190255941983225
+        },
+        "policy": {
+          "rate": 1.0,
+          "n": 27,
+          "passed": 27,
+          "ci_low": 0.8754449702581328,
+          "ci_high": 0.9999999999999998
+        },
+        "execution_error_rate": 0.0,
+        "latency_p50_ms": 1029.92,
+        "latency_p95_ms": 1808.39215,
+        "total_tokens": 98440,
+        "input_tokens": 84466,
+        "output_tokens": 13974,
+        "cost_usd": 0.063193,
+        "cost_label": "API-equivalent estimated cost",
+        "pass_hat_k": 0.8666666666666667,
+        "pass_at_k": 0.9,
+        "k": 3,
+        "intended_k": 3,
+        "eligible_cases": 30,
+        "excluded_cases": 0,
+        "exclusion_reasons": {},
+        "excluded_case_ids": {},
+        "mean_trial_pass_rate": 0.8888888888888888,
+        "mean_trial_ci": [
+          0.8074221497873896,
+          0.9385168081070229
+        ],
+        "mean_trial_ci_method": "wilson_pooled_trials_ignores_case_clustering",
+        "single_run_pass_rate": 0.8888888888888888,
+        "single_run_ci": [
+          0.8074221497873896,
+          0.9385168081070229
+        ],
+        "execution_success_rate": 1.0,
+        "conditional_quality_rate": 0.8888888888888888,
+        "end_to_end_success_rate": 0.8888888888888888,
+        "flaky_cases": [
+          "sup-29-lookup-transient-failure"
+        ],
+        "flips_by_category": {
+          "tool_failure": 1
+        },
+        "failure_labels": {
+          "wrong_tool_arguments": 9,
+          "state_mutation_failure": 9,
+          "repeated_tool_loop": 1
+        }
+      },
+      "candidate_summary": {
+        "n_samples": 90,
+        "n_cases": 30,
+        "status_counts": {
+          "passed": 80,
+          "failed": 10
+        },
+        "task_success": {
+          "rate": 0.8888888888888888,
+          "n": 90,
+          "passed": 80,
+          "ci_low": 0.8074221497873896,
+          "ci_high": 0.9385168081070229
+        },
+        "outcome": {
+          "rate": 0.8928571428571429,
+          "n": 84,
+          "passed": 75,
+          "ci_low": 0.8087538548365549,
+          "ci_high": 0.9425997871233551
+        },
+        "trajectory": {
+          "rate": 0.9888888888888889,
+          "n": 90,
+          "passed": 89,
+          "ci_low": 0.9397159168824657,
+          "ci_high": 0.9980359158990818
+        },
+        "component": {
+          "rate": 0.8333333333333334,
+          "n": 60,
+          "passed": 50,
+          "ci_low": 0.7196838683638547,
+          "ci_high": 0.9068682302080855
+        },
+        "policy": {
+          "rate": 1.0,
+          "n": 27,
+          "passed": 27,
+          "ci_low": 0.8754449702581328,
+          "ci_high": 0.9999999999999998
+        },
+        "execution_error_rate": 0.0,
+        "latency_p50_ms": 1042.4140000000002,
+        "latency_p95_ms": 1744.46735,
+        "total_tokens": 97293,
+        "input_tokens": 83496,
+        "output_tokens": 13797,
+        "cost_usd": null,
+        "cost_label": "pricing unavailable",
+        "pass_hat_k": 0.8666666666666667,
+        "pass_at_k": 0.9,
+        "k": 3,
+        "intended_k": 3,
+        "eligible_cases": 30,
+        "excluded_cases": 0,
+        "exclusion_reasons": {},
+        "excluded_case_ids": {},
+        "mean_trial_pass_rate": 0.8888888888888888,
+        "mean_trial_ci": [
+          0.8074221497873896,
+          0.9385168081070229
+        ],
+        "mean_trial_ci_method": "wilson_pooled_trials_ignores_case_clustering",
+        "single_run_pass_rate": 0.8888888888888888,
+        "single_run_ci": [
+          0.8074221497873896,
+          0.9385168081070229
+        ],
+        "execution_success_rate": 1.0,
+        "conditional_quality_rate": 0.8888888888888888,
+        "end_to_end_success_rate": 0.8888888888888888,
+        "flaky_cases": [
+          "sup-20-address-missing-address-clarify"
+        ],
+        "flips_by_category": {
+          "address": 1
+        },
+        "failure_labels": {
+          "wrong_tool_arguments": 10,
+          "state_mutation_failure": 9
+        }
+      },
+      "category_deltas": {},
+      "case_changes": [],
+      "new_failure_labels": {},
+      "intent": "agent_change",
+      "mode": "strict",
+      "end_to_end": null,
+      "coverage": {
+        "baseline": {
+          "expected": 90,
+          "present": 90,
+          "missing": 0,
+          "execution_error": 0,
+          "invalid": 0,
+          "skipped": 0,
+          "incomplete": 0,
+          "incomplete_share": 0.0,
+          "missing_examples": []
+        },
+        "candidate": {
+          "expected": 90,
+          "present": 90,
+          "missing": 0,
+          "execution_error": 0,
+          "invalid": 0,
+          "skipped": 0,
+          "incomplete": 0,
+          "incomplete_share": 0.0,
+          "missing_examples": []
+        }
+      },
+      "incomplete_reasons": [],
+      "execution_kind": {
+        "baseline": "synthetic",
+        "candidate": "synthetic"
+      },
+      "authorization": "release-grade evidence",
+      "what_changed": ""
+    }
+  },
+  "gate": {
+    "verdict": "fail",
+    "reasons": [
+      "comparison is invalid: model_mismatch: model: baseline='synthetic-sim-small' candidate='synthetic-sim-xlarge' (controlled for intent 'agent_change'); model_resolved_mismatch: model_resolved: baseline='synthetic-sim-small' candidate='synthetic-sim-xlarge' (controlled for intent 'agent_change')"
+    ],
+    "judge_ok": true
+  }
+}

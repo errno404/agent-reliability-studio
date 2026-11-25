@@ -21,13 +21,13 @@ export default async function FailuresPage({ searchParams }: Props) {
       <>
         <PageHeader title="What is actually breaking most often?" sub="Deterministic counts over stored assertion evidence, grouped by root-cause label. Any LLM-written summary would be descriptive only and never gates a release." />
         <form className="mb-4 flex flex-wrap items-end gap-3 text-xs">
-          <label className="flex flex-col gap-1 font-medium uppercase tracking-wider text-faint">Run
-            <select name="run" defaultValue={run} className="max-w-[320px] rounded border border-line bg-panel px-2 py-1.5 text-[13px] normal-case tracking-normal text-fg">{runs.items.filter((r) => r.n_samples).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
-          <label className="flex flex-col gap-1 font-medium uppercase tracking-wider text-faint">Compare to
-            <select name="baseline" defaultValue={baseline} className="max-w-[320px] rounded border border-line bg-panel px-2 py-1.5 text-[13px] normal-case tracking-normal text-fg"><option value="">(none)</option>{runs.items.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
+          <label className="flex flex-col gap-1 font-medium text-faint">Run
+            <select name="run" defaultValue={run} className="max-w-[320px] rounded border border-line bg-panel px-2 py-1.5 text-[13px] normal-case tracking-normal text-fg">{runs.items.filter((r) => r.n_samples).map((r) => <option key={r.id} value={r.id}>{r.execution_kind === "live" ? "[LIVE] " : "[synthetic] "}{r.name}</option>)}</select></label>
+          <label className="flex flex-col gap-1 font-medium text-faint">Compare to
+            <select name="baseline" defaultValue={baseline} className="max-w-[320px] rounded border border-line bg-panel px-2 py-1.5 text-[13px] normal-case tracking-normal text-fg"><option value="">(none)</option>{runs.items.map((r) => <option key={r.id} value={r.id}>{r.execution_kind === "live" ? "[LIVE] " : "[synthetic] "}{r.name}</option>)}</select></label>
           <button className="rounded border border-line bg-panel px-3 py-1.5 text-[13px] hover:bg-panel2">Apply</button>
         </form>
-        <Card className="mb-5"><div className="p-4"><div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Summary (from stored evidence)</div><p className="mt-1 text-[15px]">{f.summary}</p>
+        <Card className="mb-5"><div className="p-4"><div className="text-[12px] font-medium text-muted">Summary (from stored evidence)</div><p className="mt-1 text-[15px]">{f.summary}</p>
           <p className="mt-2 text-xs text-muted">{f.n_failed_samples} failed samples · {f.n_execution_errors} execution errors (excluded from quality failures)</p></div></Card>
         <div className="grid gap-5 lg:grid-cols-[1fr_1.3fr]">
           <Card><CardHeader title="Failure modes" sub={baseline ? "Coloured = this run, grey = comparison run." : "Colour = severity."} />

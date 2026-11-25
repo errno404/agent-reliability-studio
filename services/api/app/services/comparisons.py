@@ -16,9 +16,9 @@ from .runs import load_samples
 
 POLICIES: dict[str, BootstrapPolicy] = {
     "production": BootstrapPolicy(min_cases=50, alpha=0.05, n_boot=10_000, margin=0.05),
-    "demo-20": BootstrapPolicy(min_cases=20, alpha=0.05, n_boot=10_000, margin=0.05),
-    "demo-15": BootstrapPolicy(min_cases=15, alpha=0.05, n_boot=10_000, margin=0.05),
-    "demo-10": BootstrapPolicy(min_cases=10, alpha=0.05, n_boot=10_000, margin=0.05),
+    "demo-20": BootstrapPolicy(min_cases=20, alpha=0.05, n_boot=10_000, margin=0.05, max_missing_share=0.06),
+    "demo-15": BootstrapPolicy(min_cases=15, alpha=0.05, n_boot=10_000, margin=0.05, max_missing_share=0.06),
+    "demo-10": BootstrapPolicy(min_cases=10, alpha=0.05, n_boot=10_000, margin=0.05, max_missing_share=0.06),
 }
 
 
@@ -56,6 +56,21 @@ def what_changed(result: dict[str, Any], base_name: str, cand_name: str) -> str:
     return " ".join(parts)
 
 
+def _evaluate(s: Session, base: Run, cand: Run, mode: str, policy_name: str, intent: str):  # type: ignore[no-untyped-def]
+    pol = POLICIES[policy_name]
+    return compare_runs(
+        manifest_of(base),
+        load_samples(s, base.id),
+        manifest_of(cand),
+        load_samples(s, cand.id),
+        pol,
+        mode,
+        base_complete=base.status == "succeeded",
+        cand_complete=cand.status == "succeeded",
+        intent=intent,
+    )
+
+
 def create_comparison(
     s: Session,
     baseline_id: str,
@@ -64,30 +79,35 @@ def create_comparison(
     mode: str = "strict",
     policy_name: str = "production",
     name: str = "",
+    intent: str = "agent_change",
 ) -> Comparison:
     base, cand = s.get(Run, baseline_id), s.get(Run, candidate_id)
     if base is None or cand is None:
         raise LookupError("unknown run id")
     pol = POLICIES[policy_name]
-    bs, cs = load_samples(s, baseline_id), load_samples(s, candidate_id)
-    cmp = compare_runs(
-        manifest_of(base),
-        bs,
-        manifest_of(cand),
-        cs,
-        pol,
-        mode,
-        base_complete=base.status == "succeeded",
-        cand_complete=cand.status == "succeeded",
-    )
+    cmp = _evaluate(s, base, cand, mode, policy_name, intent)
     result: dict[str, Any] = {
         "bootstrap": asdict(cmp.bootstrap) if cmp.bootstrap else None,
         "mcnemar": asdict(cmp.mcnemar) if cmp.mcnemar else None,
+        "mcnemar_note": "diagnostic only: per-case MAJORITY outcome over repeated samples, not the regression decision",
         "baseline_summary": cmp.baseline_summary,
         "candidate_summary": cmp.candidate_summary,
         "category_deltas": cmp.category_deltas,
         "case_changes": cmp.case_changes,
         "new_failure_labels": cmp.new_failure_labels,
+        "intent": cmp.intent,
+        "mode": cmp.mode,
+        "end_to_end": cmp.end_to_end,
+        "coverage": cmp.coverage,
+        "incomplete_reasons": cmp.incomplete_reasons,
+        "execution_kind": {"baseline": manifest_of(base).execution_kind, "candidate": manifest_of(cand).execution_kind},
+        "authorization": (
+            "release-grade evidence"
+            if cmp.mode == "strict" and cmp.validity.valid
+            else "INVALID: cannot authorise a release"
+            if not cmp.validity.valid
+            else "EXPLORATORY: cannot authorise a release"
+        ),
     }
     if result["bootstrap"]:
         result["bootstrap"]["decision"] = str(cmp.bootstrap.decision.value) if cmp.bootstrap else None
@@ -104,7 +124,7 @@ def create_comparison(
         candidate_run_id=candidate_id,
         mode=mode,
         policy_name=policy_name,
-        policy=asdict(pol),
+        policy={**asdict(pol), "intent": intent},
         decision=cmp.decision.value,
         valid=cmp.validity.valid,
         validity={
@@ -112,44 +132,40 @@ def create_comparison(
             "reasons": cmp.validity.reasons,
             "warnings": cmp.validity.warnings,
             "mode": cmp.validity.mode,
+            "intent": intent,
         },
         result=result,
         explanation=cmp.explanation,
     )
     s.add(row)
     s.flush()
+    row._eval = cmp  # type: ignore[attr-defined]  # transient: lets create_gate reuse the exact in-memory analysis
     return row
 
 
 def judge_ok_for(s: Session, *runs: Run) -> bool:
-    # Use the admission state RECORDED when each run executed (a later calibration must not retro-legitimise it).
-    _ = (s, judges)
-    return all(r.judge_config_id is None or r.judge_admitted for r in runs)
+    """RELEASE eligibility of every judge involved: admitted when the run executed AND its calibration is release-grade
+    (trusted human/adjudicated labels + a confidence bound on false positives). Synthetic calibrations never qualify."""
+    for r in runs:
+        if r.judge_config_id is None:
+            continue
+        if not r.judge_admitted:
+            return False
+        st = judges.release_status(s, r.judge_config_id)
+        if st is None or not st.eligible:
+            return False
+    return True
 
 
-def create_gate(s: Session, comp: Comparison, conservative: bool = True) -> CiGateDecision:
-    """Gate verdict. Refuses to gate on a judge whose exact configuration is not currently admitted."""
-    from evalcore.compare import Comparison as EvalComparison
-    from evalcore.manifest import ValidationReport
-    from evalcore.stats import Decision
-
+def create_gate(s: Session, comp: Comparison, release: bool = True) -> CiGateDecision:
+    """Gate decision. ``release=True`` is the only mode that can authorise a release (strict, valid, complete, release-eligible judges)."""
     base, cand = comp.baseline_run, comp.candidate_run
+    ev = getattr(comp, "_eval", None) or _evaluate(
+        s, base, cand, comp.mode, comp.policy_name, comp.policy.get("intent", "agent_change")
+    )
     ok = judge_ok_for(s, base, cand)
-    shim = EvalComparison(
-        validity=ValidationReport(comp.valid, [], comp.mode),
-        decision=Decision(comp.decision),
-        bootstrap=None,
-        mcnemar=None,
-        explanation=comp.explanation,
-    )
-    v = gate(shim, judge_ok=ok, conservative=conservative)
-    if not comp.valid:
-        v.reasons = [f"comparison is invalid: {'; '.join(comp.validity.get('reasons', []))}"] + [
-            r for r in v.reasons if "invalid" not in r
-        ]
-    row = CiGateDecision(
-        comparison_id=comp.id, verdict=v.verdict, reasons=v.reasons, judge_ok=ok, conservative=conservative
-    )
+    v = gate(ev, judge_ok=ok, release=release)
+    row = CiGateDecision(comparison_id=comp.id, verdict=v.verdict, reasons=v.reasons, judge_ok=ok, conservative=release)
     s.add(row)
     s.flush()
     return row

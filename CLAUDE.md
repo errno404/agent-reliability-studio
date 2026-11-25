@@ -10,7 +10,7 @@ Read this file, `docs/BUILD_STATE.md`, `docs/adr/`, then `git status`. Update `B
 
 ## Architecture boundaries (do not blur)
 - `packages/evalcore` — pure library. **No FastAPI, SQLAlchemy or web imports.** Assertions, scoring layers, stats, calibration, judge, manifest/validation, tracing/redaction, taxonomy, adapters.
-- `packages/demo_agents` — frozen reference systems (support, research, coding) + `runtime.py` harness. `mcp/fixture_web` — frozen MCP corpus.
+- `packages/demo_agents` — frozen reference systems (support, research, coding scripted agents + `live_research`, a real-LLM agent run through the CLI harness) + `runtime.py` harness. `mcp/fixture_web` — frozen MCP corpus.
 - `services/api` (`ars-api`) — FastAPI, SQLAlchemy 2, Alembic, job-queue worker, `ars` CLI. API, CLI and worker share `app/services/*`.
 - `apps/web` — Next.js dashboard; browser → same-origin `/api/*` runtime proxy → FastAPI. `datasets/`, `fixtures/` — versioned evidence.
 
@@ -21,7 +21,7 @@ Web needs **Node >= 22** (`apps/web/.nvmrc`, `engines`). Python 3.13 via `uv`. D
 ## Evaluation-science rules (non-negotiable)
 1. **Never collapse quality into one number.** Outcome, trajectory, component, policy are separate layers. Case pass = all *gating* assertions pass.
 2. **Deterministic first.** Use a judge only where meaning is needed; safety constraints (secret leaks, forbidden actions) are always deterministic.
-3. **Never gate on an uncalibrated evaluator.** A judge is identified by (backend, model, prompt hash); any change needs a new calibration. The gate refuses non-admitted judges.
+3. **Never gate on an uncalibrated evaluator.** A judge is identified by (backend, model, prompt hash, config hash); any change needs a new calibration. The gate refuses judges that are not *release-eligible* (synthetic labels give demonstration scope only).
 4. **Execution errors are not quality failures.** Keep `execution_error` separate everywhere; exclude from pass rates.
 5. **Observable behaviour only.** Never request, store or display chain-of-thought.
 6. **Provenance or refuse.** If manifests differ unexpectedly (dataset hash, fixture, judge, samples/case, model) the comparison is INVALID, not "close enough".
