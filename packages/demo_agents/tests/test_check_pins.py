@@ -158,3 +158,41 @@ def test_files_of_a_version_added_by_this_pr_are_not_flagged_as_frozen_edits(rep
     files = cp.changed_files(repo, "main")
     assert any(f.endswith("v2/agent.py") for f in files)
     assert cp.diff_problems("support", cp.baseline_pins(repo, "support", "main"), files) == []
+
+
+def test_verify_end_to_end_accepts_a_new_version_and_rejects_a_rewritten_frozen_pin(repo, monkeypatch):
+    """Exercises verify() itself (not just the helpers): this is the path CI runs, and it once consulted the PR's own pins."""
+    monkeypatch.setattr(cp, "AGENTS", ("support",))
+    monkeypatch.setattr(cp, "deps_hash", lambda agent, root=None: "d1")
+    d = repo / cp.AGENT_REL / "support"
+    (d / "v1").mkdir()
+    (d / "v1" / "agent.py").write_text("1")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "v1 files")
+    git(repo, "checkout", "-q", "main")
+    git(repo, "merge", "-q", "pr")
+    git(repo, "checkout", "-qb", "feature")
+    # 1) legitimate new version: files in the diff, pin matches disk, evidence cited
+    (d / "v2").mkdir()
+    (d / "v2" / "agent.py").write_text("2")
+    pins = cp.read_pins("support", repo)
+    pins["v2"] = {**H, "agent_hash": "a2", "frozen": True, "evidence": "docs/CI.md"}
+    put(repo, pins)
+    (repo / "docs").mkdir(exist_ok=True)
+    (repo / "docs/CI.md").write_text("e")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "add v2")
+    monkeypatch.setattr(cp, "current_hashes", lambda agent: {"v1": H, "v2": {**H, "agent_hash": "a2"}})
+    assert cp.verify(repo, "main") == []
+    # 2) the same PR also edits frozen v1 AND rewrites its pin to match: must be rejected against the baseline
+    (d / "v1" / "agent.py").write_text("EDITED")
+    pins = cp.read_pins("support", repo)
+    pins["v1"]["agent_hash"] = "a-edited"
+    put(repo, pins)
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "sneaky")
+    monkeypatch.setattr(
+        cp, "current_hashes", lambda agent: {"v1": {**H, "agent_hash": "a-edited"}, "v2": {**H, "agent_hash": "a2"}}
+    )
+    out = cp.verify(repo, "main")
+    assert any("rewritten" in p for p in out) and any("frozen but files" in p for p in out)

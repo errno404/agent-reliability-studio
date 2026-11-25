@@ -282,15 +282,11 @@ def verify(root: Path = ROOT, base: str | None = None) -> list[str]:
         cur, disk, dd = read_pins(agent, root), current_hashes(agent), deps_hash(agent, root)
         problems += local_problems(agent, cur, disk, dd)
         if base:
+            base_pins = baseline_pins(root, agent, base)
             problems += baseline_problems(
-                agent,
-                baseline_pins(root, agent, base),
-                cur,
-                disk,
-                dd,
-                lambda ref: (root / ref).exists() or "://" in ref,
+                agent, base_pins, cur, disk, dd, lambda ref: (root / ref).exists() or "://" in ref
             )
-            problems += diff_problems(agent, cur, files)
+            problems += diff_problems(agent, base_pins, files)  # only versions frozen in the BASELINE are protected
     return problems
 
 
