@@ -55,6 +55,7 @@ From step 3 on, every PR is gated by trusted code that already lives on `main`.
 2. **Require review from Code Owners**, and dismiss stale approvals on new commits;
 3. Require status checks: `python`, `web`, `e2e`, `docker` (from `ci.yml`) and **`eval-gate-result`**; require branches to be up to date;
 4. Do not allow bypassing the above (including for administrators) and block force pushes and deletions.
+`scripts/apply_branch_protection.sh` applies items 3-4 (required checks, no force-push/deletion, admins included) in one command and adds items 1-2 only with `REVIEWERS=1` once a real second maintainer exists. It is prepared, **not run**; no independent review is claimed until then.
 Until then, merges depend on the sole owner's discipline; the workflow still reports honestly but cannot force a block.
 
 ## Verified on GitHub (disposable branches/PRs, 2026-11-24 local = 2026-11-25 UTC)
