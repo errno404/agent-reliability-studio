@@ -43,7 +43,12 @@ def pythonpath(agent_src: Path | None) -> str:
 
 
 def run_ars(args: list[str], db: Path, agent_src: Path | None) -> subprocess.CompletedProcess[str]:
-    env = {**os.environ, "PYTHONPATH": pythonpath(agent_src), "DATABASE_URL": f"sqlite:///{db}"}
+    env = {
+        **os.environ,
+        "PYTHONPATH": pythonpath(agent_src),
+        "DATABASE_URL": f"sqlite:///{db}",
+        "ARS_FIXTURE_ROOT": str(ROOT / "fixtures"),  # the environment is ALWAYS the trusted checkout's
+    }
     return subprocess.run([sys.executable, "-m", "app.cli", *args], cwd=ROOT, env=env, text=True, capture_output=True)
 
 
@@ -70,7 +75,11 @@ def main() -> int:
     ap.add_argument("--candidate-spec", required=True, help="e.g. support:v3")
     ap.add_argument("--dataset", required=True, help="e.g. support:v1 (published, frozen)")
     ap.add_argument(
-        "--baseline-src", type=Path, help="checkout of the target branch that supplies the BASELINE agent code"
+        "--baseline-src", type=Path, help="checkout supplying the BASELINE agent code (default: this trusted checkout)"
+    )
+    ap.add_argument(
+        "--candidate-src", type=Path, help="checkout supplying the CANDIDATE agent code (CI: the PR tree). Everything else "
+        "(evalcore, services, datasets, fixtures, this script) always comes from THIS trusted checkout."
     )
     ap.add_argument("--samples", type=int, default=3)
     ap.add_argument("--seed", type=int, default=20260601)
@@ -90,7 +99,7 @@ def main() -> int:
     steps = [(["db", "upgrade"], None), (["dataset", "sync", f"datasets/{a.dataset.replace(':', '/')}.yaml"], None)]
     for spec, rid, src in (
         (a.baseline_spec, "gate-baseline", a.baseline_src),
-        (a.candidate_spec, "gate-candidate", None),
+        (a.candidate_spec, "gate-candidate", a.candidate_src),
     ):
         steps.append(
             (

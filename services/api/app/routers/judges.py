@@ -142,7 +142,7 @@ def next_item(
 ) -> sc.BlindItem | None:
     """Blind: returns input/candidate/rubric only. No reference label, no judge verdict, no other annotator's label."""
     cs = _cset(s, set_name)
-    done = select(HumanAnnotation.item_pk).where(HumanAnnotation.annotator == annotator)
+    done = select(HumanAnnotation.item_pk).where(HumanAnnotation.annotator == _ns(annotator, "public_untrusted"))
     it = s.scalar(
         select(CalibrationItem)
         .where(CalibrationItem.set_id == cs.id, CalibrationItem.id.not_in(done))
@@ -165,7 +165,7 @@ def progress(
     rows = s.execute(
         select(HumanAnnotation.label)
         .join(CalibrationItem, HumanAnnotation.item_pk == CalibrationItem.id)
-        .where(CalibrationItem.set_id == cs.id, HumanAnnotation.annotator == annotator)
+        .where(CalibrationItem.set_id == cs.id, HumanAnnotation.annotator == _ns(annotator, "public_untrusted"))
     ).all()
     return {
         "annotator": annotator,
@@ -194,9 +194,15 @@ def _public_rows(s: Session) -> int:
     return s.scalar(select(func.count(HumanAnnotation.id)).where(HumanAnnotation.source == "public_untrusted")) or 0
 
 
+def _ns(handle: str, source: str) -> str:
+    """Public handles live in their own namespace so an anonymous visitor can never collide with (or block) a trusted annotator."""
+    return f"public:{handle}" if source == "public_untrusted" else handle
+
+
 def _store_annotation(body: sc.AnnotationIn, s: Session, source: str) -> dict[str, Any]:
     if not ANNOTATOR.fullmatch(body.annotator) or body.annotator.startswith("demo-annotator"):
         raise HTTPException(422, "annotator must be 2-40 chars [A-Za-z0-9_.-] and not a reserved demo id")
+    who_ = _ns(body.annotator, source)
     if source == "public_untrusted" and _public_rows(s) >= MAX_HUMAN_ROWS:
         raise HTTPException(429, "annotation capacity reached for this deployment")
     cs = _cset(s, body.set_name)
@@ -205,15 +211,9 @@ def _store_annotation(body: sc.AnnotationIn, s: Session, source: str) -> dict[st
     )
     if it is None:
         raise HTTPException(404, "item not found")
-    row = s.scalar(
-        select(HumanAnnotation).where(HumanAnnotation.item_pk == it.id, HumanAnnotation.annotator == body.annotator)
-    )
+    row = s.scalar(select(HumanAnnotation).where(HumanAnnotation.item_pk == it.id, HumanAnnotation.annotator == who_))
     if row is None:
-        s.add(
-            HumanAnnotation(
-                item_pk=it.id, annotator=body.annotator, label=body.label, note=body.note[:500], source=source
-            )
-        )
+        s.add(HumanAnnotation(item_pk=it.id, annotator=who_, label=body.label, note=body.note[:500], source=source))
     elif row.label is None and body.label is not None:
         row.label, row.note = body.label, body.note[:500]  # a skipped item may be filled in later
     else:
@@ -253,6 +253,7 @@ def summary(set_name: str = "calibration", s: Session = Depends(get_session)) ->
         "sources": info["sources"],
         "disagreement_queue": queue,
         "annotator_sources": src,
+        "untrusted_label_counts": info["untrusted_label_counts"],
         "untrusted_annotators": sorted(a for a, v in src.items() if v == "public_untrusted"),  # type: ignore[attr-defined]
         "consensus_claimed": n_ann >= 2,
         "note": (
@@ -288,7 +289,7 @@ def _store_adjudication(body: sc.AdjudicationIn, s: Session, source: str) -> dic
     )
     if it is None:
         raise HTTPException(404, "item not found")
-    who = f"adjudicator:{body.adjudicator}"
+    who = f"adjudicator:{_ns(body.adjudicator, source)}"
     if s.scalar(select(HumanAnnotation.id).where(HumanAnnotation.item_pk == it.id, HumanAnnotation.annotator == who)):
         raise HTTPException(409, "this adjudicator has already ruled on this item")
     s.add(

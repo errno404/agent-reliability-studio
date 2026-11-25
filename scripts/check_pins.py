@@ -318,11 +318,12 @@ def main() -> int:
     ap.add_argument("--base", help="trusted baseline git ref (CI), e.g. origin/main")
     ap.add_argument("--update", action="store_true")
     ap.add_argument("--evidence", default="", help="reference to evaluation evidence for new versions / shared changes")
+    ap.add_argument("--root", type=Path, default=ROOT, help="checkout to inspect (CI: the PR tree; this script is the trusted one)")
     a = ap.parse_args()
     if a.update:
-        return update(a.evidence)
+        return update(a.evidence, a.root.resolve())
     try:
-        problems = verify(ROOT, a.base)
+        problems = verify(a.root.resolve(), a.base)
     except BaselineUnreadable as exc:
         print(f"PIN CHECK FAILED CLOSED: {exc}")
         return 2

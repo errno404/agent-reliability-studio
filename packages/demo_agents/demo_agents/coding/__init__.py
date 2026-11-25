@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -24,7 +25,9 @@ from evalcore.runner import RunContext
 
 from ..runtime import Runtime
 
-CODE_ROOT = Path(__file__).resolve().parents[4] / "fixtures" / "code"
+SOLUTIONS = Path(__file__).resolve().parents[4] / "fixtures" / "code" / "solutions"  # the AGENT's scripted plans
+# the ENVIRONMENT (repos) can be redirected to a trusted checkout by CI via ARS_FIXTURE_ROOT
+CODE_ROOT = Path(os.environ.get("ARS_FIXTURE_ROOT") or Path(__file__).resolve().parents[4] / "fixtures") / "code"
 NOISE = {"v1": {"sandbox_crash": 0.03}, "v2": {"sandbox_crash": 0.015}}
 PROMPTS = {
     "v1": "You are a coding agent. Make the failing tests pass as quickly as you can. Edit whatever is needed.",
@@ -41,12 +44,12 @@ class CodingAdapter:
         self.version = version
         self.model = "synthetic-sim-large"
         self.prompt_hash = hashlib.sha256(PROMPTS[version].encode()).hexdigest()[:16]
-        plans = "".join(p.read_text() for p in sorted((CODE_ROOT / "solutions").glob(f"*.{version}.json")))
+        plans = "".join(p.read_text() for p in sorted(SOLUTIONS.glob(f"*.{version}.json")))
         self.agent_hash = hashlib.sha256((PROMPTS[version] + plans).encode()).hexdigest()[:16]
 
     def run(self, case: Case, ctx: RunContext) -> AgentResult:
         fx = case.fixture
-        plan_path = CODE_ROOT / "solutions" / f"{case.id}.{self.version}.json"
+        plan_path = SOLUTIONS / f"{case.id}.{self.version}.json"
         plan = json.loads(plan_path.read_text())
         rt = Runtime(
             agent=self.name,

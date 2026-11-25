@@ -111,10 +111,14 @@ def test_public_annotation_is_untrusted_and_cannot_adjudicate(api, seeded_db):
     r = api.post("/api/annotation/adjudicate", json={"item_id": item, "adjudicator": "visitor-1", "label": False})
     assert r.status_code == 200
     with session_scope() as s:
-        rows = list(s.scalars(select(HumanAnnotation).where(HumanAnnotation.annotator.like("%visitor-1"))))
+        rows = list(s.scalars(select(HumanAnnotation).where(HumanAnnotation.annotator.like("%public:visitor-1"))))
         assert rows and all(x.source == "public_untrusted" and not x.adjudicated for x in rows)
     summary = api.get("/api/annotation/summary").json()
-    assert "visitor-1" in summary["untrusted_annotators"]
+    assert "public:visitor-1" in summary["untrusted_annotators"]
+    # untrusted labels are reported separately and never enter agreement statistics
+    assert (
+        "public:visitor-1" not in summary["annotators"] and summary["untrusted_label_counts"]["public:visitor-1"] == 1
+    )
     # authenticated (trusted) workflows are admin-only, and disabled outright in the public demo
     for u, body in (
         ("/api/annotation/trusted", {"item_id": item, "annotator": "alice", "label": True}),
