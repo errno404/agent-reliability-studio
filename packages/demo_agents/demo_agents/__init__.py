@@ -15,7 +15,7 @@ from evalcore.runner import RunContext
 from . import coding, research, support
 
 AGENT_DIR = Path(__file__).parent
-VERSIONS = {"support": ("v1", "v2"), "research": ("v1", "v2"), "coding": ("v1", "v2"), "redteam": ("v1", "v2")}
+VERSIONS = {"support": ("v1", "v2", "v3"), "research": ("v1", "v2"), "coding": ("v1", "v2"), "redteam": ("v1", "v2")}
 
 
 class RedteamAdapter:
