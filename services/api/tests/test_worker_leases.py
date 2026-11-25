@@ -89,7 +89,7 @@ def test_independent_heartbeat_keeps_a_slow_job_alive(engine):
     with db.session_scope() as s:
         _queue(s)
         ex = jobs.claim_next(s, lease_seconds=1)
-        lease = jobs.Lease(ex.id, ex.lease_token, lease_seconds=1, interval=0.2).start()
+        lease = jobs.Lease(ex.id, ex.lease_token or "", lease_seconds=1, interval=0.2).start()
     try:
         time.sleep(2.5)  # > 2x the TTL, with the main thread "blocked in a slow sample"
         with db.session_scope() as s:
@@ -115,7 +115,7 @@ def test_recovered_job_fences_the_stale_worker(engine):
     with db.session_scope() as s:
         _queue(s)
         a = jobs.claim_next(s, "A", lease_seconds=60)
-        a_id, a_token = a.id, a.lease_token
+        a_id, a_token = a.id, a.lease_token or ""
         a.lease_expires_at = _past()
         s.commit()
     with db.session_scope() as s:
