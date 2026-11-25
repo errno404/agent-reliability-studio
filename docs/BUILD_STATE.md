@@ -49,5 +49,34 @@ Source spec: `SPEC.md` (source of truth). After compaction/interruption read: `C
 ## Current commands
 `source scripts/env.sh` then: `uv run pytest` · `uv run ruff check .` · `uv run pyright` · `uv run ars demo seed|verify` · `uv run ars serve` · `uv run ars worker`
 
+## Engineering / experimentation / release pass (2026-11-24 -> 25; branch `engineering/hardening-and-live-eval`)
+Reviewed baseline: `main` @ 76189c9 (11 commits). Findings A-K from the independent review, status (every one has a regression test):
+
+| | Finding | Status |
+|---|---|---|
+| A | Live adapter integration | **Done.** `evalcore.adapters.ClaudeCodeToolAgent` (isolated Claude Code CLI + fixture MCP, real stream-json events -> real spans); `services/api/app/registry.py` resolves synthetic AND live specs into one pipeline; run_type/provider/model derived, never chosen; live specs clamped (model allowlist, budget <= $2, timeout <= 300 s). Live execution is operator-only (admin token; CLI). |
+| B | Version pinning | **Done.** `check_pins.py` reads pins from the trusted git baseline (fails closed), forbids removal/rewrite/un-freeze, new versions need matching hash + evidence, shared-dependency hash needs new re-measurement evidence; real temp-git-repo tests. |
+| C | Gate trust / modes | **Done.** `gate(..., release=True)` strict only; exploratory/invalid/empty/incomplete/unadmitted never authorize. |
+| D | Selective missingness | **Done.** coverage + end-to-end sensitivity analysis; execution/conditional/end-to-end metrics separate. |
+| E | Repeated-run metrics | **Done.** eligible-cohort pass^k/pass@k, intended vs eligible k, exclusions with reasons; pooled-Wilson limitation stated. |
+| F | Comparison statistics | **Done.** one-sided non-inferiority wording; McNemar diagnostic only. |
+| G | Manifest/provenance | **Done.** intent + controlled variables, evaluator hash, execution_kind, model alias drift. |
+| H | Judge identity/calibration | **Done.** identity includes config hash; FPR Wilson upper bound; release eligibility scope (release/demonstration/diagnostic); synthetic labels never "human". |
+| I | Required judge | **Done.** missing admitted judge => INVALID `judge:required`, never silent. |
+| J | Redaction | **Done.** canary test over every table/endpoint/export (found + fixed unredacted span attributes); exports redacted. |
+| K | Worker reliability | **Done (single-database lease).** lease token + expiry, independent heartbeat, atomic recovery, fencing, bounded attempts; SQLite + PostgreSQL tests. No distributed-consensus claim. |
+
+Security (spec section 3): API hardening, untrusted public annotation vs trusted authenticated workflow, bounded calibration, safe-regex, coding execution limits/trusted commands (NOT a sandbox; documented), payload caps, free-tier Render blueprint. See `docs/SECURITY.md`.
+CI (section 4): trusted-evaluator eval gate, SHA-pinned Node-24 actions, CODEOWNERS (owner actions documented), four disposable GitHub proofs recorded in `docs/CI.md`.
+Experiment 001 (section 5-6): `docs/experiments/001-research-agent-reliability.md` + `evidence/experiments/001-*/`. Held-out v1 -> v2: +3.3 pts, CI [-0.7, +8.5], `no_meaningful_regression` (non-inferiority, NOT a demonstrated improvement).
+Evaluator case study (section 7): `docs/EVALUATOR_CASE_STUDY.md`.
+
+### Gotchas added
+- `ARS_CLAUDE_BIN` points the live harness at the Claude Code binary when `claude` is not on PATH (the desktop app's bundled one works).
+- Live runs: use one SQLite DB per experiment; two processes creating the same agent row at once collide (unique constraint) - start them a few seconds apart.
+- `ruff format` rewrites evaluator source files => changes `evaluator_hash` => a comparison with a run that started before the reformat is correctly INVALID (this happened to the dev baseline).
+- String-anchored patch scripts silently no-op after ruff reflows code: always grep to verify a patch landed (it bit twice).
+- Docker Postgres for tests: `ARS_TEST_POSTGRES_URL=postgresql+psycopg://postgres:<pw>@127.0.0.1:5499/ars_test` (throw-away container; needs `DOCKER_CONFIG=/tmp/dockercfg DOCKER_HOST=unix:///Users/<you>/.colima/default/docker.sock`).
+
 ## Next action
-PINS + check_pins, Inspect AI + Phoenix integrations, Docker/compose/render, CI workflows, Makefile, docs, screenshots, skills/agents, reviews.
+Dashboard finishing (in progress, separate fork), README/ARCHITECTURE/EVAL_METHODOLOGY/DEMO/LEARNING_GUIDE/ADR updates, INTERVIEW_GUIDE, deployment assessment (not deployed; costs unverified), final verification, four read-only reviewers, secret re-scan, PR.
