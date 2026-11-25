@@ -40,7 +40,7 @@ def main() -> int:
     ap.add_argument("--base", required=True, help="base ref as seen from the PR checkout, e.g. origin/main")
     a = ap.parse_args()
     raw = subprocess.run(  # NUL-separated and unquoted: no parser differential on odd file names
-        ["git", "-c", "core.quotePath=false", "diff", "--name-only", "-z", f"{a.base}...HEAD"],
+        ["git", "-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", "-z", f"{a.base}...HEAD"],
         cwd=a.pr,
         capture_output=True,
         text=True,

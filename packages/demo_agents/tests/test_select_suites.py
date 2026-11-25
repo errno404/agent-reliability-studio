@@ -64,3 +64,28 @@ def test_unrelated_change_selects_nothing_and_says_so(tmp_path):
 def test_live_agent_change_is_never_run_on_prs_but_is_announced(tmp_path):
     d = run_selector(tmp_path, [f"{AGENT}/live_research/v3/PROMPT.md"])
     assert d["include"] == [] and any("NEVER run on pull requests" in n for n in d["notes"])
+
+
+def test_renaming_a_source_file_away_cannot_hide_the_change(tmp_path):
+    """Rename detection would report only the NEW path; --no-renames reports old (deleted) and new, so the old suite is selected."""
+    for suite in ("support", "research", "coding"):
+        p = tmp_path / AGENT / suite
+        p.mkdir(parents=True, exist_ok=True)
+        (p / "PINS.md").write_text('```json ars-pins\n{"v1": {}}\n```\n')
+    src = tmp_path / AGENT / "support/v2/agent.py"
+    src.parent.mkdir(parents=True, exist_ok=True)
+    src.write_text("same content so git detects a pure rename\n" * 20)
+    git(tmp_path, "init", "-q", "-b", "main")
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-qm", "base")
+    git(tmp_path, "checkout", "-qb", "pr")
+    dst = tmp_path / "docs/moved.txt"
+    dst.parent.mkdir(parents=True)
+    src.rename(dst)
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-qm", "move out")
+    out = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/ci_select_suites.py"), "--trusted", str(tmp_path), "--pr", str(tmp_path), "--base", "main"],
+        capture_output=True, text=True, check=True,
+    )  # fmt: skip
+    assert "support" in suites(json.loads(out.stdout))

@@ -64,7 +64,7 @@ def baseline_pins(root: Path, agent: str, base: str) -> dict[str, dict[str, obje
 
 
 def changed_files(root: Path, base: str) -> list[str]:
-    r = _git(root, "-c", "core.quotePath=false", "diff", "--name-only", "-z", f"{base}...HEAD")
+    r = _git(root, "-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", "-z", f"{base}...HEAD")
     if r.returncode != 0:
         raise BaselineUnreadable(f"git diff {base}...HEAD failed: {r.stderr.strip()[:200]}")
     return [f for f in r.stdout.split("\0") if f]
@@ -242,6 +242,8 @@ def baseline_problems(
 
 
 def diff_problems(agent: str, pins: dict[str, dict[str, object]], files: list[str]) -> list[str]:
+    """``pins`` must be the TRUSTED BASELINE pins: only versions frozen THERE are protected (a version added by this very PR is new,
+    its files are expected in the diff and are validated by ``baseline_problems`` instead)."""
     problems: list[str] = []
     prefix = f"{AGENT_REL}/{agent}/"
     touched = [f for f in files if f.startswith(prefix) and not f.endswith("PINS.md")]
@@ -271,6 +273,8 @@ def layout_problems(root: Path) -> list[str]:
 # ----------------------------------------------------------------------------- orchestration
 def verify(root: Path = ROOT, base: str | None = None) -> list[str]:
     problems: list[str] = layout_problems(root)
+    if problems:  # stop BEFORE any agent code can be imported into this interpreter
+        return problems
     files = changed_files(root, base) if base else []
     for agent in AGENTS:
         if not (root / AGENT_REL / agent).exists():
@@ -330,11 +334,19 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", help="trusted baseline git ref (CI), e.g. origin/main")
     ap.add_argument("--update", action="store_true")
+    ap.add_argument(
+        "--layout-only", action="store_true", help="only check the agent-package layout (imports nothing from --root)"
+    )
     ap.add_argument("--evidence", default="", help="reference to evaluation evidence for new versions / shared changes")
     ap.add_argument(
         "--root", type=Path, default=ROOT, help="checkout to inspect (CI: the PR tree; this script is the trusted one)"
     )
     a = ap.parse_args()
+    if a.layout_only:
+        out = layout_problems(a.root.resolve())
+        for p in out:
+            print(f"PIN VIOLATION: {p}")
+        return 1 if out else 0
     if a.update:
         return update(a.evidence, a.root.resolve())
     try:

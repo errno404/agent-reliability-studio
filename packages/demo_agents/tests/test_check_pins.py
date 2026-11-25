@@ -130,7 +130,7 @@ def test_diff_check_sees_frozen_edits_via_git(repo):
     git(repo, "checkout", "-qb", "pr2")
     (d / "prompt.md").write_text("EDITED")
     git(repo, "commit", "-qam", "edit frozen")
-    out = cp.diff_problems("support", cp.read_pins("support", repo), cp.changed_files(repo, "main"))
+    out = cp.diff_problems("support", cp.baseline_pins(repo, "support", "main"), cp.changed_files(repo, "main"))
     assert any("frozen but files" in p for p in out)
 
 
@@ -143,3 +143,18 @@ def test_stray_top_level_module_beside_agent_package_is_rejected(tmp_path):
     (d / "app.py").write_text("")
     out = cp.layout_problems(tmp_path)
     assert out and "evalcore" in out[0] and "app.py" in out[0]
+
+
+def test_files_of_a_version_added_by_this_pr_are_not_flagged_as_frozen_edits(repo):
+    """Regression: a NEW pinned version's files appear in the diff and must not be reported as edits to a frozen version."""
+    d = repo / cp.AGENT_REL / "support" / "v2"
+    d.mkdir(parents=True)
+    (d / "agent.py").write_text("new")
+    pins = cp.read_pins("support", repo)
+    pins["v2"] = {**H, "frozen": True, "evidence": "e"}
+    put(repo, pins)
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "add v2")
+    files = cp.changed_files(repo, "main")
+    assert any(f.endswith("v2/agent.py") for f in files)
+    assert cp.diff_problems("support", cp.baseline_pins(repo, "support", "main"), files) == []
