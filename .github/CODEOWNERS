@@ -1,0 +1,13 @@
+# CODEOWNERS routes review requests. By ITSELF it proves nothing about independent review: it only takes effect when branch
+# protection enables "Require review from Code Owners" AND "Require approvals" with at least one reviewer who is not the PR author.
+# See docs/CI.md ("Owner actions") for the exact settings. The owner below is the single account that currently owns the repo;
+# add a second maintainer to make independent review possible.
+*                                  @errno404
+/packages/evalcore/                @errno404
+/scripts/                          @errno404
+/datasets/                         @errno404
+/fixtures/                         @errno404
+/mcp/                              @errno404
+/.github/                          @errno404
+/packages/demo_agents/**/PINS.md   @errno404
+/docs/SECURITY.md                  @errno404

@@ -1,7 +1,12 @@
 name: Agent eval gate
 # Blocks a PR that changes agent behaviour unless a fair, statistically defensible comparison says it is not a regression.
-# The bundled deterministic suites need NO model credentials. Live-LLM gates could be added with repository secrets,
-# but this workflow never depends on them and never exposes secrets to PR code.
+#
+# TRUST MODEL (see docs/CI.md)
+#  * Trigger is `pull_request` (NEVER pull_request_target): PR code runs with a read-only token and NO secrets.
+#  * The EVALUATOR, datasets, fixtures, scripts and dependencies come from the TRUSTED base-branch checkout ("trusted").
+#    Only the AGENT code under test comes from the PR checkout ("pr"). The same trusted evaluator measures both sides.
+#  * Evaluator/CI-script changes get separate validation (job evaluator-validation) and need an independent CODEOWNERS review.
+#  * Live-LLM suites are never run on PRs (no model credentials exist in CI).
 on:
   pull_request:
     paths:
@@ -10,68 +15,130 @@ on:
       - "datasets/**"
       - "fixtures/**"
       - "mcp/fixture_web/**"
-      - "scripts/ci_eval_gate.py"
-      - "scripts/check_pins.py"
+      - "scripts/**"
       - "services/api/**"
       - ".github/**"
 permissions: { contents: read }
+concurrency: { group: "eval-gate-${{ github.ref }}", cancel-in-progress: true }
 
 jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.matrix }}
+      any: ${{ steps.sel.outputs.any }}
+      evaluator_changed: ${{ steps.sel.outputs.evaluator_changed }}
+    env:
+      BASE_REF: ${{ github.base_ref }}   # never interpolate github.* directly into shell
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ github.base_ref }}", path: trusted }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0, path: pr, persist-credentials: false }
+      - name: Select suites from the diff (selector comes from the trusted checkout)
+        id: sel
+        run: |
+          set -euo pipefail
+          out=$(python3 trusted/scripts/ci_select_suites.py --trusted trusted --pr pr --base "origin/$BASE_REF")
+          echo "matrix=$(echo "$out" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({"include": d["include"]}))')" >> "$GITHUB_OUTPUT"
+          echo "any=$(echo "$out" | python3 -c 'import json,sys; print(str(json.load(sys.stdin)["any"]).lower())')" >> "$GITHUB_OUTPUT"
+          echo "$out" | python3 -c 'import json,sys; [print("::notice::"+n) for n in json.load(sys.stdin)["notes"]]'
+          if git -C pr diff --name-only "origin/$BASE_REF...HEAD" | grep -qE '^(packages/evalcore/|scripts/ci_|scripts/check_pins|datasets/|\.github/)'; then
+            echo "evaluator_changed=true" >> "$GITHUB_OUTPUT"; else echo "evaluator_changed=false" >> "$GITHUB_OUTPUT"; fi
+
+  pins:
+    runs-on: ubuntu-latest
+    env:
+      BASE_REF: ${{ github.base_ref }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ github.base_ref }}", path: trusted }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0, path: pr, persist-credentials: false }
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with: { enable-cache: true }
+      - run: uv sync --python 3.13 --frozen
+        working-directory: trusted
+      - name: Pins vs the TRUSTED baseline (frozen versions immutable; new versions need evidence; shared deps re-measured)
+        working-directory: trusted
+        env:
+          # only the AGENT package comes from the PR; hashing/evaluator code stays trusted
+          PYTHONPATH: "${{ github.workspace }}/pr/packages/demo_agents:${{ github.workspace }}/trusted/packages/evalcore/src:${{ github.workspace }}/trusted/mcp/fixture_web:${{ github.workspace }}/trusted/services/api"
+        run: uv run python scripts/check_pins.py --root ../pr --base "origin/$BASE_REF"
+
   gate:
+    needs: [select, pins]
+    if: needs.select.outputs.any == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { suite: support, dataset: "support:v1", policy: demo-20 }
-          - { suite: research, dataset: "research:v1", policy: demo-15 }
+      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
     env:
-      BASE_REF: ${{ github.base_ref }}   # never interpolate github.* directly into shell
-      SUITE: ${{ matrix.suite }}
+      BASE_SPEC: ${{ matrix.base }}
+      CAND_SPEC: ${{ matrix.cand }}
       DATASET: ${{ matrix.dataset }}
       POLICY: ${{ matrix.policy }}
     steps:
-      - uses: actions/checkout@v4          # candidate = the PR head
-        with: { fetch-depth: 0, path: candidate }
-      - uses: actions/checkout@v4          # baseline agent code = the target branch
-        with: { ref: "${{ github.base_ref }}", path: baseline }
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ github.base_ref }}", path: trusted }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { path: pr, persist-credentials: false }
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with: { enable-cache: true }
       - run: uv sync --python 3.13 --frozen
-        working-directory: candidate
-      - name: Pin check (frozen versions must not change; behaviour change needs a PINS.md entry)
-        working-directory: candidate
-        run: uv run python scripts/check_pins.py && uv run python scripts/check_pins.py --base "origin/$BASE_REF"
-      - name: Resolve latest pinned version on each side
-        id: v
-        working-directory: candidate
-        run: |
-          latest() {
-            python3 - "$1" "$SUITE" <<'PY'
-          import json, re, sys
-          t = open(f"{sys.argv[1]}/packages/demo_agents/demo_agents/{sys.argv[2]}/PINS.md").read()
-          v = sorted(json.loads(re.search(r"```json ars-pins\n(.*?)\n```", t, re.S).group(1)), key=lambda x: int(x[1:]))
-          print(v[-1])
-          PY
-          }
-          echo "base=$SUITE:$(latest ../baseline)" >> "$GITHUB_OUTPUT"
-          echo "cand=$SUITE:$(latest .)" >> "$GITHUB_OUTPUT"
-      - name: Gate (same evaluator for both sides)
-        working-directory: candidate
-        env:
-          BASE_SPEC: ${{ steps.v.outputs.base }}
-          CAND_SPEC: ${{ steps.v.outputs.cand }}
+        working-directory: trusted
+      - name: Gate (trusted evaluator; baseline code = base branch, candidate code = PR)
+        working-directory: trusted
         run: |
           mkdir -p gate-out
-          if [ "$BASE_SPEC" = "$CAND_SPEC" ]; then
-            echo "No new agent version in this PR: nothing to compare (the pin check already guards edits)." | tee -a "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
           uv run python scripts/ci_eval_gate.py --baseline-spec "$BASE_SPEC" --candidate-spec "$CAND_SPEC" \
-            --dataset "$DATASET" --baseline-src ../baseline --samples 3 --policy "$POLICY" --out-dir gate-out
-      - uses: actions/upload-artifact@v4
+            --dataset "$DATASET" --candidate-src ../pr --samples 3 --policy "$POLICY" --out-dir gate-out
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: eval-gate-${{ matrix.suite }}
-          path: candidate/gate-out     # comparison.json, report.md, junit.xml, trace-diff.txt, gate.db (synthetic data only)
+          path: trusted/gate-out     # comparison.json, report.md, junit.xml, trace-diff.txt, gate.db (synthetic data only)
           retention-days: 14
+
+  evaluator-validation:
+    # Separate validation when evaluator / CI code changes: the PR's OWN evaluator must still give the right answer on pairs whose
+    # truth is known (an improvement passes; the reversed pair is rejected). This job runs the code under test on purpose.
+    needs: [select]
+    if: needs.select.outputs.evaluator_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { path: pr, persist-credentials: false }
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with: { enable-cache: true }
+      - run: uv sync --python 3.13 --frozen
+        working-directory: pr
+      - name: Evaluator unit tests + coverage gate
+        working-directory: pr
+        run: uv run pytest packages/evalcore --cov=evalcore --cov-fail-under=85 -q
+      - name: Known-answer self-test
+        working-directory: pr
+        run: uv run python scripts/ci_selftest.py
+
+  eval-gate-result:
+    # THE required status check. It never reports a skipped comparison as a successful one.
+    needs: [select, pins, gate, evaluator-validation]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarise
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          n = json.loads(os.environ["NEEDS"])
+          res = {k: v["result"] for k, v in n.items()}
+          print(res)
+          bad = [k for k, v in res.items() if v in ("failure", "cancelled")]
+          summary = [f"- `{k}`: **{v}**" for k, v in res.items()]
+          if n["gate"]["result"] == "skipped":
+              summary.append("\n> No agent comparison was performed (no agent behaviour files changed). This is NOT a passed comparison.")
+          open(os.environ["GITHUB_STEP_SUMMARY"], "a").write("## Eval gate\n" + "\n".join(summary) + "\n")
+          sys.exit(1 if bad else 0)
+          PY
