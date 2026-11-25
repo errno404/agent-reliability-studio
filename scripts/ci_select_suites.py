@@ -39,19 +39,42 @@ def main() -> int:
     ap.add_argument("--pr", type=Path, required=True)
     ap.add_argument("--base", required=True, help="base ref as seen from the PR checkout, e.g. origin/main")
     a = ap.parse_args()
-    files = subprocess.run(
-        ["git", "diff", "--name-only", f"{a.base}...HEAD"], cwd=a.pr, capture_output=True, text=True, check=True
-    ).stdout.split()
+    raw = subprocess.run(  # NUL-separated and unquoted: no parser differential on odd file names
+        ["git", "-c", "core.quotePath=false", "diff", "--name-only", "-z", f"{a.base}...HEAD"],
+        cwd=a.pr,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    files = [f for f in raw.split("\0") if f]
     include, notes = [], []
+    # FAIL CLOSED: a change anywhere under the agent package that no suite claims (a new agent dir, a stray module) selects ALL
+    # suites rather than none.
+    claimed = tuple(p for _, _, prefixes in SUITES.values() for p in prefixes) + SHARED + NO_PR_SUITES
+    unclaimed = [
+        f for f in files if f.startswith(AGENT + "/") and not f.endswith("PINS.md") and not f.startswith(claimed)
+    ]
+    if unclaimed:
+        notes.append(f"unmapped agent-package change {unclaimed[:3]}: selecting ALL suites (fail closed)")
     for suite, (dataset, policy, prefixes) in SUITES.items():
-        touched = any(f.startswith(prefixes) or f in SHARED for f in files)
+        touched = bool(unclaimed) or any(f.startswith(prefixes) or f in SHARED for f in files)
         if not touched:
             continue
         t = (a.trusted / AGENT / suite / "PINS.md").read_text()
         p = (a.pr / AGENT / suite / "PINS.md").read_text()
-        include.append({"suite": suite, "dataset": dataset, "policy": policy, "base": f"{suite}:{latest(t)}", "cand": f"{suite}:{latest(p)}"})
+        include.append(
+            {
+                "suite": suite,
+                "dataset": dataset,
+                "policy": policy,
+                "base": f"{suite}:{latest(t)}",
+                "cand": f"{suite}:{latest(p)}",
+            }
+        )
     if any(f.startswith(NO_PR_SUITES) for f in files):
-        notes.append("live_research changed: live-LLM suites need model access and are NEVER run on pull requests; the pin check still applies.")
+        notes.append(
+            "live_research changed: live-LLM suites need model access and are NEVER run on pull requests; the pin check still applies."
+        )
     print(json.dumps({"include": include, "any": bool(include), "notes": notes}))
     return 0
 

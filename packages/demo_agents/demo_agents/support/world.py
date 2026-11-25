@@ -12,7 +12,9 @@ import yaml
 
 # ARS_FIXTURE_ROOT lets CI point the ENVIRONMENT (not the agent) at the trusted base checkout
 WORLD_PATH = (
-    Path(os.environ.get("ARS_FIXTURE_ROOT") or Path(__file__).resolve().parents[4] / "fixtures") / "support" / "world.yaml"
+    Path(os.environ.get("ARS_FIXTURE_ROOT") or Path(__file__).resolve().parents[4] / "fixtures")
+    / "support"
+    / "world.yaml"
 )
 
 

@@ -12,14 +12,14 @@ behaviour-affecting dependencies must record new re-measurement evidence.
 | v1 | `5ed3ce5c2cb20fe6` | `75fa5b49ce4bae33` | frozen | 2026-11-24 |  | Fast but sloppy: redundant lookups, skips eligibility checks, guesses missing information, answers policy from memory, trusts claimed authority. |
 | v2 | `c02b6bc43d04f3f2` | `a5fa40190d3c6a1c` | frozen | 2026-11-24 |  | Policy-first: eligibility check before refunds, clarification instead of guessing, retrieves policy, refuses extraction. KNOWN REGRESSION: address parser mishan |
 
-Shared-dependency hash: `34e208b874c0ace9` (evidence: docs/experiments/001-research-agent-reliability.md). It covers the harness/runtime, fixtures
+Shared-dependency hash: `9f0fa06db6026872` (evidence: docs/CI.md). It covers the harness/runtime, fixtures
 and MCP server this agent's behaviour depends on, which are NOT inside any version directory.
 
 ```json ars-pins
 {
   "_shared": {
-    "deps_hash": "34e208b874c0ace9",
-    "evidence": "docs/experiments/001-research-agent-reliability.md"
+    "deps_hash": "9f0fa06db6026872",
+    "evidence": "docs/CI.md"
   },
   "v1": {
     "agent_hash": "5ed3ce5c2cb20fe6",

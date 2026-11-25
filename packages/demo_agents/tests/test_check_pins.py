@@ -132,3 +132,14 @@ def test_diff_check_sees_frozen_edits_via_git(repo):
     git(repo, "commit", "-qam", "edit frozen")
     out = cp.diff_problems("support", cp.read_pins("support", repo), cp.changed_files(repo, "main"))
     assert any("frozen but files" in p for p in out)
+
+
+def test_stray_top_level_module_beside_agent_package_is_rejected(tmp_path):
+    d = tmp_path / "packages/demo_agents"
+    (d / "demo_agents").mkdir(parents=True)
+    (d / "pyproject.toml").write_text("")
+    assert cp.layout_problems(tmp_path) == []
+    (d / "evalcore").mkdir()  # would shadow the trusted evaluator if the directory is on sys.path
+    (d / "app.py").write_text("")
+    out = cp.layout_problems(tmp_path)
+    assert out and "evalcore" in out[0] and "app.py" in out[0]

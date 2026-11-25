@@ -19,7 +19,7 @@ measurement itself trustworthy?* Nothing here needs a model credential or a secr
 
 ## What this does NOT prove (read this)
 * **PR agent code runs in the same Python process as the trusted evaluator.** A malicious agent could patch the evaluator at import
-  time. Mitigations here: no secrets, read-only token, throw-away DB, pinned lockfile. The real control is **independent human review of agent changes**, below. A subprocess protocol between harness and agent would be the next hardening step.
+  time. Mitigations here: no secrets, read-only token, throw-away DB, pinned lockfile. The real control is **independent human review of agent changes**, below. A subprocess/container boundary between the trusted scorer and the agent under test (so PR code never shares a process with the evaluator) is the next hardening step and is **not implemented**. Interim controls: trusted entries precede the PR's agent directory on `sys.path`; `check_pins.py` rejects any top-level module beside `demo_agents` (shadowing); suite selection fails closed (an agent-package change no suite claims selects every suite); NUL-separated, unquoted file lists.
 * Dependencies come from the trusted lockfile; a PR that needs a new dependency changes `uv.lock` and is a reviewable diff, not a silent one.
 * Live-LLM suites are never run on PRs (no credentials exist in CI). Experiment 001 is reproduced locally.
 * Suites cover support, research and coding (red-team cases are exercised through the support/research agents and the demo seed). The evaluator self-test is the guard against a gate that has silently stopped discriminating.
@@ -36,3 +36,16 @@ Until then, merges depend on the sole owner's discipline; the workflow still rep
 See the table in the repository README (workflow run links for: compatible candidate reaches the real comparison; deliberately
 regressed candidate rejected; invalid comparison rejected; unauthorised edit of a frozen version rejected). The proof branches and PRs
 were disposable and are closed; their workflow runs and artifacts are linked, not recreated.
+
+## Re-measurement log (evidence cited by `PINS.md` shared-dependency records)
+Shared behaviour-affecting code changed on 2026-11-24 (coding harness hardening: trusted test commands, workspace path checks,
+symlink rejection, rlimits; `ARS_FIXTURE_ROOT` fixture redirection; fixture MCP server `FIXTURE_CORPUS` selection; live harness
+stdin prompt). Re-measured with `scripts/ci_selftest.py` on the resulting tree (real output, 3 samples/case, 53 s):
+
+```
+ok   support:v1 -> support:v2: improvement passes (exit 0, expected [0])
+ok   support:v2 -> support:v1: reversed pair is rejected as a regression (exit 1, expected [1])
+ok   research:v1 -> research:v2: research improvement passes (exit 0, expected [0])
+ok   coding:v1 -> coding:v2: coding improvement passes (exit 0, expected [0])
+```
+plus the full Python suite and `ars demo verify` (all invariants hold). No frozen version changed behaviour.

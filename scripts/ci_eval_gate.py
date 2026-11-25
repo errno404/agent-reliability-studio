@@ -32,12 +32,14 @@ EXIT = {
 
 
 def pythonpath(agent_src: Path | None) -> str:
+    # TRUSTED entries first, the agent package directory LAST: a top-level module a PR adds beside ``demo_agents`` can never
+    # shadow evalcore / fixture_web / app. (scripts/check_pins.py also rejects unexpected entries there.)
     parts = [
         str(ROOT),
         str(ROOT / "packages/evalcore/src"),
-        str((agent_src or ROOT) / "packages/demo_agents"),
         str(ROOT / "mcp/fixture_web"),
         str(ROOT / "services/api"),
+        str((agent_src or ROOT) / "packages/demo_agents"),
     ]
     return os.pathsep.join(parts)
 
@@ -78,8 +80,10 @@ def main() -> int:
         "--baseline-src", type=Path, help="checkout supplying the BASELINE agent code (default: this trusted checkout)"
     )
     ap.add_argument(
-        "--candidate-src", type=Path, help="checkout supplying the CANDIDATE agent code (CI: the PR tree). Everything else "
-        "(evalcore, services, datasets, fixtures, this script) always comes from THIS trusted checkout."
+        "--candidate-src",
+        type=Path,
+        help="checkout supplying the CANDIDATE agent code (CI: the PR tree). Everything else "
+        "(evalcore, services, datasets, fixtures, this script) always comes from THIS trusted checkout.",
     )
     ap.add_argument("--samples", type=int, default=3)
     ap.add_argument("--seed", type=int, default=20260601)

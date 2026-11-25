@@ -64,10 +64,10 @@ def baseline_pins(root: Path, agent: str, base: str) -> dict[str, dict[str, obje
 
 
 def changed_files(root: Path, base: str) -> list[str]:
-    r = _git(root, "diff", "--name-only", f"{base}...HEAD")
+    r = _git(root, "-c", "core.quotePath=false", "diff", "--name-only", "-z", f"{base}...HEAD")
     if r.returncode != 0:
         raise BaselineUnreadable(f"git diff {base}...HEAD failed: {r.stderr.strip()[:200]}")
-    return r.stdout.split()
+    return [f for f in r.stdout.split("\0") if f]
 
 
 # ----------------------------------------------------------------------------- pins file
@@ -255,9 +255,22 @@ def diff_problems(agent: str, pins: dict[str, dict[str, object]], files: list[st
     return problems
 
 
+ALLOWED_AGENT_PKG_ENTRIES = {"demo_agents", "tests", "pyproject.toml", "README.md", ".gitignore", "uv.lock"}
+
+
+def layout_problems(root: Path) -> list[str]:
+    """Only the ``demo_agents`` package may live beside the agent code: any other top-level module/package in that directory
+    could shadow trusted modules (evalcore, app, fixture_web) once the directory is on ``sys.path``."""
+    d = root / "packages/demo_agents"
+    if not d.exists():
+        return []
+    extra = sorted(p.name for p in d.iterdir() if p.name not in ALLOWED_AGENT_PKG_ENTRIES and p.name != "__pycache__")
+    return [f"unexpected entries beside the agent package (import-shadowing risk): {extra}"] if extra else []
+
+
 # ----------------------------------------------------------------------------- orchestration
 def verify(root: Path = ROOT, base: str | None = None) -> list[str]:
-    problems: list[str] = []
+    problems: list[str] = layout_problems(root)
     files = changed_files(root, base) if base else []
     for agent in AGENTS:
         if not (root / AGENT_REL / agent).exists():
@@ -318,7 +331,9 @@ def main() -> int:
     ap.add_argument("--base", help="trusted baseline git ref (CI), e.g. origin/main")
     ap.add_argument("--update", action="store_true")
     ap.add_argument("--evidence", default="", help="reference to evaluation evidence for new versions / shared changes")
-    ap.add_argument("--root", type=Path, default=ROOT, help="checkout to inspect (CI: the PR tree; this script is the trusted one)")
+    ap.add_argument(
+        "--root", type=Path, default=ROOT, help="checkout to inspect (CI: the PR tree; this script is the trusted one)"
+    )
     a = ap.parse_args()
     if a.update:
         return update(a.evidence, a.root.resolve())
