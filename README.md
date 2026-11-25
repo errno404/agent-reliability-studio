@@ -112,7 +112,7 @@ make demo            # seed + run
 
 - **Zero-key demo:** no environment variables needed. `DEMO_MODE=true` makes the app read-only.
 - **Local with live runs:** `cp .env.example .env`, set `DEMO_MODE=false` and `ADMIN_TOKEN`, run `ars worker` beside `ars serve`, then `POST /api/runs` (send `X-Admin-Token`) or `ars eval run`.
-- **Live models:** `pip install 'evalcore[litellm]'`, export a provider key (e.g. `ANTHROPIC_API_KEY`), and use `LiteLLMAdapter` / `ClaudeCodeAdapter` (uses your authenticated `claude` CLI; flags checked against Claude Code 2.1.330, adapter tested against a fake binary, not live runs). Subscription runs are never priced as money paid.
+- **Live LLM agent (operator only):** with your own authenticated Claude Code CLI (no key is read; set `ARS_CLAUDE_BIN` if `claude` is not on PATH): `ars eval run --agent 'live:research:v1?model=haiku' --dataset research-live-dev:v1 --samples 3 --budget-usd 8`. Costs are an API-equivalent *estimate*, never money paid; model, budget and timeout are clamped server-side. The older `LiteLLMAdapter` / `ClaudeCodeAdapter` remain optional and were **not** exercised against live providers here.
 - **Docker (Postgres + API + web):** `docker compose up --build` → <http://localhost:3000>. Optional Phoenix mirror: `docker compose --profile observability up`.
 - **Deploy:** [`render.yaml`](render.yaml) (free-tier-compatible blueprint; not deployed). No live URL is claimed here.
 
