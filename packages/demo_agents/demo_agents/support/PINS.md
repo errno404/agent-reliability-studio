@@ -11,14 +11,15 @@ behaviour-affecting dependencies must record new re-measurement evidence.
 |---|---|---|---|---|---|---|
 | v1 | `5ed3ce5c2cb20fe6` | `75fa5b49ce4bae33` | frozen | 2026-11-24 |  | Fast but sloppy: redundant lookups, skips eligibility checks, guesses missing information, answers policy from memory, trusts claimed authority. |
 | v2 | `c02b6bc43d04f3f2` | `a5fa40190d3c6a1c` | frozen | 2026-11-24 |  | Policy-first: eligibility check before refunds, clarification instead of guessing, retrieves policy, refuses extraction. KNOWN REGRESSION: address parser mishan |
+| v3 | `48e0b9f1d350c366` | `a5fa40190d3c6a1c` | frozen | 2026-11-25 | docs/CI.md | CI proof (compatible): copy of v2 |
 
-Shared-dependency hash: `26223e951d3d19ca` (evidence: docs/CI.md). It covers the harness/runtime, fixtures
+Shared-dependency hash: `30adf25a802b0a63` (evidence: docs/CI.md). It covers the harness/runtime, fixtures
 and MCP server this agent's behaviour depends on, which are NOT inside any version directory.
 
 ```json ars-pins
 {
   "_shared": {
-    "deps_hash": "26223e951d3d19ca",
+    "deps_hash": "30adf25a802b0a63",
     "evidence": "docs/CI.md"
   },
   "v1": {
@@ -34,6 +35,15 @@ and MCP server this agent's behaviour depends on, which are NOT inside any versi
     "frozen": true,
     "note": "Policy-first: eligibility check before refunds, clarification instead of guessing, retrieves policy, refuses extraction. KNOWN REGRESSION: address parser mishan",
     "pinned": "2026-11-24",
+    "prompt_hash": "a5fa40190d3c6a1c",
+    "tool_schema_hash": "0bf32b2792196edf"
+  },
+  "v3": {
+    "agent_hash": "48e0b9f1d350c366",
+    "evidence": "docs/CI.md",
+    "frozen": true,
+    "note": "CI proof (compatible): copy of v2",
+    "pinned": "2026-11-25",
     "prompt_hash": "a5fa40190d3c6a1c",
     "tool_schema_hash": "0bf32b2792196edf"
   }
