@@ -12,14 +12,14 @@ behaviour-affecting dependencies must record new re-measurement evidence.
 | v1 | `b3f866479099037f` | `72aa978a421ab669` | frozen | 2026-11-24 | docs/experiments/001-research-agent-reliability.md | Initial reasonable system prompt for a real LLM research agent (Claude Code CLI, fixture MCP tools only). Written BEFORE any evaluation; not tuned or crippled. |
 | v2 | `b41ad3b66f98e001` | `3005b50b2c874807` | frozen | 2026-11-24 | docs/experiments/001-research-agent-reliability.md | ONE targeted change from the dev-run failure analysis of v1: v1 fetched URLs it had inferred from sibling URL patterns (never returned by a search) in 9/9 sampl |
 
-Shared-dependency hash: `c004686b432d1c81` (evidence: docs/CI.md). It covers the harness/runtime, fixtures
+Shared-dependency hash: `c004686b432d1c81` (evidence: ci-proof-regressed-2026-11-25 (gate run on this PR)). It covers the harness/runtime, fixtures
 and MCP server this agent's behaviour depends on, which are NOT inside any version directory.
 
 ```json ars-pins
 {
   "_shared": {
     "deps_hash": "c004686b432d1c81",
-    "evidence": "docs/CI.md"
+    "evidence": "ci-proof-regressed-2026-11-25 (gate run on this PR)"
   },
   "v1": {
     "agent_hash": "b3f866479099037f",
