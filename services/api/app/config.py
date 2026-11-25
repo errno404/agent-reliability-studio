@@ -20,7 +20,12 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     enable_coding_execution: bool = False  # local/admin only; never enabled from the public web
     log_level: str = "INFO"
-    environment: str = "development"
+    # SAFE default: error details are hidden unless ENVIRONMENT=development is set explicitly (scripts/dev.sh does).
+    environment: str = "production"
+    max_body_bytes: int = 65_536
+    admin_fail_limit_per_minute: int = 10
+    calibrate_max_seconds: float = 30.0
+    calibrate_max_items: int = 1000
     otlp_endpoint: str = ""  # e.g. http://localhost:6006/v1/traces (Phoenix); empty = disabled
     stale_job_seconds: int = 120
     live_rate_limit_per_minute: int = 6

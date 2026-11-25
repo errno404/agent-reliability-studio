@@ -129,7 +129,7 @@ def shared_files(agent: str, root: Path = ROOT) -> list[Path]:
         files += [root / "fixtures/support/world.yaml"]
     if agent in ("research", "live_research"):
         files += dir_files(root / "mcp/fixture_web")
-        files += sorted((root / "fixtures/web").glob("corpus-*.yaml"))
+        files += [root / "fixtures/web" / ("corpus-v2.yaml" if agent == "live_research" else "corpus-v1.yaml")]
     if agent == "live_research":
         files += [root / "packages/evalcore/src/evalcore/adapters.py"]
     if agent == "coding":

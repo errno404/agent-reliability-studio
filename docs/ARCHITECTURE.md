@@ -60,4 +60,4 @@ fetch directly from `API_URL`; the browser calls same-origin `/api/*`, which a r
 
 - **Local:** SQLite file, `make dev`.
 - **Compose:** Postgres + API (loopback-published) + web; Phoenix behind `--profile observability`.
-- **Render:** managed Postgres, **private** API service, public web (`render.yaml`). The API seeds the synthetic demo on first start (idempotent).
+- **Render:** free-tier-compatible blueprint (`render.yaml`): free Postgres (expires after 30 days), free API *web* service in read-only demo mode, free web tier. Private services have no free tier. Not deployed by this repo's tooling. The API seeds the synthetic demo on first start (idempotent).

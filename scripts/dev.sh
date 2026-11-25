@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 source scripts/env.sh
+export ENVIRONMENT=development  # dev only: shows exception text in API errors (the default hides it)
 trap 'kill 0' EXIT INT TERM
 uv run ars serve --port 8000 &
 ( cd apps/web && npx next dev -p 3000 ) &

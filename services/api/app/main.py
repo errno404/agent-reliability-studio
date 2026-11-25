@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -18,6 +19,63 @@ from .routers import analysis, core, judges
 from .security import request_id_ctx
 
 log = logging.getLogger("ars.api")
+REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
+
+
+class BodyLimit:
+    """Pure-ASGI request body cap: rejects on Content-Length AND counts streamed bytes (chunked bodies cannot bypass it)."""
+
+    def __init__(self, app, max_bytes: int):  # type: ignore[no-untyped-def]
+        self.app, self.max = app, max_bytes
+
+    async def __call__(self, scope, receive, send):  # type: ignore[no-untyped-def]
+        if scope["type"] != "http" or scope["method"] in ("GET", "HEAD", "OPTIONS"):
+            return await self.app(scope, receive, send)
+        declared = dict(scope["headers"]).get(b"content-length")
+        too_big = declared is not None and declared.isdigit() and int(declared) > self.max
+        seen = 0
+        over = False
+
+        async def guarded():  # type: ignore[no-untyped-def]
+            nonlocal seen, over
+            msg = await receive()
+            if msg["type"] == "http.request":
+                seen += len(msg.get("body", b""))
+                if seen > self.max:
+                    over = True
+                    return {"type": "http.request", "body": b"", "more_body": False}
+            return msg
+
+        async def reject():  # type: ignore[no-untyped-def]
+            body = b'{"detail":"request body too large"}'
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 413,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode()),
+                        (b"cache-control", b"no-store"),
+                    ],
+                }
+            )
+            await send({"type": "http.response.body", "body": body})
+
+        if too_big:
+            return await reject()
+        started = False
+
+        async def send_wrapper(msg):  # type: ignore[no-untyped-def]
+            nonlocal started
+            if over and not started:
+                started = True
+                return await reject()
+            if over:
+                return None
+            started = started or msg["type"] == "http.response.start"
+            return await send(msg)
+
+        await self.app(scope, guarded, send_wrapper)
 
 
 @asynccontextmanager
@@ -40,11 +98,13 @@ def create_app() -> FastAPI:
         redoc_url=None,
         openapi_url="/openapi.json",
     )
+    app.add_middleware(BodyLimit, max_bytes=s.max_body_bytes)
     app.add_middleware(CORSMiddleware, allow_origins=s.cors_list, allow_methods=["GET", "POST"], allow_headers=["*"])
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):  # type: ignore[no-untyped-def]
-        rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:12]
+        supplied = request.headers.get("x-request-id", "")
+        rid = supplied if REQUEST_ID.fullmatch(supplied) else uuid.uuid4().hex[:12]  # never echo unbounded/odd input
         token = request_id_ctx.set(rid)
         t0 = time.perf_counter()
         try:
@@ -53,7 +113,16 @@ def create_app() -> FastAPI:
             request_id_ctx.reset(token)
         resp.headers["x-request-id"] = rid
         resp.headers["x-content-type-options"] = "nosniff"
-        resp.headers["cache-control"] = "no-store" if request.method != "GET" else "public, max-age=15"
+        # Only successful, anonymous GETs of public read-only data are cacheable; errors and admin-authenticated traffic never are.
+        public = (
+            request.method == "GET"
+            and resp.status_code == 200
+            and "x-admin-token" not in request.headers
+            and request.url.path.startswith(
+                ("/api", "/overview", "/comparisons", "/gates", "/failures", "/judges", "/policies")
+            )
+        )
+        resp.headers["cache-control"] = "public, max-age=15" if public else "no-store"
         if not request.url.path.startswith(("/health", "/ready")):
             log.info(
                 "request",

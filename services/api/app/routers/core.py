@@ -66,11 +66,12 @@ def meta(settings: Settings = Depends(get_settings)) -> sc.Meta:
 
 # --------------------------------------------------------------------------- agents / datasets
 @router.get("/api/agents", response_model=list[sc.AgentVersionOut], tags=["agents"])
-def agents(s: Session = Depends(get_session)) -> list[sc.AgentVersionOut]:
+def agents(limit: int = Query(200, ge=1, le=500), s: Session = Depends(get_session)) -> list[sc.AgentVersionOut]:
     rows = s.scalars(
         select(AgentVersion)
         .options(joinedload(AgentVersion.agent))
         .order_by(AgentVersion.agent_id, AgentVersion.version)
+        .limit(limit)
     ).all()
     return [
         sc.AgentVersionOut(
@@ -108,17 +109,20 @@ def _dv_out(s: Session, dv: DatasetVersion) -> sc.DatasetVersionOut:
 
 
 @router.get("/api/datasets", response_model=list[sc.DatasetVersionOut], tags=["datasets"])
-def datasets(s: Session = Depends(get_session)) -> list[sc.DatasetVersionOut]:
+def datasets(limit: int = Query(200, ge=1, le=500), s: Session = Depends(get_session)) -> list[sc.DatasetVersionOut]:
     rows = s.scalars(
         select(DatasetVersion)
         .options(joinedload(DatasetVersion.dataset))
         .order_by(DatasetVersion.dataset_id, DatasetVersion.version)
+        .limit(limit)
     ).all()
     return [_dv_out(s, r) for r in rows]
 
 
 @router.get("/api/datasets/{name}/{version}", response_model=sc.DatasetDetail, tags=["datasets"])
-def dataset_detail(name: str, version: str, s: Session = Depends(get_session)) -> sc.DatasetDetail:
+def dataset_detail(
+    name: str, version: str, limit: int = Query(500, ge=1, le=1000), s: Session = Depends(get_session)
+) -> sc.DatasetDetail:
     dv = s.scalar(
         select(DatasetVersion)
         .join(Dataset)
@@ -127,7 +131,9 @@ def dataset_detail(name: str, version: str, s: Session = Depends(get_session)) -
     )
     if dv is None:
         raise HTTPException(404, "dataset version not found")
-    cases = s.scalars(select(EvalCase).where(EvalCase.dataset_version_id == dv.id).order_by(EvalCase.id)).all()
+    cases = s.scalars(
+        select(EvalCase).where(EvalCase.dataset_version_id == dv.id).order_by(EvalCase.id).limit(limit)
+    ).all()
     return sc.DatasetDetail(
         **_dv_out(s, dv).model_dump(),
         cases=[
@@ -146,8 +152,8 @@ def dataset_detail(name: str, version: str, s: Session = Depends(get_session)) -
 
 
 @router.get("/api/candidates", tags=["datasets"])
-def distilled(s: Session = Depends(get_session)) -> list[dict[str, Any]]:
-    rows = s.scalars(select(DistilledCandidate).order_by(DistilledCandidate.id.desc())).all()
+def distilled(limit: int = Query(100, ge=1, le=300), s: Session = Depends(get_session)) -> list[dict[str, Any]]:
+    rows = s.scalars(select(DistilledCandidate).order_by(DistilledCandidate.id.desc()).limit(limit)).all()
     return [
         {
             "id": r.id,

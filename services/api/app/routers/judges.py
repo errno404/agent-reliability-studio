@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import schemas as sc
+from ..config import get_settings
 from ..db import get_session
 from ..models import CalibrationItem, CalibrationRun, CalibrationSet, HumanAnnotation, JudgeConfig
 from ..security import annotation_limiter, client_key, require_admin
@@ -66,8 +67,8 @@ def _judge_out(s: Session, j: JudgeConfig) -> sc.JudgeOut:
 
 
 @router.get("/judges", response_model=list[sc.JudgeOut])
-def judges(s: Session = Depends(get_session)) -> list[sc.JudgeOut]:
-    return [_judge_out(s, j) for j in s.scalars(select(JudgeConfig).order_by(JudgeConfig.id))]
+def judges(limit: int = Query(200, ge=1, le=500), s: Session = Depends(get_session)) -> list[sc.JudgeOut]:
+    return [_judge_out(s, j) for j in s.scalars(select(JudgeConfig).order_by(JudgeConfig.id).limit(limit))]
 
 
 @router.get("/judges/{jid}", response_model=sc.JudgeOut)
@@ -109,7 +110,18 @@ def calibrate(jid: int, set_name: str = "calibration", s: Session = Depends(get_
     cset = s.scalar(select(CalibrationSet).where(CalibrationSet.name == set_name).order_by(CalibrationSet.id.desc()))
     if j is None or cset is None:
         raise HTTPException(404, "judge or calibration set not found")
-    judge_svc.calibrate(s, j, cset, AdmissionPolicy())
+    st = get_settings()
+    if cset.n_items > st.calibrate_max_items:
+        raise HTTPException(
+            413, f"calibration set too large for a synchronous request (max {st.calibrate_max_items} items)"
+        )
+    try:
+        judge_svc.calibrate(s, j, cset, AdmissionPolicy(), deadline_s=st.calibrate_max_seconds)
+    except TimeoutError:
+        s.rollback()
+        raise HTTPException(
+            504, f"calibration exceeded {st.calibrate_max_seconds:.0f}s; nothing was recorded"
+        ) from None
     s.commit()
     return _judge_out(s, j)
 
@@ -165,13 +177,27 @@ def progress(
 
 @router.post("/annotation", tags=["judges"])
 def annotate(body: sc.AnnotationIn, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
-    """Store a human label. Rate-limited and capped; seeded demo annotators are separate (source=synthetic_demo)."""
+    """PUBLIC, UNTRUSTED annotation. Handles are unauthenticated, so rows are stored as ``public_untrusted``: they are shown with
+    that label, never counted as human calibration evidence and never able to change a reference label or a gate. The trusted,
+    authenticated human workflow is ``POST /annotation/trusted`` (admin only)."""
     annotation_limiter.check(client_key(request))
+    return _store_annotation(body, s, source="public_untrusted")
+
+
+@router.post("/annotation/trusted", tags=["judges"], dependencies=[Depends(require_admin)])
+def annotate_trusted(body: sc.AnnotationIn, s: Session = Depends(get_session)) -> dict[str, Any]:
+    """AUTHENTICATED human annotation (admin token): the only path that creates ``source="human"`` rows."""
+    return _store_annotation(body, s, source="human")
+
+
+def _public_rows(s: Session) -> int:
+    return s.scalar(select(func.count(HumanAnnotation.id)).where(HumanAnnotation.source == "public_untrusted")) or 0
+
+
+def _store_annotation(body: sc.AnnotationIn, s: Session, source: str) -> dict[str, Any]:
     if not ANNOTATOR.fullmatch(body.annotator) or body.annotator.startswith("demo-annotator"):
         raise HTTPException(422, "annotator must be 2-40 chars [A-Za-z0-9_.-] and not a reserved demo id")
-    if (
-        s.scalar(select(func.count(HumanAnnotation.id)).where(HumanAnnotation.source == "human")) or 0
-    ) >= MAX_HUMAN_ROWS:
+    if source == "public_untrusted" and _public_rows(s) >= MAX_HUMAN_ROWS:
         raise HTTPException(429, "annotation capacity reached for this deployment")
     cs = _cset(s, body.set_name)
     it = s.scalar(
@@ -185,7 +211,7 @@ def annotate(body: sc.AnnotationIn, request: Request, s: Session = Depends(get_s
     if row is None:
         s.add(
             HumanAnnotation(
-                item_pk=it.id, annotator=body.annotator, label=body.label, note=body.note[:500], source="human"
+                item_pk=it.id, annotator=body.annotator, label=body.label, note=body.note[:500], source=source
             )
         )
     elif row.label is None and body.label is not None:
@@ -216,7 +242,9 @@ def summary(set_name: str = "calibration", s: Session = Depends(get_session)) ->
     pk_by_item = {k: v.id for k, v in items.items()}
     for q in queue:
         q["adjudicated"] = pk_by_item[q["item_id"]] in adjud
-    n_ann = len(info["annotators"])  # type: ignore[arg-type]
+    src = info["annotator_sources"]  # type: ignore[index]
+    # Anonymous public handles are UNTRUSTED: they never count toward a consensus claim.
+    n_ann = sum(1 for a in info["annotators"] if src.get(a) != "public_untrusted")  # type: ignore[attr-defined,union-attr]
     return {
         "annotators": info["annotators"],
         "n_labels": info["n_labels"],
@@ -224,26 +252,35 @@ def summary(set_name: str = "calibration", s: Session = Depends(get_session)) ->
         "items_compared": info["items_compared"],
         "sources": info["sources"],
         "disagreement_queue": queue,
+        "annotator_sources": src,
+        "untrusted_annotators": sorted(a for a, v in src.items() if v == "public_untrusted"),  # type: ignore[attr-defined]
         "consensus_claimed": n_ann >= 2,
         "note": (
             "Agreement requires >= 2 annotators on shared items; with fewer, no consensus is claimed. "
-            "Rows with source 'synthetic_demo' are seeded stand-ins, not human labels."
+            "Rows with source 'synthetic_demo' are seeded stand-ins, not human labels; 'public_untrusted' rows come from "
+            "anonymous, unauthenticated handles and never count as evidence."
         ),
     }
 
 
 @router.post("/annotation/adjudicate")
 def adjudicate(body: sc.AdjudicationIn, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
-    """Record an adjudication. Same guards as /annotation: rate limit, capacity cap, reserved ids, append-only.
-
-    Adjudication rows are stored separately (annotator ``adjudicator:<id>``) and never change a calibration set's
-    reference labels or any gate decision."""
+    """PUBLIC, UNTRUSTED adjudication: stored as ``public_untrusted`` and NOT flagged adjudicated (an anonymous handle cannot
+    adjudicate). Never changes a reference label or a gate. Authenticated adjudication: ``POST /annotation/trusted/adjudicate``."""
     annotation_limiter.check(client_key(request))
+    return _store_adjudication(body, s, source="public_untrusted")
+
+
+@router.post("/annotation/trusted/adjudicate", dependencies=[Depends(require_admin)])
+def adjudicate_trusted(body: sc.AdjudicationIn, s: Session = Depends(get_session)) -> dict[str, Any]:
+    """AUTHENTICATED adjudication (admin token): the only path that creates ``adjudicated=True`` rows."""
+    return _store_adjudication(body, s, source="human")
+
+
+def _store_adjudication(body: sc.AdjudicationIn, s: Session, source: str) -> dict[str, Any]:
     if not ANNOTATOR.fullmatch(body.adjudicator) or body.adjudicator.startswith("demo-annotator"):
         raise HTTPException(422, "adjudicator must be 2-40 chars [A-Za-z0-9_.-] and not a reserved demo id")
-    if (
-        s.scalar(select(func.count(HumanAnnotation.id)).where(HumanAnnotation.source == "human")) or 0
-    ) >= MAX_HUMAN_ROWS:
+    if source == "public_untrusted" and _public_rows(s) >= MAX_HUMAN_ROWS:
         raise HTTPException(429, "annotation capacity reached for this deployment")
     cs = _cset(s, body.set_name)
     it = s.scalar(
@@ -256,7 +293,12 @@ def adjudicate(body: sc.AdjudicationIn, request: Request, s: Session = Depends(g
         raise HTTPException(409, "this adjudicator has already ruled on this item")
     s.add(
         HumanAnnotation(
-            item_pk=it.id, annotator=who, label=body.label, note=body.note[:500], source="human", adjudicated=True
+            item_pk=it.id,
+            annotator=who,
+            label=body.label,
+            note=body.note[:500],
+            source=source,
+            adjudicated=(source == "human"),
         )
     )
     s.commit()

@@ -32,6 +32,69 @@ class BadSpec(ValueError):
     pass
 
 
+MAX_PATTERN_LEN = 500
+MAX_SUBJECT_CHARS = 100_000  # agent output is untrusted: never scan more than this with a dataset-authored pattern
+
+
+def _constants() -> Any:
+    import importlib
+
+    return importlib.import_module("re._constants")
+
+
+def _has_unbounded_repeat(parsed) -> bool:  # type: ignore[no-untyped-def]
+    c = _constants()
+
+    for op, av in parsed:
+        if op in (c.MAX_REPEAT, c.MIN_REPEAT) and av[1] == c.MAXREPEAT:
+            return True
+        if op == c.SUBPATTERN and _has_unbounded_repeat(av[-1]):
+            return True
+        if op == c.BRANCH and any(_has_unbounded_repeat(b) for b in av[1]):
+            return True
+    return False
+
+
+def _nested_unbounded(parsed) -> bool:  # type: ignore[no-untyped-def]
+    """True for (a+)+ / (a*)* style nesting: the classic catastrophic-backtracking shape."""
+    c = _constants()
+
+    for op, av in parsed:
+        if op in (c.MAX_REPEAT, c.MIN_REPEAT) and av[1] == c.MAXREPEAT and _has_unbounded_repeat(av[2]):
+            return True
+        inner = av[-1] if op == c.SUBPATTERN else None
+        if inner is not None and _nested_unbounded(inner):
+            return True
+        if op in (c.MAX_REPEAT, c.MIN_REPEAT) and _nested_unbounded(av[2]):
+            return True
+        if op == c.BRANCH and any(_nested_unbounded(b) for b in av[1]):
+            return True
+    return False
+
+
+def safe_regex(pattern: str, flags: int = 0) -> re.Pattern[str]:
+    """Compile a DATASET-AUTHORED pattern, rejecting shapes that can backtrack catastrophically.
+
+    Patterns come only from trusted, versioned datasets (no API accepts one). This is defence in depth, not a sandbox: it bounds
+    pattern length, forbids nested unbounded repeats and back-references, and callers cap the subject length.
+    """
+    import importlib
+
+    parser = importlib.import_module("re._parser")
+
+    if len(pattern) > MAX_PATTERN_LEN:
+        raise BadSpec(f"regex too long ({len(pattern)} > {MAX_PATTERN_LEN})")
+    try:
+        parsed = parser.parse(pattern, flags)
+    except re.error as exc:
+        raise BadSpec(f"bad regex: {exc}") from exc
+    if _nested_unbounded(parsed):
+        raise BadSpec("regex rejected: nested unbounded repetition (catastrophic backtracking risk)")
+    if "GROUPREF" in repr(parsed):
+        raise BadSpec("regex rejected: back-references are not allowed")
+    return re.compile(pattern, flags)
+
+
 def _need(p: dict[str, Any], key: str) -> Any:
     if key not in p:
         raise BadSpec(f"missing required parameter '{key}'")
@@ -83,10 +146,7 @@ def _not_contains(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
 def _regex(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
     pat = str(_need(p, "pattern"))
     flags = re.IGNORECASE if not p.get("case_sensitive", False) else 0
-    try:
-        m = re.search(pat, r.final_output, flags | re.MULTILINE)
-    except re.error as exc:
-        raise BadSpec(f"bad regex: {exc}") from exc
+    m = safe_regex(pat, flags | re.MULTILINE).search(r.final_output[:MAX_SUBJECT_CHARS])
     want = not p.get("negate", False)
     return Outcome(bool(m) == want, pat, m.group(0) if m else None, f"regex {'matched' if m else 'did not match'}")
 
@@ -192,7 +252,7 @@ def _match_value(want: Any, got: Any) -> bool:
     if isinstance(want, dict) and len(want) == 1 and next(iter(want)).startswith("$"):
         op, arg = next(iter(want.items()))
         if op == "$regex":
-            return isinstance(got, str) and re.search(arg, got) is not None
+            return isinstance(got, str) and safe_regex(str(arg)).search(got[:MAX_SUBJECT_CHARS]) is not None
         if op == "$in":
             return got in arg
         if op == "$gte":

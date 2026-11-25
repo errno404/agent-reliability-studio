@@ -200,3 +200,20 @@ def test_urls_grounded_ignores_markdown_punctuation_around_urls(case):
     r = mk(final_output="Source: `https://a.example/x`, also **https://a.example/x**: and (https://a.example/x).")
     r.tool_calls = [_search(["https://a.example/x"])]
     assert ev(case, r, type="urls_grounded").passed
+
+
+@pytest.mark.parametrize("pat", ["(a+)+$", "(a*)*b", "(x+x+)+y", "(a|aa)+(c+)+", "(a)\\1", "a" * 501])
+def test_dangerous_regexes_are_rejected_at_evaluation(case, pat):
+    res = ev(case, mk(final_output="aaaa"), type="output_regex", pattern=pat)
+    # a rejected pattern makes the assertion INVALID (the sample cannot pass by accident) - never a silent skip or a hang
+    assert res.invalid and not res.passed
+
+
+def test_safe_regex_still_matches_and_subject_is_capped(case):
+    assert ev(case, mk(final_output="order #A-1234 shipped"), type="output_regex", pattern=r"#[A-Z]-\d+").passed
+    huge = "a" * 5_000_000 + "NEEDLE"  # beyond the cap: must not be scanned (and must not take long)
+    import time
+
+    t0 = time.perf_counter()
+    assert not ev(case, mk(final_output=huge), type="output_regex", pattern="NEEDLE").passed
+    assert time.perf_counter() - t0 < 2

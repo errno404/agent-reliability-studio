@@ -178,3 +178,13 @@ def test_raw_unredacted_result_would_have_leaked(leaky_run):
     """Guard against a vacuous test: the planted canaries really are in the raw adapter output."""
     raw = Leaky(type("A", (), {"name": "a", "version": "v", "agent_hash": "h", "prompt_hash": "p"})()).run(None, None)
     assert all(c in raw.model_dump_json() for c in CANARIES)
+
+
+def test_stored_payloads_are_size_bounded_and_structure_preserved():
+    from app.services.runs import MAX_STR_CHARS, _cap
+
+    out = _cap(
+        {"a": "x" * (MAX_STR_CHARS * 3), "n": 3, "ok": True, "l": ["y" * (MAX_STR_CHARS + 5)], "nested": {"z": 1.5}}
+    )
+    assert len(out["a"]) < MAX_STR_CHARS + 60 and "truncated" in out["a"]
+    assert out["n"] == 3 and out["ok"] is True and out["nested"]["z"] == 1.5 and "truncated" in out["l"][0]

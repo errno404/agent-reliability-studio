@@ -189,6 +189,25 @@ def create_run(
 _REDACTOR = Redactor(max_text=20_000)
 
 
+MAX_STR_CHARS = 20_000  # any single stored string; agent/tool output is untrusted and may be enormous
+MAX_SPANS_PER_SAMPLE = 500
+
+
+def _cap(obj: Any) -> Any:
+    """Bound the size of free-form stored values (structure, numbers and booleans are preserved)."""
+    if isinstance(obj, str):
+        return (
+            obj
+            if len(obj) <= MAX_STR_CHARS
+            else obj[:MAX_STR_CHARS] + f"...[truncated {len(obj) - MAX_STR_CHARS} chars]"
+        )
+    if isinstance(obj, dict):
+        return {k: _cap(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_cap(v) for v in obj[:2000]]
+    return obj
+
+
 def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample:
     """Persist one sample. Everything free-form is redacted BEFORE it reaches the database."""
     rd = _REDACTOR
@@ -201,8 +220,8 @@ def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample
         sample_index=smp.sample_index,
         status=smp.status.value,
         error_kind=res.error_kind,
-        input_text=rd.text(input_text),
-        final_output=rd.text(res.final_output),
+        input_text=_cap(rd.text(input_text)),
+        final_output=_cap(rd.text(res.final_output)),
         tool_sequence=res.tool_names,
         latency_ms=res.latency_ms,
         input_tokens=res.input_tokens,
@@ -210,7 +229,7 @@ def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample
         cost_usd=res.cost_usd,
         turns=res.turns,
         steps=res.steps,
-        result=rd.apply(json.loads(res.model_dump_json(exclude={"spans"}))),
+        result=_cap(rd.apply(json.loads(res.model_dump_json(exclude={"spans"})))),
         judge=rd.apply(smp.judge) if smp.judge else None,
         seed=smp.seed,
         trace_id=trace_id,
@@ -235,7 +254,7 @@ def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample
                 label=a.label,
             )
         )
-    for sp in res.spans:
+    for sp in res.spans[:MAX_SPANS_PER_SAMPLE]:
         s.add(
             SpanRow(
                 sample_id=row.id,
@@ -247,7 +266,7 @@ def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample
                 start_ms=sp.start_ms,
                 duration_ms=sp.duration_ms,
                 status=sp.status,
-                attributes=rd.apply(sp.attributes),
+                attributes=_cap(rd.apply(sp.attributes)),
             )
         )
     for lab in smp.failure_labels:

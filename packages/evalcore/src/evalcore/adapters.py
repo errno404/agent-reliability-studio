@@ -13,6 +13,7 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -26,31 +27,107 @@ from .runner import RunContext
 # ---------------------------------------------------------------- sandbox --
 
 
+MAX_OUTPUT_BYTES = 1_000_000  # captured per stream; the process is also bounded by RLIMIT_FSIZE on its output files
+LIMITS = {"cpu_s": 60, "fsize_mb": 16, "nproc": 256}  # applied by the launcher; best effort per platform
+
+_LAUNCHER = (
+    "import os,resource,sys\n"
+    "cpu,fs,np=int(sys.argv[1]),int(sys.argv[2]),int(sys.argv[3])\n"
+    "def lim(r,v):\n"
+    "    try: resource.setrlimit(r,(v,v))\n"
+    "    except (ValueError,OSError): pass\n"
+    "lim(resource.RLIMIT_CPU,cpu); lim(resource.RLIMIT_FSIZE,fs*1024*1024)\n"
+    "if sys.platform.startswith('linux'): lim(resource.RLIMIT_NPROC,np)\n"
+    "os.execvp(sys.argv[4],sys.argv[4:])\n"
+)
+
+
 def run_command(
     argv: list[str], cwd: Path, timeout_s: float, env: dict[str, str] | None = None, stdin: str | None = None
 ) -> tuple[int | None, str, str, bool]:
-    """Run a command with a timeout and kill the WHOLE process tree on expiry.
+    """Run a command with limits and kill the WHOLE process tree on expiry.
 
-    Returns (exit_code | None, stdout, stderr, timed_out). Never uses a shell.
+    Returns (exit_code | None, stdout, stderr, timed_out). Never uses a shell. CPU time and the size of any file the process writes
+    (including its captured output) are bounded by rlimits; captured output is truncated to ``MAX_OUTPUT_BYTES`` per stream.
+
+    THIS IS NOT A SANDBOX. It does not restrict the filesystem outside ``cwd`` or the network, and on macOS it cannot cap memory.
+    It is only ever used for repo-authored fixtures and pinned test commands (see ``trusted_test_command``), never for
+    user-supplied text.
     """
-    proc = subprocess.Popen(
-        argv,
-        cwd=cwd,
-        env=env,
-        stdin=subprocess.PIPE if stdin is not None else None,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        start_new_session=True,
-    )
-    try:
-        out, err = proc.communicate(stdin, timeout=timeout_s)
-        return proc.returncode, out, err, False
-    except subprocess.TimeoutExpired:
-        with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        out, err = proc.communicate()
-        return None, out or "", err or "", True
+    import tempfile
+
+    wrapped = [
+        sys.executable,
+        "-c",
+        _LAUNCHER,
+        str(LIMITS["cpu_s"]),
+        str(LIMITS["fsize_mb"]),
+        str(LIMITS["nproc"]),
+        *argv,
+    ]
+    with tempfile.TemporaryFile() as fo, tempfile.TemporaryFile() as fe:
+        proc = subprocess.Popen(
+            wrapped,
+            cwd=cwd,
+            env=env,
+            stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
+            stdout=fo,
+            stderr=fe,
+            text=True,
+            start_new_session=True,
+        )
+        timed_out = False
+        try:
+            proc.communicate(stdin, timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            proc.communicate()
+
+        def read(f) -> str:  # type: ignore[no-untyped-def]
+            f.seek(0)
+            return f.read(MAX_OUTPUT_BYTES).decode("utf-8", "replace")
+
+        return (None if timed_out else proc.returncode), read(fo), read(fe), timed_out
+
+
+TRUSTED_TEST_MODULES = ("pytest", "unittest")
+
+
+def trusted_test_command(argv: list[str]) -> list[str]:
+    """Allow only ``PYTHON -m pytest|unittest <relative paths / simple flags>``; dataset text is never a general shell.
+
+    Raises ValueError for anything else: other executables, ``-c``, absolute or parent paths, shell metacharacters.
+    """
+    if len(argv) < 3 or argv[0] != "PYTHON" or argv[1] != "-m" or argv[2] not in TRUSTED_TEST_MODULES:
+        raise ValueError(f"untrusted test command {argv[:3]!r}: only 'PYTHON -m pytest|unittest ...' is allowed")
+    for a in argv[3:]:
+        if (
+            a.startswith("/")
+            or ".." in Path(a).parts
+            or any(ch in a for ch in ";|&$`<>\n")
+            or a in ("-c", "-p", "--rootdir")
+        ):
+            raise ValueError(f"untrusted test argument {a!r}")
+    return argv
+
+
+def inside(root: Path, rel: str) -> Path:
+    """Resolve ``rel`` under ``root``; reject absolute paths, traversal, and anything that resolves through a symlink outside."""
+    if not rel or Path(rel).is_absolute() or ".." in Path(rel).parts:
+        raise ValueError(f"path escapes the workspace: {rel!r}")
+    target = (root / rel).resolve()
+    if not target.is_relative_to(root.resolve()):
+        raise ValueError(f"path escapes the workspace: {rel!r}")
+    return target
+
+
+def assert_no_symlinks(root: Path) -> None:
+    """A fixture repository may not contain symlinks (they could point outside the sandbox directory)."""
+    bad = [p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_symlink()]
+    if bad:
+        raise ValueError(f"symlinks are not allowed in a workspace: {bad[:3]}")
 
 
 def safe_env() -> dict[str, str]:
