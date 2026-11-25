@@ -224,3 +224,5 @@ class SupportAgent:
         if r.error:
             return Reply("I couldn't retrieve the policy right now.")
         return Reply(f"Per our policy: {r.result['policy']}")
+
+# unauthorised edit of a frozen version
