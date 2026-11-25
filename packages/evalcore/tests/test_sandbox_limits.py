@@ -49,6 +49,7 @@ def test_environment_is_scrubbed(tmp_path, monkeypatch):
     [
         ["PYTHON", "-m", "pytest", "-q", "tests"],
         ["PYTHON", "-m", "unittest", "discover", "-s", "tests"],
+        ["PYTHON", "-m", "pytest", "-q", "tests/test_a.py::TestX::test_y[param-1]", "-k", "not slow"[:3]],
     ],
 )
 def test_pinned_test_commands_are_allowed(argv):
@@ -66,6 +67,8 @@ def test_pinned_test_commands_are_allowed(argv):
         ["PYTHON", "-m", "pytest", "tests; rm -rf /"],
         ["PYTHON", "-m", "pytest", "-p", "evil_plugin"],
         ["PYTHON", "-m", "pytest", "--basetemp=/Users/victim"],
+        ["PYTHON", "-m", "pytest", "@/tmp/args.txt"],
+        ["PYTHON", "-m", "pytest", "@args.txt"],
         ["PYTHON", "-m", "pytest", "-pevil"],
         ["PYTHON", "-m", "pytest", "--rootdir=/"],
         ["PYTHON", "-m", "pytest", "-o", "addopts=-p evil"],

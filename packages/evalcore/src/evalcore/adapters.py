@@ -10,6 +10,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -100,13 +101,11 @@ _VALUE_FLAGS = {"unittest": {"-s", "-t", "-p", "-k"}, "pytest": {"-k"}}
 _BARE_FLAGS = {"unittest": {"-v", "-q", "-b"}, "pytest": {"-q", "-v", "-vv", "-x", "--tb=short", "--tb=line"}}
 
 
+_SAFE_VALUE = re.compile(r"[A-Za-z0-9_./:\[\]*?=,+-]+")  # no '@' (pytest argfiles), no spaces, no shell metacharacters
+
+
 def _safe_value(v: str) -> bool:
-    return (
-        bool(v)
-        and not v.startswith(("-", "/", "~"))
-        and ".." not in Path(v).parts
-        and not any(ch in v for ch in ";|&$`<>\n\\")
-    )
+    return bool(_SAFE_VALUE.fullmatch(v)) and not v.startswith(("-", "/", "~", "@")) and ".." not in Path(v).parts
 
 
 def trusted_test_command(argv: list[str]) -> list[str]:
