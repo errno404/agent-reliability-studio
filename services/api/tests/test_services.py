@@ -77,6 +77,7 @@ def test_stale_job_recovery_and_resume_is_idempotent(fresh_db):
         for c in ds.cases[:4]:
             runs._persist(s, run, execute_sample(adapter, c, rid, 0, 0), c.input)
         ex.heartbeat_at = datetime.now(UTC) - timedelta(seconds=999)
+        ex.lease_expires_at = datetime.now(UTC) - timedelta(seconds=999)
         s.commit()
         assert s.scalar(select(func.count(Sample.id)).where(Sample.run_id == rid)) == 4
     with db.session_scope() as s:
@@ -109,7 +110,7 @@ def test_stale_job_gives_up_after_max_attempts(fresh_db):
     with db.session_scope() as s:
         run = _queued_run(s)
         ex = jobs.claim_next(s)
-        ex.attempt, ex.heartbeat_at = jobs.MAX_ATTEMPTS, datetime.now(UTC) - timedelta(seconds=999)
+        ex.attempt, ex.lease_expires_at = jobs.MAX_ATTEMPTS, datetime.now(UTC) - timedelta(seconds=999)
         s.commit()
         rid = run.id
     with db.session_scope() as s:
