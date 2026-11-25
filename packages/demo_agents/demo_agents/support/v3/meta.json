@@ -1,0 +1,1 @@
+{"agent": "support", "version": "v3", "notes": "PROOF: v2 behaviour but a different model with the change undeclared (disposable PR). Expected: INVALID comparison, rejected."}

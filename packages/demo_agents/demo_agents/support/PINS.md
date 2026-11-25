@@ -11,6 +11,7 @@ behaviour-affecting dependencies must record new re-measurement evidence.
 |---|---|---|---|---|---|---|
 | v1 | `5ed3ce5c2cb20fe6` | `75fa5b49ce4bae33` | frozen | 2026-11-24 |  | Fast but sloppy: redundant lookups, skips eligibility checks, guesses missing information, answers policy from memory, trusts claimed authority. |
 | v2 | `c02b6bc43d04f3f2` | `a5fa40190d3c6a1c` | frozen | 2026-11-24 |  | Policy-first: eligibility check before refunds, clarification instead of guessing, retrieves policy, refuses extraction. KNOWN REGRESSION: address parser mishan |
+| v3 | `ea7cd17884d3e403` | `a5fa40190d3c6a1c` | frozen | 2026-11-24 | docs/CI.md | PROOF: v2 behaviour but a different model with the change undeclared (disposable PR). Expected: INVALID comparison, rejected. |
 
 Shared-dependency hash: `9f0fa06db6026872` (evidence: docs/CI.md). It covers the harness/runtime, fixtures
 and MCP server this agent's behaviour depends on, which are NOT inside any version directory.
@@ -33,6 +34,15 @@ and MCP server this agent's behaviour depends on, which are NOT inside any versi
     "agent_hash": "c02b6bc43d04f3f2",
     "frozen": true,
     "note": "Policy-first: eligibility check before refunds, clarification instead of guessing, retrieves policy, refuses extraction. KNOWN REGRESSION: address parser mishan",
+    "pinned": "2026-11-24",
+    "prompt_hash": "a5fa40190d3c6a1c",
+    "tool_schema_hash": "0bf32b2792196edf"
+  },
+  "v3": {
+    "agent_hash": "ea7cd17884d3e403",
+    "evidence": "docs/CI.md",
+    "frozen": true,
+    "note": "PROOF: v2 behaviour but a different model with the change undeclared (disposable PR). Expected: INVALID comparison, rejected.",
     "pinned": "2026-11-24",
     "prompt_hash": "a5fa40190d3c6a1c",
     "tool_schema_hash": "0bf32b2792196edf"
