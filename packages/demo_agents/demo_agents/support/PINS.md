@@ -13,14 +13,14 @@ behaviour-affecting dependencies must record new re-measurement evidence.
 | v2 | `c02b6bc43d04f3f2` | `a5fa40190d3c6a1c` | frozen | 2026-11-24 |  | Policy-first: eligibility check before refunds, clarification instead of guessing, retrieves policy, refuses extraction. KNOWN REGRESSION: address parser mishan |
 | v3 | `48e0b9f1d350c366` | `a5fa40190d3c6a1c` | frozen | 2026-11-25 | docs/CI.md | CI proof (compatible): copy of v2 |
 
-Shared-dependency hash: `30adf25a802b0a63` (evidence: docs/CI.md). It covers the harness/runtime, fixtures
+Shared-dependency hash: `30adf25a802b0a63` (evidence: ci-proof-compatible-2026-11-25 (gate run on this PR)). It covers the harness/runtime, fixtures
 and MCP server this agent's behaviour depends on, which are NOT inside any version directory.
 
 ```json ars-pins
 {
   "_shared": {
     "deps_hash": "30adf25a802b0a63",
-    "evidence": "docs/CI.md"
+    "evidence": "ci-proof-compatible-2026-11-25 (gate run on this PR)"
   },
   "v1": {
     "agent_hash": "5ed3ce5c2cb20fe6",
