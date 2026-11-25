@@ -182,7 +182,7 @@ def test_verify_end_to_end_accepts_a_new_version_and_rejects_a_rewritten_frozen_
     (repo / "docs/CI.md").write_text("e")
     git(repo, "add", "-A")
     git(repo, "commit", "-qm", "add v2")
-    monkeypatch.setattr(cp, "current_hashes", lambda agent: {"v1": H, "v2": {**H, "agent_hash": "a2"}})
+    monkeypatch.setattr(cp, "current_hashes", lambda agent, root=None: {"v1": H, "v2": {**H, "agent_hash": "a2"}})
     assert cp.verify(repo, "main") == []
     # 2) the same PR also edits frozen v1 AND rewrites its pin to match: must be rejected against the baseline
     (d / "v1" / "agent.py").write_text("EDITED")
@@ -192,7 +192,21 @@ def test_verify_end_to_end_accepts_a_new_version_and_rejects_a_rewritten_frozen_
     git(repo, "add", "-A")
     git(repo, "commit", "-qm", "sneaky")
     monkeypatch.setattr(
-        cp, "current_hashes", lambda agent: {"v1": {**H, "agent_hash": "a-edited"}, "v2": {**H, "agent_hash": "a2"}}
+        cp,
+        "current_hashes",
+        lambda agent, root=None: {"v1": {**H, "agent_hash": "a-edited"}, "v2": {**H, "agent_hash": "a2"}},
     )
     out = cp.verify(repo, "main")
     assert any("rewritten" in p for p in out) and any("frozen but files" in p for p in out)
+
+
+def test_removing_a_whole_published_agent_directory_is_detected(repo, monkeypatch):
+    import shutil
+
+    monkeypatch.setattr(cp, "AGENTS", ("support",))
+    git(repo, "checkout", "-q", "main")
+    git(repo, "checkout", "-qb", "rm-agent")
+    shutil.rmtree(repo / cp.AGENT_REL / "support")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "delete the agent")
+    assert any("REMOVED" in p for p in cp.verify(repo, "main"))

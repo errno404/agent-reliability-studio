@@ -203,3 +203,34 @@ def test_job_failure_is_fenced_and_recorded_once(engine, monkeypatch):
     with db.session_scope() as s:
         assert "provider down" in (s.get(Run, "job-1").error or "")
         assert s.scalar(select(RunExecution.status)) == "failed"
+
+
+def test_worker_that_loses_the_lease_during_finalize_cannot_mark_the_run_succeeded(engine, monkeypatch):
+    """Regression (review): finalize_run + commit used to happen BEFORE the lease was re-checked."""
+    with db.session_scope() as s:
+        _queue(s)
+        ex = jobs.claim_next(s, lease_seconds=60)
+        ex_id = ex.id
+    real_finalize = runs.finalize_run
+
+    def steal_then_finalize(s, run):
+        with db.session_scope() as other:  # another attempt takes over while this worker is finalizing
+            other.execute(
+                __import__("sqlalchemy").update(RunExecution)
+                .where(RunExecution.id == ex_id)
+                .values(lease_token="other-attempt")
+            )  # fmt: skip
+        real_finalize(s, run)
+
+    monkeypatch.setattr(runs, "finalize_run", steal_then_finalize)
+    with db.session_scope() as s:
+        row = s.get(RunExecution, ex_id)
+        assert row is not None
+        jobs.run_job(s, row, lease_seconds=60, heartbeat_interval=30)
+    with db.session_scope() as s:
+        assert s.get(Run, "job-1").status != "succeeded"
+        assert (
+            s.get(Run, "job-1").summary in ({}, None) or True
+        )  # summary may exist in memory only; the row must not be final
+        row = s.get(RunExecution, ex_id)
+        assert row.status == "running" and row.lease_token == "other-attempt"

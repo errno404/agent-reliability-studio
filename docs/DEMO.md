@@ -10,8 +10,8 @@ Start: `make demo` → <http://localhost:3000> (or `docker compose up --build`).
 4. **What changed?** — "Localized regression: 'address' cases fell 11 points", plus new failure modes `wrong_tool_arguments`, `state_mutation_failure`.
 5. **Open a regressed case** — `sup-17-address-unit-apt`: expected assertions, then the diff.
 6. **Trajectory diff** — same tools, but `update_shipping_address` arguments changed: baseline `city: "Sollund"`, candidate `city: "Apt 5"`. Open the trace to see the OTel spans.
-7. **Judges** — the strict judge is `CALIBRATED — allowed for gating` (κ 0.97, FPR 0%); the lenient one is `NOT CALIBRATED — diagnostic only` (κ 0.47, FPR 50%). Open *Annotate items* to label blind.
-8. **CI / Release Gates** — pass; **inconclusive** (30 < 50 cases under `production`); **invalid** (draft dataset, different hash); and a gate **blocked because the judge is not calibrated**.
+7. **Judges** — the strict judge's metrics pass (κ 0.97, FPR 0%) but it reads `ADMITTED ON DEMONSTRATION LABELS — not release-eligible` (the reference labels are synthetic); the lenient one is `NOT CALIBRATED — diagnostic only` (κ 0.47, FPR 50%). Open *Annotate items* to label blind (public labels are untrusted).
+8. **CI / Release Gates** — pass (support, red team); **inconclusive** (30 < 50 cases under `production`); **invalid** (draft dataset, different hash); and a gate **blocked because the judge is not calibrated**.
 9. **Methodology** — the glossary explains pass@k, pass^k, κ, margin and the gate in plain language.
 
 10. **Experiments (real LLM)** — open the Experiments page (or Runs, filter `live`). Held-out comparison `research-live v1 → v2`: **+3.3 pts, 95% CI [−0.7, +8.5]**,

@@ -18,6 +18,8 @@ on:
       - "scripts/**"
       - "services/api/**"
       - ".github/**"
+      - "uv.lock"
+      - "pyproject.toml"
 permissions: { contents: read }
 concurrency: { group: "eval-gate-${{ github.ref }}", cancel-in-progress: true }
 
@@ -32,7 +34,7 @@ jobs:
       BASE_REF: ${{ github.base_ref }}   # never interpolate github.* directly into shell
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "${{ github.base_ref }}", path: trusted }
+        with: { ref: "${{ github.base_ref }}", path: trusted, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { fetch-depth: 0, path: pr, persist-credentials: false }
       - name: Select suites from the diff (selector comes from the trusted checkout)
@@ -52,7 +54,7 @@ jobs:
       BASE_REF: ${{ github.base_ref }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "${{ github.base_ref }}", path: trusted }
+        with: { ref: "${{ github.base_ref }}", path: trusted, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { fetch-depth: 0, path: pr, persist-credentials: false }
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
@@ -83,7 +85,7 @@ jobs:
       POLICY: ${{ matrix.policy }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "${{ github.base_ref }}", path: trusted }
+        with: { ref: "${{ github.base_ref }}", path: trusted, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { path: pr, persist-credentials: false }
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0

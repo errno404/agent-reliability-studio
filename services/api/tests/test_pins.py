@@ -14,8 +14,8 @@ def test_all_published_versions_match_their_pins():
 def test_editing_a_frozen_version_is_detected(monkeypatch):
     real = cp.current_hashes
 
-    def tampered(agent):
-        h = real(agent)
+    def tampered(agent, root=None):
+        h = real(agent, root)
         if agent == "support":
             h["v1"] = {**h["v1"], "agent_hash": "deadbeefdeadbeef"}
         return h

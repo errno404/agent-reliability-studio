@@ -123,7 +123,10 @@ def dir_files(d: Path) -> list[Path]:
 def shared_files(agent: str, root: Path = ROOT) -> list[Path]:
     """Behaviour-affecting files that live OUTSIDE the version directories."""
     a = root / AGENT_REL
-    files: list[Path] = [a / "runtime.py"]
+    files: list[Path] = [
+        a / "runtime.py",
+        a / "__init__.py",
+    ]  # __init__ holds the version registry (get_adapter routing)
     files += sorted((a / agent).glob("*.py"))
     if agent == "support":
         files += [root / "fixtures/support/world.yaml"]
@@ -145,7 +148,7 @@ def deps_hash(agent: str, root: Path = ROOT) -> str:
     return h.hexdigest()[:16]
 
 
-def current_hashes(agent: str) -> dict[str, dict[str, str]]:
+def _hashes_in_process(agent: str) -> dict[str, dict[str, str]]:
     from evalcore.hashing import hash_obj
 
     if agent == "live_research":
@@ -169,6 +172,31 @@ def current_hashes(agent: str) -> dict[str, dict[str, str]]:
 
 
 # ----------------------------------------------------------------------------- pure rule sets (unit-tested)
+def current_hashes(agent: str, root: Path | None = None) -> dict[str, dict[str, str]]:
+    """Version hashes as reported by the agent package under ``root``, computed in a CHILD process.
+
+    The PR's agent code is imported there, never in the process that makes the pass/fail decision, so it cannot patch the checker
+    in memory. It can still *report* misleading hashes, which is why frozen-version protection does not rely on them: the git diff
+    rule and the baseline comparison use file paths and the baseline's recorded hashes (see ``diff_problems``).
+    """
+    import os
+
+    root = (root or ROOT).resolve()
+    paths = (
+        ROOT / "packages/evalcore/src",
+        ROOT / "mcp/fixture_web",
+        ROOT / "services/api",
+        root / "packages/demo_agents",
+    )
+    # trusted entries first, the root's agent package directory last (no shadowing of evalcore/app/fixture_web)
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(str(p) for p in paths)}
+    cmd = [sys.executable, str(Path(__file__).resolve()), "--emit-hashes", agent]
+    r = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=root)
+    if r.returncode != 0:
+        raise BaselineUnreadable(f"could not compute hashes for {agent}: {r.stderr.strip()[-300:]}")
+    return json.loads(r.stdout)
+
+
 def local_problems(
     agent: str, pins: dict[str, dict[str, object]], disk: dict[str, dict[str, str]], disk_deps: str | None = None
 ) -> list[str]:
@@ -278,8 +306,12 @@ def verify(root: Path = ROOT, base: str | None = None) -> list[str]:
     files = changed_files(root, base) if base else []
     for agent in AGENTS:
         if not (root / AGENT_REL / agent).exists():
+            if base and baseline_pins(root, agent, base):
+                problems.append(
+                    f"{agent}: the whole agent directory (and its published pins) was REMOVED vs the baseline"
+                )
             continue
-        cur, disk, dd = read_pins(agent, root), current_hashes(agent), deps_hash(agent, root)
+        cur, disk, dd = read_pins(agent, root), current_hashes(agent, root), deps_hash(agent, root)
         problems += local_problems(agent, cur, disk, dd)
         if base:
             base_pins = baseline_pins(root, agent, base)
@@ -295,7 +327,7 @@ def update(evidence: str, root: Path = ROOT) -> int:
     for agent in AGENTS:
         if not (root / AGENT_REL / agent).exists():
             continue
-        pins, disk, dd = read_pins(agent, root), current_hashes(agent), deps_hash(agent, root)
+        pins, disk, dd = read_pins(agent, root), current_hashes(agent, root), deps_hash(agent, root)
         vp = _versions(pins)
         for v, h in disk.items():
             if v in vp:
@@ -330,6 +362,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", help="trusted baseline git ref (CI), e.g. origin/main")
     ap.add_argument("--update", action="store_true")
+    ap.add_argument("--emit-hashes", metavar="AGENT", help=argparse.SUPPRESS)
     ap.add_argument(
         "--layout-only", action="store_true", help="only check the agent-package layout (imports nothing from --root)"
     )
@@ -338,6 +371,9 @@ def main() -> int:
         "--root", type=Path, default=ROOT, help="checkout to inspect (CI: the PR tree; this script is the trusted one)"
     )
     a = ap.parse_args()
+    if a.emit_hashes:
+        print(json.dumps(_hashes_in_process(a.emit_hashes)))
+        return 0
     if a.layout_only:
         out = layout_problems(a.root.resolve())
         for p in out:

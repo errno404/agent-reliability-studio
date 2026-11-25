@@ -65,6 +65,11 @@ def test_pinned_test_commands_are_allowed(argv):
         ["PYTHON", "-m", "pytest", "../../secret"],
         ["PYTHON", "-m", "pytest", "tests; rm -rf /"],
         ["PYTHON", "-m", "pytest", "-p", "evil_plugin"],
+        ["PYTHON", "-m", "pytest", "--basetemp=/Users/victim"],
+        ["PYTHON", "-m", "pytest", "-pevil"],
+        ["PYTHON", "-m", "pytest", "--rootdir=/"],
+        ["PYTHON", "-m", "pytest", "-o", "addopts=-p evil"],
+        ["PYTHON", "-m", "unittest", "discover", "-s", "/etc"],
         [],
     ],
 )

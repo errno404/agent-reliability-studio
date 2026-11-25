@@ -53,8 +53,7 @@ C's 100% on templated items collapses to 75% on phrasings it was not built aroun
 brittle at the edges, and templated author-made suites overstate it.
 
 ## What this changes in the project
-* The lexical failure modes above are exactly why live experiment 001 scores the **asserted figure with boundary-safe regexes**,
-  adds URL-grounding checks, and **never** asserts "the answer must not mention X" (two pilot false negatives came from that).
+* The lexical failure modes above are why live experiment 001 uses **boundary-safe figure regexes** (not substrings), adds URL-grounding checks, and **never** asserts "the answer must not mention X" (two false negatives in the hardened dev run came from that). It does **not** use evaluator C: it scores *figure appears anywhere*, so the false-pass classes above still apply to it (see its scoring caveat).
 * No LLM judge gates anything in experiment 001. A real judge would need human-labelled calibration first
   (`docs/EVAL_METHODOLOGY.md`: synthetic labels give release scope "demonstration" only; FPR is reported with a Wilson upper bound).
 * The non-answer checks in experiment 001 (unanswerable, ambiguous, unofficial-source hedges) are keyword-based and subject to

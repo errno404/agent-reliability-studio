@@ -196,6 +196,11 @@ def classify_delta(ci_low: float, ci_high: float, margin: float) -> tuple[Decisi
     if ci_high < -margin:
         return Decision.SIGNIFICANT_REGRESSION, f"CI is entirely below the -{margin:.3f} margin"
     if ci_low >= -margin:
+        if ci_high < 0:
+            # a real but small drop that the policy margin tolerates: say so instead of passing silently
+            return Decision.NO_MEANINGFUL_REGRESSION, (
+                f"CI is entirely below zero but within the -{margin:.3f} margin: a small regression is likely and is tolerated by policy"
+            )
         return Decision.NO_MEANINGFUL_REGRESSION, f"CI lower bound is within the -{margin:.3f} margin"
     return Decision.INCONCLUSIVE, "CI straddles the regression margin; more evidence needed"
 

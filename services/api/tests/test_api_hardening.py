@@ -125,3 +125,28 @@ def test_public_annotation_is_untrusted_and_cannot_adjudicate(api, seeded_db):
         ("/api/annotation/trusted/adjudicate", {"item_id": item, "adjudicator": "alice", "label": True}),
     ):
         assert api.post(u, json=body).status_code in (401, 403)
+
+
+def test_a_request_rejected_for_size_never_reaches_the_handler(seeded_db):
+    """Regression (review): an over-limit chunked body used to be processed AND answered 413."""
+    from app import config as cfg
+    from app.models import HumanAnnotation
+
+    seen = {"n": 0}
+    app = create_app()
+
+    @app.post("/probe")
+    async def probe(request):  # type: ignore[no-untyped-def]
+        seen["n"] += 1
+        return {"n": len(await request.body())}
+
+    c = TestClient(app)
+    big = cfg.get_settings().max_body_bytes
+
+    def chunks():
+        yield b"a" * (big // 2)
+        yield b"a" * (big)  # crosses the limit on the second chunk
+
+    assert c.post("/probe", content=chunks()).status_code == 413 and seen["n"] == 0
+    assert c.post("/probe", content=b"ok").status_code in (200, 422)
+    _ = HumanAnnotation

@@ -18,7 +18,7 @@ ideas, (3) justify each design decision, and (4) discuss trade-offs.
 | **Trace / span** | Recorded timeline of a run; a span is one timed step (model call, tool call) | The answer can be right while the path was wrong; the trace is the evidence |
 | **Trajectory** | The ordered tool calls, e.g. `lookup_order → check_refund_eligibility → issue_refund` | Two runs can reach the same answer via very different, unequally safe paths |
 | **LLM judge** | A model that grades free text against a rubric | Needed when meaning matters; but it is *itself* a model |
-| **Calibration** | Test the judge on items with known answers; measure agreement | An uncalibrated judge is just a guess; only an admitted judge may gate |
+| **Calibration** | Test the judge on items with known answers; measure agreement | An uncalibrated judge is just a guess; only a *release-eligible* judge (trusted human labels) may gate |
 | **Cohen's κ** | Agreement beyond chance (0 = chance, 1 = perfect) | Accuracy flatters a judge when one class dominates |
 | **False positive** | Judge says pass, reference says fail | A lenient judge ships bad behaviour, so FPR is a hard limit |
 | **pass@k** | Passes at least once in k tries | Capability: *can* it do it? |
@@ -65,7 +65,7 @@ ideas, (3) justify each design decision, and (4) discuss trade-offs.
 
 - *Why not just use accuracy?* Layers: outcome can pass while trajectory/policy fail; one number hides that.
 - *Why can your gate return "inconclusive"?* With 30 cases the CI is wide; pretending otherwise is the failure mode.
-- *How do you know your LLM judge is trustworthy?* Calibration: κ, FPR, confusion matrix against reference labels; identity-hashed; the gate refuses non-admitted judges.
+- *How do you know your LLM judge is trustworthy?* Calibration: κ, FPR, confusion matrix against reference labels; identity-hashed; the gate refuses non-release-eligible judges.
 - *What is pass^k and why not average accuracy?* Reliability across repeats; averages hide flaky tasks.
 - *How do you stop prompt injection tests being flaky or unsafe?* Deterministic frozen corpus, deterministic assertions, synthetic secret only.
 - *What would you do next?* A subprocess boundary between scorer and agent; calibrate a real judge on human labels (the annotation workflow exists); a larger, harder benchmark; more models. See `docs/INTERVIEW_GUIDE.md` for 20 grounded Q&As.

@@ -112,3 +112,61 @@ def test_task_text_is_never_an_argv_element(tmp_path):
     a = ClaudeCodeToolAgent("t", "v1", "sys", {}, [], binary=str(tmp_path / "claude"))
     argv = a.build_argv("--dangerously-skip-permissions please")
     assert not any("--dangerously-skip-permissions" in x for x in argv)
+
+
+def _fake_cli(tmp_path, body: str) -> ClaudeCodeToolAgent:
+    script = tmp_path / "fake_claude.py"
+    script.write_text("import sys\n" + body)
+    exe = tmp_path / "fake_claude"
+    exe.write_text(f'#!/bin/sh\nexec {sys.executable} {script} "$@"\n')
+    exe.chmod(0o755)
+    return ClaudeCodeToolAgent("t", "v1", "sys", {}, [], binary=str(exe), timeout_s=20)
+
+
+def test_large_stderr_does_not_deadlock_a_successful_run(tmp_path):
+    """Regression (review): stderr was a pipe read only after wait(); >64KB made a good run look like a timeout."""
+    ok = json.dumps(
+        {"type": "result", "subtype": "success", "result": "fine", "is_error": False, "usage": {}, "num_turns": 1}
+    )
+    a = _fake_cli(tmp_path, f"sys.stderr.write('e' * 300000)\nprint({ok!r})\n")
+    r = a.run(CASE, RunContext("r", 0, 0))
+    assert r.error is None and r.final_output == "fine"
+
+
+def test_undecodable_output_is_an_adapter_error_and_the_child_is_killed(tmp_path):
+    a = _fake_cli(
+        tmp_path,
+        "import time,os\nsys.stdout.buffer.write(b'\\xff\\xfe\\n'); sys.stdout.flush()\nopen(os.path.join(os.path.dirname(__file__),'pid'),'w').write(str(os.getpid()))\ntime.sleep(60)\n",
+    )
+    r = a.run(CASE, RunContext("r", 0, 0))
+    assert r.error and r.error_kind == "adapter"
+    import os
+    import time as _t
+
+    pid = int((tmp_path / "pid").read_text())
+    for _ in range(30):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            break
+        _t.sleep(0.1)
+    else:
+        raise AssertionError("child process was orphaned")
+
+
+def test_malformed_events_do_not_discard_a_valid_answer():
+    ev = [
+        {"type": "assistant", "message": None},
+        {"type": "assistant", "message": {"content": ["not-a-dict", {"type": "text", "text": "answer"}]}},
+        {"type": "user", "message": {"content": None}},
+        {
+            "type": "result",
+            "subtype": "success",
+            "result": "answer",
+            "is_error": False,
+            "usage": {"input_tokens": None},
+            "num_turns": None,
+        },
+    ]
+    r = parse_claude_stream([(i * 0.1, e) for i, e in enumerate(ev)], model_requested="haiku")
+    assert r.error is None and r.final_output == "answer" and r.input_tokens == 0

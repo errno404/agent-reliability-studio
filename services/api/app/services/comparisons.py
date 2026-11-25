@@ -101,9 +101,13 @@ def create_comparison(
         "coverage": cmp.coverage,
         "incomplete_reasons": cmp.incomplete_reasons,
         "execution_kind": {"baseline": manifest_of(base).execution_kind, "candidate": manifest_of(cand).execution_kind},
-        "authorization": "release-grade evidence"
-        if cmp.mode == "strict"
-        else "EXPLORATORY: cannot authorise a release",
+        "authorization": (
+            "release-grade evidence"
+            if cmp.mode == "strict" and cmp.validity.valid
+            else "INVALID: cannot authorise a release"
+            if not cmp.validity.valid
+            else "EXPLORATORY: cannot authorise a release"
+        ),
     }
     if result["bootstrap"]:
         result["bootstrap"]["decision"] = str(cmp.bootstrap.decision.value) if cmp.bootstrap else None

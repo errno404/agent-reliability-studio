@@ -312,7 +312,8 @@ def judge_calibrate(
             f"fnr={m['fnr']:.1%} acc={m['accuracy']:.1%}"
         )
         console.print(
-            "[green]CALIBRATED — allowed for gating[/green]"
+            "[yellow]METRICS PASS on this set's labels; release-eligible only if they are trusted human labels "
+            "(synthetic fixture labels = demonstration only)[/yellow]"
             if c.admitted
             else "[red]NOT CALIBRATED — diagnostic only[/red]: " + "; ".join(c.reasons)
         )

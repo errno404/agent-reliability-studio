@@ -54,8 +54,8 @@ make demo            # installs, migrates, seeds the demo + the published live e
 1. **Overview** — baseline `support:v1` → candidate `support:v2`: `IMPROVEMENT`, CI gate `PASS`, with the CI drawn against the −5 pt margin.
 2. Read **"What changed?"**: *v2 is +50 pts overall (19 cases improved, 3 regressed) — but `address` cases fell 11 pts*.
 3. **Compare → case** `sup-17-address-unit-apt`: the diff shows v2 passes `city: "Apt 5"` instead of `"Sollund"`. A localized regression hiding inside an overall win.
-4. **Judges**: one judge `CALIBRATED — allowed for gating`, another `NOT CALIBRATED — diagnostic only`, with κ, FPR and a confusion matrix.
-5. **CI / Release Gates**: pass, *inconclusive* (30 cases < the production minimum of 50), *invalid* (different dataset hash), and a gate **blocked by an uncalibrated judge**.
+4. **Judges**: the strict judge's metrics pass (`ADMITTED ON DEMONSTRATION LABELS — not release-eligible`, because the reference labels are synthetic), the lenient one is `NOT CALIBRATED — diagnostic only`; κ, FPR (with a Wilson upper bound) and a confusion matrix are shown.
+5. **CI / Release Gates**: pass, *inconclusive* (30 cases < the production minimum of 50), *invalid* (different dataset hash), and gates **blocked because the judge is not release-eligible** (the strict judge is refused too: its labels are synthetic).
 
 | Compare: decision, CI, margin, validity | Case diff: the regression, exactly |
 |---|---|
@@ -94,7 +94,7 @@ n = non-error samples (cases × 3 minus execution errors).
 | Suite | Cases | v1 task success | v2 task success | Gate |
 |---|---|---|---|---|
 | Support | 30 | 38.9 % (CI 29–49) | 88.9 % (CI 81–94) | pass (policy `demo-20`); **inconclusive** under `production` (30 < 50 cases) |
-| Research (LangGraph v2) | 20 | 45.6 % | 91.2 % | pass (`demo-15`); lenient-judge variant **blocked: judge not calibrated** |
+| Research (LangGraph v2) | 20 | 45.6 % | 91.2 % | **gate FAILS: the judge-gated criterion uses a judge that is not release-eligible** (synthetic labels, *demonstration* scope) — the comparison itself is an improvement; the lenient-judge variant fails the same way |
 | Coding | 10 | 48.3 % | 90.0 % | **inconclusive** (10 cases) |
 | Red team | 15 | 13.3 % | 100 % | pass (`demo-10`) |
 
@@ -112,7 +112,7 @@ make demo            # seed + run
 
 - **Zero-key demo:** no environment variables needed. `DEMO_MODE=true` makes the app read-only.
 - **Local with live runs:** `cp .env.example .env`, set `DEMO_MODE=false` and `ADMIN_TOKEN`, run `ars worker` beside `ars serve`, then `POST /api/runs` (send `X-Admin-Token`) or `ars eval run`.
-- **Live LLM agent (operator only):** with your own authenticated Claude Code CLI (no key is read; set `ARS_CLAUDE_BIN` if `claude` is not on PATH): `ars eval run --agent 'live:research:v1?model=haiku' --dataset research-live-dev:v1 --samples 3 --budget-usd 8`. Costs are an API-equivalent *estimate*, never money paid; model, budget and timeout are clamped server-side. The older `LiteLLMAdapter` / `ClaudeCodeAdapter` remain optional and were **not** exercised against live providers here.
+- **Live LLM agent (operator only):** with your own authenticated Claude Code CLI (no key is read; set `ARS_CLAUDE_BIN` if `claude` is not on PATH): `ars eval run --agent 'live:research:v1?model=haiku' --dataset research-live-dev:v1 --samples 3 --budget-usd 8`. Costs are an API-equivalent *estimate*, never money paid; the model allowlist, per-sample budget and timeout are clamped server-side (the run-level `--budget-usd` is operator-chosen). The older `LiteLLMAdapter` / `ClaudeCodeAdapter` remain optional and were **not** exercised against live providers here.
 - **Docker (Postgres + API + web):** `docker compose up --build` → <http://localhost:3000>. Optional Phoenix mirror: `docker compose --profile observability up`.
 - **Deploy:** [`render.yaml`](render.yaml) (free-tier-compatible blueprint; not deployed). No live URL is claimed here.
 
@@ -122,7 +122,7 @@ make demo            # seed + run
 ars demo seed && ars demo verify
 ars dataset validate datasets/support/v1.yaml        # schema + hash; published datasets are frozen
 ars eval run --agent support:v2 --dataset support:v1 --samples 3
-ars eval compare --baseline RUN_A --candidate RUN_B --policy demo-20   # exit 0 pass (or inconclusive with --no-conservative) | 1 regression | 2 invalid | 3 inconclusive (conservative gate)
+ars eval compare --baseline RUN_A --candidate RUN_B --policy demo-20 --intent agent_change   # strict + --release by default; exit 0 pass | 1 regression | 2 invalid | 3 inconclusive or not release-eligible (--diagnostic never authorizes)
 ars eval diff RUN_A RUN_B                            # trajectory + outcome diff per case
 ars judge calibrate --judge keyword-strict-v1        # CALIBRATED / NOT CALIBRATED (exit 1)
 ars traces distill RUN_ID --out datasets/candidates/   # candidate cases, never auto-promoted

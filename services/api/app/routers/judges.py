@@ -44,11 +44,14 @@ def _judge_out(s: Session, j: JudgeConfig) -> sc.JudgeOut:
     )
     latest = hist[-1] if hist else None
     admitted = bool(latest and latest.admitted)
-    label = (
-        "CALIBRATED — allowed for gating"
-        if admitted
-        else "NOT CALIBRATED — diagnostic only" + ("" if latest else " (never calibrated)")
-    )
+    rs = judge_svc.release_status(s, j.id) if latest else None
+    if rs is not None and rs.eligible:
+        label = "RELEASE-ELIGIBLE — allowed for gating"
+    elif admitted:  # metrics pass, but the labels are not trusted human labels: the gate still refuses it
+        scope = rs.scope if rs is not None else "demonstration"
+        label = f"ADMITTED ON {scope.upper()} LABELS — not release-eligible (gate refuses it)"
+    else:
+        label = "NOT CALIBRATED — diagnostic only" + ("" if latest else " (never calibrated)")
     return sc.JudgeOut(
         id=j.id,
         name=j.name,

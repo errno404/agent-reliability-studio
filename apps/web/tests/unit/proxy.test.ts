@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { forwardedClient } from "@/lib/proxy";
+import { forwardedClient, proxy } from "@/lib/proxy";
 
 const h = (xff?: string) => new Headers(xff ? { "x-forwarded-for": xff } : {});
 
@@ -19,5 +19,14 @@ describe("forwardedClient (rate-limit identity)", () => {
     expect(forwardedClient(h("203.0.113.7"), 2)).toBeNull();
     expect(forwardedClient(h("evil; x-admin=1"), 1)).toBeNull();
     expect(forwardedClient(h("1.1.1.1"), Number.NaN)).toBeNull();
+  });
+});
+
+describe("proxy POST allow-list", () => {
+  const post = (path: string) => proxy(new Request("http://x/api" + path, { method: "POST", body: "{}", headers: { "x-admin-token": "t" } }), "/api" + path);
+  it("refuses the trusted (admin) annotation endpoints and everything else", async () => {
+    for (const p of ["/annotation/trusted", "/annotation/trusted/adjudicate", "/runs", "/annotation/../runs", "/annotationX"]) {
+      expect((await post(p)).status).toBe(405);
+    }
   });
 });

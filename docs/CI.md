@@ -32,7 +32,7 @@ measurement itself trustworthy?* Nothing here needs a model credential or a secr
 4. Do not allow bypassing the above (including for administrators) and block force pushes and deletions.
 Until then, merges depend on the sole owner's discipline; the workflow still reports honestly but cannot force a block.
 
-## Verified on GitHub (disposable branches/PRs, 2026-11-25)
+## Verified on GitHub (disposable branches/PRs, 2026-11-24 local = 2026-11-25 UTC)
 Four disposable PRs (base = the engineering branch, which carries the trusted evaluator) exercised the real path. They were never
 merged; the PRs are closed, the branches deleted, and the workflow runs below remain. Reports were saved to
 [`evidence/ci-proofs/`](../evidence/ci-proofs/) (CI artifacts expire after 14 days).

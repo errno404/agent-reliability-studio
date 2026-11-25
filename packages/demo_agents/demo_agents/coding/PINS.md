@@ -12,13 +12,13 @@ behaviour-affecting dependencies must record new re-measurement evidence.
 | v1 | `f8be5991e20e79e9` | `bf9f8e136bd8068b` | frozen | 2026-11-24 |  |  |
 | v2 | `beb50ee3170de5af` | `58717bd6e4e27e8a` | frozen | 2026-11-24 |  |  |
 
-Shared-dependency hash: `d7663c4fca13814c` (evidence: docs/CI.md). It covers the harness/runtime, fixtures
+Shared-dependency hash: `8aed9235526bb961` (evidence: docs/CI.md). It covers the harness/runtime, fixtures
 and MCP server this agent's behaviour depends on, which are NOT inside any version directory.
 
 ```json ars-pins
 {
   "_shared": {
-    "deps_hash": "d7663c4fca13814c",
+    "deps_hash": "8aed9235526bb961",
     "evidence": "docs/CI.md"
   },
   "v1": {

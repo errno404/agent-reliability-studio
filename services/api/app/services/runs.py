@@ -222,7 +222,7 @@ def _persist(s: Session, run: Run, smp: SampleResult, input_text: str) -> Sample
         error_kind=res.error_kind,
         input_text=_cap(rd.text(input_text)),
         final_output=_cap(rd.text(res.final_output)),
-        tool_sequence=res.tool_names,
+        tool_sequence=rd.apply(res.tool_names),
         latency_ms=res.latency_ms,
         input_tokens=res.input_tokens,
         output_tokens=res.output_tokens,
@@ -339,13 +339,16 @@ def execute_run(
 
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futs = [pool.submit(one, j) for j in pending]
-            for f in as_completed(futs):
-                case, smp = f.result()
-                if not handle(case, smp):
-                    stopped = True
-                    for g in futs:
+            try:
+                for f in as_completed(futs):
+                    case, smp = f.result()
+                    if not handle(case, smp):
+                        stopped = True
+                        break
+            finally:
+                if stopped or any(not f.done() for f in futs):
+                    for g in futs:  # LeaseLost / any error / budget stop: do not keep spending on queued samples
                         g.cancel()
-                    break
     s.flush()
     finalize_run(s, run)
     if stopped:

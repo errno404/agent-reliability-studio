@@ -55,7 +55,7 @@ through the **same** run/score/compare pipeline. The live harness (`evalcore.ada
 CLI with only the fixture MCP tools, in an isolated, budget- and timeout-limited process, and turns the CLI's real `stream-json` events into spans (no
 synthesized tool calls, no thinking blocks). Provenance records requested **and resolved** model; alias drift invalidates comparisons. Live execution is
 operator-only (CLI or admin token); the public demo only *displays* published, sanitized live evidence (`evidence/experiments/…`, re-imported by the seed and
-**re-compared with the same evaluator code**).
+**comparison statistics recomputed from the stored samples** (not re-scored)).
 
 ## Tracing
 

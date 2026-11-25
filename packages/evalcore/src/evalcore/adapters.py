@@ -27,6 +27,7 @@ from .runner import RunContext
 # ---------------------------------------------------------------- sandbox --
 
 
+MAX_STREAM_BYTES = 40_000_000  # live CLI stdout cap; beyond this the run is an adapter error
 MAX_OUTPUT_BYTES = 1_000_000  # captured per stream; the process is also bounded by RLIMIT_FSIZE on its output files
 LIMITS = {"cpu_s": 60, "fsize_mb": 16, "nproc": 256}  # applied by the launcher; best effort per platform
 
@@ -95,21 +96,42 @@ def run_command(
 TRUSTED_TEST_MODULES = ("pytest", "unittest")
 
 
-def trusted_test_command(argv: list[str]) -> list[str]:
-    """Allow only ``PYTHON -m pytest|unittest <relative paths / simple flags>``; dataset text is never a general shell.
+_VALUE_FLAGS = {"unittest": {"-s", "-t", "-p", "-k"}, "pytest": {"-k"}}
+_BARE_FLAGS = {"unittest": {"-v", "-q", "-b"}, "pytest": {"-q", "-v", "-vv", "-x", "--tb=short", "--tb=line"}}
 
-    Raises ValueError for anything else: other executables, ``-c``, absolute or parent paths, shell metacharacters.
+
+def _safe_value(v: str) -> bool:
+    return (
+        bool(v)
+        and not v.startswith(("-", "/", "~"))
+        and ".." not in Path(v).parts
+        and not any(ch in v for ch in ";|&$`<>\n\\")
+    )
+
+
+def trusted_test_command(argv: list[str]) -> list[str]:
+    """Allow only ``PYTHON -m pytest|unittest`` with an explicit allow-list of flags and *relative, safe* values.
+
+    Everything else is rejected, notably ``-c``, ``-p`` for pytest (plugin loading), ``--basetemp``/``--rootdir``/``-o`` and any
+    option spelled ``--x=/abs`` or ``-pevil``. Raises ValueError.
     """
     if len(argv) < 3 or argv[0] != "PYTHON" or argv[1] != "-m" or argv[2] not in TRUSTED_TEST_MODULES:
         raise ValueError(f"untrusted test command {argv[:3]!r}: only 'PYTHON -m pytest|unittest ...' is allowed")
-    for a in argv[3:]:
-        if (
-            a.startswith("/")
-            or ".." in Path(a).parts
-            or any(ch in a for ch in ";|&$`<>\n")
-            or a in ("-c", "-p", "--rootdir")
-        ):
-            raise ValueError(f"untrusted test argument {a!r}")
+    mod, rest, i = argv[2], argv[3:], 0
+    while i < len(rest):
+        tok = rest[i]
+        if tok in _VALUE_FLAGS[mod]:
+            if i + 1 >= len(rest) or not _safe_value(rest[i + 1]):
+                raise ValueError(f"untrusted value for {tok}")
+            i += 2
+        elif tok in _BARE_FLAGS[mod]:
+            i += 1
+        elif tok.startswith("-"):
+            raise ValueError(f"untrusted test option {tok!r}")
+        elif _safe_value(tok):
+            i += 1
+        else:
+            raise ValueError(f"untrusted test argument {tok!r}")
     return argv
 
 
@@ -386,6 +408,13 @@ def _strip_mcp_prefix(name: str) -> str:
     return name.split("__", 2)[2] if name.startswith("mcp__") and name.count("__") >= 2 else name
 
 
+def _msg_blocks(ev: dict[str, Any]) -> list[dict[str, Any]]:
+    """Content blocks of an event's message, tolerant of null/odd shapes (a malformed event must not discard a valid answer)."""
+    m = ev.get("message")
+    c = m.get("content") if isinstance(m, dict) else None
+    return [b for b in c if isinstance(b, dict)] if isinstance(c, list) else []
+
+
 def parse_claude_stream(
     events: list[tuple[float, dict[str, Any]]], redactor: Any = None, model_requested: str | None = None
 ) -> AgentResult:
@@ -418,7 +447,7 @@ def parse_claude_stream(
             if typ == "system" and ev.get("subtype") == "init":
                 init_model = ev.get("model")
             elif typ == "assistant":
-                for b in ev.get("message", {}).get("content") or []:
+                for b in _msg_blocks(ev):
                     if b.get("type") == "tool_use":
                         call = ToolCall(
                             name=_strip_mcp_prefix(str(b.get("name", ""))), arguments=dict(b.get("input") or {})
@@ -429,11 +458,7 @@ def parse_claude_stream(
                         final_text = str(b.get("text", ""))  # the last text block of the last assistant turn
                 res.steps += 1
             elif typ == "user":
-                for b in (
-                    (ev.get("message", {}).get("content") or [])
-                    if isinstance(ev.get("message", {}).get("content"), list)
-                    else []
-                ):
+                for b in _msg_blocks(ev):
                     if b.get("type") != "tool_result":
                         continue
                     call, started = pending.pop(str(b.get("tool_use_id")), (None, t))
@@ -472,18 +497,27 @@ def parse_claude_stream(
                             rec.mark_error(sp, call.error)
             elif typ == "result":
                 result_event = ev
-        usage = (result_event or {}).get("usage") or {}
-        mu = (result_event or {}).get("modelUsage") or {}
+        usage = (result_event or {}).get("usage")
+        usage = usage if isinstance(usage, dict) else {}
+        mu = (result_event or {}).get("modelUsage")
+        mu = mu if isinstance(mu, dict) else {}
+
+        def num(v: Any) -> int:  # null / odd token counts must not discard a valid answer
+            return int(v) if isinstance(v, int | float) and not isinstance(v, bool) else 0
+
         resolved = next(iter(mu), None) or init_model
         res.model = resolved
         res.input_tokens = (
-            int(usage.get("input_tokens", 0))
-            + int(usage.get("cache_read_input_tokens", 0))
-            + int(usage.get("cache_creation_input_tokens", 0))
+            num(usage.get("input_tokens"))
+            + num(usage.get("cache_read_input_tokens"))
+            + num(usage.get("cache_creation_input_tokens"))
         )
-        res.output_tokens = int(usage.get("output_tokens", 0))
-        res.turns = int((result_event or {}).get("num_turns", 1))
-        res.latency_ms = float((result_event or {}).get("duration_ms") or (t_prev * 1000))
+        res.output_tokens = num(usage.get("output_tokens"))
+        res.turns = num((result_event or {}).get("num_turns")) or 1
+        dur = (result_event or {}).get("duration_ms")
+        res.latency_ms = (
+            float(dur) if isinstance(dur, int | float) and not isinstance(dur, bool) and dur else t_prev * 1000
+        )
         rec.set_attr(root, sc.REQUEST_MODEL, model_requested or "")
         rec.set_attr(root, sc.RESPONSE_MODEL, resolved or "")
         rec.set_attr(root, sc.INPUT_TOKENS, res.input_tokens)
@@ -575,13 +609,15 @@ class ClaudeCodeToolAgent:
         with tempfile.TemporaryDirectory(prefix="ars-live-") as tmp:
             events: list[tuple[float, dict[str, Any]]] = []
             t0 = time.monotonic()
+            # stderr goes to a file: a full pipe could otherwise block the child (deadlock). Closed explicitly below.
+            errf = tempfile.TemporaryFile()  # noqa: SIM115
             proc = subprocess.Popen(
                 self.build_argv(case.input),
                 cwd=tmp,
                 env=safe_env(),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=errf,
                 text=True,
                 start_new_session=True,
             )
@@ -591,11 +627,26 @@ class ClaudeCodeToolAgent:
                 proc.stdin.close()
             except (BrokenPipeError, OSError):
                 pass  # the process died early; its exit status is reported below
-            timer = threading.Timer(self.timeout_s, lambda: _kill_group(proc))
+            fired = threading.Event()
+
+            def _timeout() -> None:
+                fired.set()
+                _kill_group(proc)
+
+            timer = threading.Timer(self.timeout_s, _timeout)
             timer.start()
             try:
                 assert proc.stdout is not None
+                n_bytes = 0
                 for line in proc.stdout:
+                    n_bytes += len(line)
+                    if n_bytes > MAX_STREAM_BYTES:
+                        _kill_group(proc)
+                        return AgentResult(
+                            error="live output exceeded the stream size limit",
+                            error_kind="adapter",
+                            metadata={"execution_kind": "live"},
+                        )
                     line = line.strip()
                     if line.startswith("{"):
                         try:
@@ -603,14 +654,19 @@ class ClaudeCodeToolAgent:
                         except json.JSONDecodeError:
                             continue
                 proc.wait()
-            finally:
-                timed_out = (
-                    not timer.is_alive()
-                    and proc.returncode not in (0, None)
-                    and (time.monotonic() - t0) >= self.timeout_s
+            except UnicodeDecodeError as exc:  # garbage on stdout is an adapter error, not a crash
+                return AgentResult(
+                    error=f"undecodable CLI output: {exc}"[:200],
+                    error_kind="adapter",
+                    metadata={"execution_kind": "live"},
                 )
+            finally:
                 timer.cancel()
-            if timed_out:
+                if proc.poll() is None:  # never orphan the CLI (and its MCP children) on ANY exit path
+                    _kill_group(proc)
+                    proc.wait()
+            if fired.is_set() and proc.returncode not in (0,):
+                errf.close()
                 return AgentResult(
                     error=f"timeout after {self.timeout_s}s",
                     error_kind="timeout",
@@ -619,9 +675,10 @@ class ClaudeCodeToolAgent:
                 )
             res = parse_claude_stream(events, self.redactor, self.model)
             if res.error and proc.returncode not in (0, None) and not events:
-                res.error = (
-                    f"{res.error}; exit {proc.returncode}; stderr: {(proc.stderr.read() if proc.stderr else '')[-200:]}"
-                )
+                errf.seek(0)
+                tail = errf.read()[-200:].decode("utf-8", "replace")
+                res.error = f"{res.error}; exit {proc.returncode}; stderr: {tail}"
+            errf.close()
             return res
 
 

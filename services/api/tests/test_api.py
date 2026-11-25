@@ -59,7 +59,7 @@ def test_trace_tree(client):
 def test_judges_calibrated_vs_not(client):
     js = client.get("/api/judges").json()
     by_model = {(j["model"], j["rubric_version"]): j for j in js}
-    assert by_model[("keyword-strict-v1", "r1")]["status_label"] == "CALIBRATED — allowed for gating"
+    assert by_model[("keyword-strict-v1", "r1")]["status_label"].startswith("ADMITTED ON DEMONSTRATION LABELS")
     assert by_model[("keyword-lenient-v0", "r1")]["status"] == "not_calibrated"
     assert "never calibrated" in by_model[("keyword-strict-v1", "r2")]["status_label"]
     strict = by_model[("keyword-strict-v1", "r1")]

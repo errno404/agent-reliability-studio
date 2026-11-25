@@ -1,4 +1,7 @@
-"""Scripted coding agents (v1 flawed / v2 mostly correct) over a REAL isolated-sandbox harness."""
+"""Scripted coding agents (v1 flawed / v2 mostly correct) over a real temp-directory harness.
+
+This is NOT a sandbox: see docs/SECURITY.md.
+"""
 
 from __future__ import annotations
 

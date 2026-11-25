@@ -22,11 +22,13 @@ from __future__ import annotations
 
 import logging
 import os
+import re as _re
 import secrets
 import socket
 import threading
 from datetime import UTC, datetime, timedelta
 
+from evalcore.redaction import Redactor as _Redactor
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.orm import Session
 
@@ -187,6 +189,14 @@ def _finish(ex_id: int, token: str, status: str, error: str | None, run_id: str,
         return True
 
 
+_PATH = _re.compile(r"(/[A-Za-z0-9_.@-]+){2,}")
+
+
+def _public_error(exc: BaseException) -> str:
+    """Run errors are served by public endpoints: redact secrets and strip absolute filesystem paths."""
+    return _PATH.sub("<path>", _Redactor().text(f"{type(exc).__name__}: {exc}"))[:500]
+
+
 def run_job(s: Session, ex: RunExecution, lease_seconds: int = 120, heartbeat_interval: float | None = None) -> None:
     ex_id, run_id, token = ex.id, ex.run_id, ex.lease_token or ""
     run = s.get(Run, run_id)
@@ -194,14 +204,23 @@ def run_job(s: Session, ex: RunExecution, lease_seconds: int = 120, heartbeat_in
     lease = Lease(ex_id, token, lease_seconds, heartbeat_interval).start()
     try:
         run_svc.execute_run(s, run, owner_check=lease.valid, heartbeat=lambda: None)
-        s.commit()
-        if not lease.valid():
-            raise run_svc.LeaseLost(f"lost the lease on run {run_id} before completion")
         outcome_failed = run.status == "failed"  # e.g. run budget exhausted: evidence incomplete
-        if not _finish(
-            ex_id, token, "failed" if outcome_failed else "succeeded", run.error if outcome_failed else None, run_id
-        ):
+        # ATOMIC terminal transition: the run row (already flushed, NOT committed) and the job row become final in ONE transaction,
+        # and only if this worker still holds the lease. A fenced worker's rowcount is 0 -> everything it did since the last batch
+        # commit is rolled back, so it can never leave a "succeeded" run under another attempt's job.
+        res = s.execute(
+            update(RunExecution)
+            .where(RunExecution.id == ex_id, RunExecution.lease_token == token, RunExecution.status == "running")
+            .values(
+                status="failed" if outcome_failed else "succeeded",
+                error=run.error if outcome_failed else None,
+                finished_at=_now(),
+                lease_token=None,
+            )
+        )
+        if getattr(res, "rowcount", 0) != 1:
             raise run_svc.LeaseLost(f"lost the lease on run {run_id} at completion")
+        s.commit()
     except run_svc.LeaseLost as exc:
         s.rollback()
         log.warning("worker fenced: %s", exc, extra={"run_id": run_id, "job_id": ex_id})
@@ -209,7 +228,7 @@ def run_job(s: Session, ex: RunExecution, lease_seconds: int = 120, heartbeat_in
     except Exception as exc:  # job failure is recorded, never silently swallowed
         s.rollback()
         log.exception("job %s failed", ex_id, extra={"run_id": run_id, "job_id": ex_id})
-        err = f"{type(exc).__name__}: {exc}"[:500]
+        err = _public_error(exc)
         if not _finish(ex_id, token, "failed", err, run_id):
             log.warning("failure not recorded: lease already lost", extra={"job_id": ex_id})
     finally:

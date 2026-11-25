@@ -2,7 +2,7 @@
 #
 # Verified against Render docs (render.com/docs/free, /private-network) on 2026-11-24:
 #   * Private services (pserv) have NO free instance type, and free web services cannot receive private-network traffic.
-#     So the API is a free *web* service reachable over HTTPS; the web tier proxies to it. It is safe to expose because
+#     So the API is a free *web* service reachable over HTTPS; the web tier proxies to it (confirm the API_URL the dashboard resolves for `hostport`: on a free tier it must be the API's *public* https URL, not a private-network address; this blueprint has NOT been deployed or validated by Render). It is safe to expose because
 #     DEMO_MODE=true makes every mutation 403, there is no shell/coding execution, and only synthetic data is served.
 #   * Free Postgres EXPIRES 30 days after creation (14-day grace, then deleted); 1 GB; no backups. Free web services spin down
 #     after 15 minutes idle (~1 minute cold start) and share 750 instance-hours/month. Re-seed is automatic (idempotent).

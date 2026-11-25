@@ -580,3 +580,13 @@ def test_redactor_does_not_destroy_usage_counters_or_short_key_lookalikes():
     assert (
         out["input_tokens"] == 12 and out["total_tokens"] == 30 and out["business"] == "acme" and out["ssn"] == REDACTED
     )
+
+
+def test_pem_body_and_auth_tokens_key_are_redacted_but_usage_counters_survive():
+    from evalcore.redaction import Redactor
+
+    r = Redactor()
+    pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA1234567890abcdef\n-----END RSA PRIVATE KEY-----"
+    assert "MIIEow" not in r.text(f"key: {pem} done")
+    out = r.apply({"auth_tokens": "hunter2", "input_tokens": 12, "total_tokens": 30, "x-api-key": "k"})
+    assert out["auth_tokens"] == "[REDACTED]" and out["input_tokens"] == 12 and out["total_tokens"] == 30

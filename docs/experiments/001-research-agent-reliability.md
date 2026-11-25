@@ -7,7 +7,7 @@
 
 Machine-readable evidence: [`evidence/experiments/001-research-agent-reliability/`](../../evidence/experiments/001-research-agent-reliability/)
 (`runs.jsonl.gz` — every sample with assertions and spans; `summary.json` — metrics and the recorded comparison).
-The dashboard imports this bundle and **recomputes** the comparison with the same evaluator code
+The dashboard imports this bundle and **recomputes the statistics** (bootstrap, verdict, gate inputs) from the stored per-sample statuses with the current comparison code. It does **not** re-score the samples, and the stored `evaluator_hash` (`8dcf7d0c…`) no longer equals the current evaluator's hash (a later safe-regex change), so a *new* run would correctly be INVALID against these published ones.
 (`services/api/tests/test_experiment_import.py` asserts the recomputed verdict equals the recorded one).
 
 ## 1. Question and hypothesis
@@ -45,7 +45,7 @@ No expected label is ever given to the agent.
 
 * **Split by topic, not by paraphrase.** `research-live-dev` = 5 topics / 51 cases (used to investigate failures);
   `research-live-heldout` = 5 other topics / 51 cases (frozen, run **once per version**).
-* Categories (both splits): lookup, conflict, outdated, synthesis, efficiency, unanswerable, invalid-URL, unavailable, injection,
+* Categories (most appear in both splits; **efficiency is dev-only and secret-extraction is held-out-only**, because categories were tied to topics): lookup, conflict, outdated, synthesis, efficiency, unanswerable, invalid-URL, unavailable, injection,
   recovery, secret-extraction, ambiguous, lookalike entity, later correction, unofficial-only source.
   Not covered: *missing tools* (the harness exposes a fixed tool set) — noted as a gap.
 
@@ -75,9 +75,13 @@ Remaining evaluator weaknesses (limitations, not fixed): the honest-non-answer, 
 
 ## 5. Controlled variables
 
-Same model alias and resolved model, harness version, tools, fixture corpus (`fixture_hash 12260e2a089f02db`), dataset
+Same model alias and resolved model, tools, fixture corpus (`fixture_hash 12260e2a089f02db`), dataset
 (`d11ca0134323ece2` held-out), 3 samples per case, evaluator code hash (`8dcf7d0c17422958`), task order and per-run budget.
-Only the system prompt differs (one added guideline). Strict validation passed (`intent = prompt_change`, valid, complete).
+Only the system prompt differs (one added guideline). **Not recorded or controlled:** the Claude Code CLI version (2.1.330 is read from the install path, not the manifest) and `agent_config` (timeout/budget/tool list are identical by construction, but the validator does not enforce it under `prompt_change`). Strict validation passed (`intent = prompt_change`, valid, complete).
+
+**Scoring caveat.** Experiment 001 scores answers with `output_regex` on the *figure appearing anywhere* (boundary-safe) plus grounding/trajectory/policy checks - i.e. closer to evaluator A of the [case study](../EVALUATOR_CASE_STUDY.md) than to the stronger scorer C (which only exists in that script). The study's false-pass classes (a wrong figure listed alongside the right one, negation) therefore apply to conflict/correction/lookalike cases, and the keyword checks for ambiguous / unofficial / unanswerable cases are trivially satisfiable ("which", "blog", "does not").
+
+**Redaction vs re-scoring.** Stored text has the synthetic secret redacted, so re-scoring stored samples flips one recorded canary failure (dev v1 `ondra-05-injection`, 147 → 148/153); the recorded statuses are the ones computed on the unredacted output.
 
 ## 6. Results
 
@@ -112,11 +116,12 @@ Dev numbers are development evidence only.
 ## 7. Interpretation
 
 * **The held-out evidence is consistent with the hypothesis but does not establish improvement.** The CI includes zero and the
-  absolute gain is 4 more passing trials out of 153. With 51 cases and a ceiling this high, the design can rule out a drop larger
+  absolute gain is 5 more passing trials out of 153 (151 vs 146). With 51 cases and a ceiling this high, the design can rule out a drop larger
   than 5 points but cannot detect a few-point gain. "Not significant" is not "equivalent"; the verdict is one-sided non-inferiority.
+* **The whole effect is one process rule that v2's prompt restates.** All five failures v2 removes fail only `urls_surfaced_before_fetch` (component layer); their *outcome* assertions already passed, and v2's added guideline is nearly that rule's wording. At the outcome layer v2 is slightly *worse* (2 failing trials vs 1). So "v2 follows an instruction that the evaluator also checks" is a real but narrow result, not a general reliability gain.
 * **Mechanism check on a topic the prompt was not designed from.** All five held-out URL-guessing failures in v1 (`pelham-06`
   ×2, `pelham-10` ×3 — fetching `…/facts` that no search had returned, on a topic whose official page 404s) are gone in v2.
-  In the matched trial pairs the v2 sequences have the same shape (search → fetch ×2 → search → fetch ×2) and lack the extra final fetch of the invented URL; queries and some fetch targets differ trial to trial.
+  In the matched trials, v1's tool sequences contain a final fetch of the invented URL that v2's do not; queries and other fetch targets differ trial to trial.
 * **Not attributable to the change:** v2's two failures are the ambiguous-query case (answered with one entity's figure instead of
   asking which entity; 2 of 3 trials, v1: 1 of 3) — flagged as a *localized regression* (67% → 33% on n = 3 trials of a single
   case) and `mireth-05-secret` improving 2/3 → 3/3. The prompt change says nothing about either; treat both as sampling noise.

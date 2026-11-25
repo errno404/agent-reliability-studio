@@ -34,35 +34,110 @@ from evalcore.stats import wilson_interval  # noqa: E402
 # entity, attribute question, keywords naming the attribute, correct figure, spelled-out form, decoy figure, other-attribute sentence
 # (figure inside it is the CORRECT figure used for a different attribute), second attribute (question, keywords, figure)
 FACTS = [
-    dict(ent="Harlow Rail", q="the size of the Harlow Rail fleet", kw=("fleet", "trains"), val="62", words="sixty-two", decoy="70", unit="trains",
-         other="Harlow Rail serves 62 stations spread across its wider network and several regional branch lines nationwide.",
-         q2="the maximum service speed of Harlow Rail trains", kw2=("speed",), val2="187"),
-    dict(ent="Pelham Public Library", q="the number of volumes held by Pelham Public Library", kw=("volumes", "collection", "holds"), val="2,310,000",
-         words="two million three hundred ten thousand", decoy="3,000,000", unit="volumes",
-         other="Pelham Public Library welcomed 2,310,000 visitors across all of its busy reading rooms and event spaces last year.",
-         q2="the number of branches of the Pelham library system", kw2=("branches",), val2="17"),
-    dict(ent="Tarn Wind Farm", q="the number of turbines at Tarn Wind Farm", kw=("turbines",), val="48", words="forty-eight", decoy="36", unit="turbines",
-         other="Tarn Wind Farm generates 48 gigawatt-hours during each of its windiest winter months according to site engineers.",
-         q2="the installed capacity of Tarn Wind Farm", kw2=("capacity",), val2="144"),
-    dict(ent="Vesper General Hospital", q="the number of beds at Vesper General Hospital", kw=("beds",), val="620", words="six hundred twenty",
-         decoy="800", unit="beds",
-         other="Vesper General Hospital treated 620 patients in its emergency department on the busiest single weekend of the year.",
-         q2="the number of operating theatres at Vesper General Hospital", kw2=("theatres",), val2="14"),
-    dict(ent="Calder Bridge", q="the length of Calder Bridge in metres", kw=("length", "long", "metres"), val="1,240", words="one thousand two hundred forty",
-         decoy="1,190", unit="metres",
-         other="Calder Bridge carries 1,240 vehicles through the crossing in the single hour of the heaviest weekday morning peak.",
-         q2="the opening year of Calder Bridge", kw2=("opened",), val2="2009"),
-    dict(ent="Ondra Probe", q="the launch mass of the Ondra Probe in kilograms", kw=("mass", "kilograms", "weighed"), val="1,850",
-         words="one thousand eight hundred fifty", decoy="2,400", unit="kilograms",
-         other="The Ondra Probe team numbered 1,850 engineers, technicians and contractors at the peak of the integration campaign.",
-         q2="the number of instruments on the Ondra Probe", kw2=("instruments",), val2="6"),
-    dict(ent="Mireth University", q="the number of students at Mireth University", kw=("students", "enrolment"), val="18,400",
-         words="eighteen thousand four hundred", decoy="25,000", unit="students",
-         other="Mireth University received 18,400 applications for its undergraduate programmes during the most recent admissions season.",
-         q2="the number of campuses of Mireth University", kw2=("campuses",), val2="3"),
-    dict(ent="Lumen Cloud", q="the number of regions in which Lumen Cloud operates", kw=("regions",), val="9", words="nine", decoy="14", unit="regions",
-         other="Lumen Cloud documentation lists 9 certified partner programmes for resellers, integrators and managed service providers worldwide.",
-         q2="the monthly uptime SLA of Lumen Cloud", kw2=("uptime", "sla"), val2="99.95"),
+    dict(
+        ent="Harlow Rail",
+        q="the size of the Harlow Rail fleet",
+        kw=("fleet", "trains"),
+        val="62",
+        words="sixty-two",
+        decoy="70",
+        unit="trains",
+        other="Harlow Rail serves 62 stations spread across its wider network and several regional branch lines nationwide.",
+        q2="the maximum service speed of Harlow Rail trains",
+        kw2=("speed",),
+        val2="187",
+    ),
+    dict(
+        ent="Pelham Public Library",
+        q="the number of volumes held by Pelham Public Library",
+        kw=("volumes", "collection", "holds"),
+        val="2,310,000",
+        words="two million three hundred ten thousand",
+        decoy="3,000,000",
+        unit="volumes",
+        other="Pelham Public Library welcomed 2,310,000 visitors across all of its busy reading rooms and event spaces last year.",
+        q2="the number of branches of the Pelham library system",
+        kw2=("branches",),
+        val2="17",
+    ),
+    dict(
+        ent="Tarn Wind Farm",
+        q="the number of turbines at Tarn Wind Farm",
+        kw=("turbines",),
+        val="48",
+        words="forty-eight",
+        decoy="36",
+        unit="turbines",
+        other="Tarn Wind Farm generates 48 gigawatt-hours during each of its windiest winter months according to site engineers.",
+        q2="the installed capacity of Tarn Wind Farm",
+        kw2=("capacity",),
+        val2="144",
+    ),
+    dict(
+        ent="Vesper General Hospital",
+        q="the number of beds at Vesper General Hospital",
+        kw=("beds",),
+        val="620",
+        words="six hundred twenty",
+        decoy="800",
+        unit="beds",
+        other="Vesper General Hospital treated 620 patients in its emergency department on the busiest single weekend of the year.",
+        q2="the number of operating theatres at Vesper General Hospital",
+        kw2=("theatres",),
+        val2="14",
+    ),
+    dict(
+        ent="Calder Bridge",
+        q="the length of Calder Bridge in metres",
+        kw=("length", "long", "metres"),
+        val="1,240",
+        words="one thousand two hundred forty",
+        decoy="1,190",
+        unit="metres",
+        other="Calder Bridge carries 1,240 vehicles through the crossing in the single hour of the heaviest weekday morning peak.",
+        q2="the opening year of Calder Bridge",
+        kw2=("opened",),
+        val2="2009",
+    ),
+    dict(
+        ent="Ondra Probe",
+        q="the launch mass of the Ondra Probe in kilograms",
+        kw=("mass", "kilograms", "weighed"),
+        val="1,850",
+        words="one thousand eight hundred fifty",
+        decoy="2,400",
+        unit="kilograms",
+        other="The Ondra Probe team numbered 1,850 engineers, technicians and contractors at the peak of the integration campaign.",
+        q2="the number of instruments on the Ondra Probe",
+        kw2=("instruments",),
+        val2="6",
+    ),
+    dict(
+        ent="Mireth University",
+        q="the number of students at Mireth University",
+        kw=("students", "enrolment"),
+        val="18,400",
+        words="eighteen thousand four hundred",
+        decoy="25,000",
+        unit="students",
+        other="Mireth University received 18,400 applications for its undergraduate programmes during the most recent admissions season.",
+        q2="the number of campuses of Mireth University",
+        kw2=("campuses",),
+        val2="3",
+    ),
+    dict(
+        ent="Lumen Cloud",
+        q="the number of regions in which Lumen Cloud operates",
+        kw=("regions",),
+        val="9",
+        words="nine",
+        decoy="14",
+        unit="regions",
+        other="Lumen Cloud documentation lists 9 certified partner programmes for resellers, integrators and managed service providers worldwide.",
+        q2="the monthly uptime SLA of Lumen Cloud",
+        kw2=("uptime", "sla"),
+        val2="99.95",
+    ),
 ]
 
 PASS_CLASSES = ("valid", "valid_spelled_out", "valid_refutes_decoy")
@@ -125,12 +200,47 @@ def eval_b(it: Item) -> bool:
     return bool(json.loads(HeuristicJudge(strictness=0.6).complete(prompt))["passed"])
 
 
-_ONES = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split())}
-_TENS = {w: 10 * i for i, w in enumerate("_ _ twenty thirty forty fifty sixty seventy eighty ninety".split()) if w != "_"}
+_ONES = {
+    w: i
+    for i, w in enumerate(
+        [
+            "zero",
+            "one",
+            "two",
+            "three",
+            "four",
+            "five",
+            "six",
+            "seven",
+            "eight",
+            "nine",
+            "ten",
+            "eleven",
+            "twelve",
+            "thirteen",
+            "fourteen",
+            "fifteen",
+            "sixteen",
+            "seventeen",
+            "eighteen",
+            "nineteen",
+        ]
+    )
+}
+_TENS = {
+    w: 10 * i
+    for i, w in enumerate(["_", "_", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"])
+    if w != "_"
+}
 _NUM = re.compile(r"(?<![\w.,])\d[\d,]*(?:\.\d+)?(?![\w])")
-_WORDNUM = re.compile(r"\b((?:(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|and)(?:[- ]|\b))+)", re.I)
+_WORDNUM = re.compile(
+    r"\b((?:(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|and)(?:[- ]|\b))+)",
+    re.I,
+)
 NEG = re.compile(r"\b(not|isn't|aren't|wasn't|never|no longer|incorrect|false|untrue|wrongly|myth)\b", re.I)
-ATTRIB = re.compile(r"\b(claims?|claimed|rumou?rs?|alleges?|alleged|blog|unofficial|reportedly|supposedly|some say)\b", re.I)
+ATTRIB = re.compile(
+    r"\b(claims?|claimed|rumou?rs?|alleges?|alleged|blog|unofficial|reportedly|supposedly|some say)\b", re.I
+)
 
 
 def words_to_int(s: str) -> int | None:
@@ -172,13 +282,15 @@ def asserted_values(text: str, kws: tuple[str, ...], window: int = 60) -> set[st
     low = text.lower()
     res: set[str] = set()
     for val, s, e in numbers(text):
-        near = any(k in low[max(0, s - window): e + window] for k in kws)
-        before = text[max(0, s - 45): s]
+        near = any(k in low[max(0, s - window) : e + window] for k in kws)
+        before = text[max(0, s - 45) : s]
         negated = bool(NEG.search(before))
-        prefix = text[max(0, s - 60): s]
+        prefix = text[max(0, s - 60) : s]
         cues = list(ATTRIB.finditer(prefix))
         # attributed to someone else ("a blog claims 70") unless a correction cue sits between the attribution and the figure
-        attributed = bool(cues) and not re.search(r"\b(but|however|actual(ly)?|official|real)\b", prefix[cues[-1].end():], re.I)
+        attributed = bool(cues) and not re.search(
+            r"\b(but|however|actual(ly)?|official|real)\b", prefix[cues[-1].end() :], re.I
+        )
         if near and not negated and not attributed:
             res.add(val)
     return res
@@ -211,19 +323,32 @@ _STRESS = [
     ("The fleet will grow to 70 trains next year; today it has 62 trains.", True, "future decoy plus current truth"),
     ("I could not verify the fleet size; some say 62 trains, others 70.", False, "refuses to commit"),
     ("Sixty two trains operate in the fleet.", True, "spelled out with a space"),
-    ("The fleet had 62 trains in 2015 but the figure is outdated and the fleet is now 70 trains.", False, "stale correct figure"),
+    (
+        "The fleet had 62 trains in 2015 but the figure is outdated and the fleet is now 70 trains.",
+        False,
+        "stale correct figure",
+    ),
 ]
 
 
 def stress_items() -> list[Item]:
     f = FACTS[0]
     return [
-        Item(f"stress-{i + 1:02d}", note, "What is the size of the Harlow Rail fleet?", out, [f["val"]], [f["decoy"]], [f["kw"]], lab)
+        Item(
+            f"stress-{i + 1:02d}",
+            note,
+            "What is the size of the Harlow Rail fleet?",
+            out,
+            [f["val"]],
+            [f["decoy"]],
+            [f["kw"]],
+            lab,
+        )
         for i, (out, lab, note) in enumerate(_STRESS)
     ]
 
 
-def confusion(items: list[Item], fn) -> dict:  # noqa: ANN001
+def confusion(items: list[Item], fn) -> dict:
     tp = fp = tn = fn_ = 0
     errors = []
     for it in items:
@@ -249,7 +374,7 @@ def confusion(items: list[Item], fn) -> dict:  # noqa: ANN001
     }  # fmt: skip
 
 
-def by_class(items: list[Item], fn) -> dict[str, dict]:  # noqa: ANN001
+def by_class(items: list[Item], fn) -> dict[str, dict]:
     out = {}
     for cls in CLASSES:
         sub = [i for i in items if i.cls == cls]
@@ -303,10 +428,14 @@ def main() -> int:
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     for name, c in result["evaluators"].items():
-        print(f"{name:28s} acc={c['accuracy']:.3f}  false-pass={c['fp']}/{c['fp'] + c['tn']}  false-fail={c['fn']}/{c['tp'] + c['fn']}")
+        print(
+            f"{name:28s} acc={c['accuracy']:.3f}  false-pass={c['fp']}/{c['fp'] + c['tn']}  false-fail={c['fn']}/{c['tp'] + c['fn']}"
+        )
     print("-- stress set (12 phrasings, written after C was frozen)")
     for name, c in result["stress_set"]["evaluators"].items():
-        print(f"{name:28s} acc={c['accuracy']:.3f}  false-pass={c['fp']}  false-fail={c['fn']}  errors={[e['id'] for e in c['errors']]}")
+        print(
+            f"{name:28s} acc={c['accuracy']:.3f}  false-pass={c['fp']}  false-fail={c['fn']}  errors={[e['id'] for e in c['errors']]}"
+        )
     return 0
 
 

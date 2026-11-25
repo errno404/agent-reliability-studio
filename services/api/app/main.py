@@ -23,7 +23,8 @@ REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
 
 
 class BodyLimit:
-    """Pure-ASGI request body cap: rejects on Content-Length AND counts streamed bytes (chunked bodies cannot bypass it)."""
+    """Pure-ASGI request body cap. The body is BUFFERED up to the limit before the app sees anything, so a request rejected with
+    413 (declared Content-Length OR streamed/chunked bytes) never reaches a handler. Bodies here are tiny (<= 64 KB)."""
 
     def __init__(self, app, max_bytes: int):  # type: ignore[no-untyped-def]
         self.app, self.max = app, max_bytes
@@ -31,51 +32,38 @@ class BodyLimit:
     async def __call__(self, scope, receive, send):  # type: ignore[no-untyped-def]
         if scope["type"] != "http" or scope["method"] in ("GET", "HEAD", "OPTIONS"):
             return await self.app(scope, receive, send)
-        declared = dict(scope["headers"]).get(b"content-length")
-        too_big = declared is not None and declared.isdigit() and int(declared) > self.max
-        seen = 0
-        over = False
 
-        async def guarded():  # type: ignore[no-untyped-def]
-            nonlocal seen, over
-            msg = await receive()
-            if msg["type"] == "http.request":
-                seen += len(msg.get("body", b""))
-                if seen > self.max:
-                    over = True
-                    return {"type": "http.request", "body": b"", "more_body": False}
-            return msg
-
-        async def reject():  # type: ignore[no-untyped-def]
+        async def reject() -> None:
             body = b'{"detail":"request body too large"}'
-            await send(
-                {
-                    "type": "http.response.start",
-                    "status": 413,
-                    "headers": [
-                        (b"content-type", b"application/json"),
-                        (b"content-length", str(len(body)).encode()),
-                        (b"cache-control", b"no-store"),
-                    ],
-                }
-            )
+            headers = [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(body)).encode()),
+                (b"cache-control", b"no-store"),
+            ]
+            await send({"type": "http.response.start", "status": 413, "headers": headers})
             await send({"type": "http.response.body", "body": body})
 
-        if too_big:
+        declared = dict(scope["headers"]).get(b"content-length")
+        if declared is not None and declared.isdigit() and int(declared) > self.max:
             return await reject()
-        started = False
-
-        async def send_wrapper(msg):  # type: ignore[no-untyped-def]
-            nonlocal started
-            if over and not started:
-                started = True
-                return await reject()
-            if over:
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            msg = await receive()
+            if msg["type"] == "http.disconnect":
                 return None
-            started = started or msg["type"] == "http.response.start"
-            return await send(msg)
+            total += len(msg.get("body", b""))
+            if total > self.max:
+                return await reject()
+            chunks.append(msg.get("body", b""))
+            if not msg.get("more_body", False):
+                break
+        replay = iter([{"type": "http.request", "body": b"".join(chunks), "more_body": False}])
 
-        await self.app(scope, guarded, send_wrapper)
+        async def replayed():  # type: ignore[no-untyped-def]
+            return next(replay, {"type": "http.disconnect"})
+
+        await self.app(scope, replayed, send)
 
 
 @asynccontextmanager

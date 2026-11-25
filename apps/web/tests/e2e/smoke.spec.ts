@@ -54,7 +54,7 @@ test("trace explorer: waterfall, span selection, no reasoning content", async ({
 
 test("judges: calibrated vs not calibrated is always explicit", async ({ page }) => {
   await page.goto("/judges");
-  await expect(page.getByText("CALIBRATED — allowed for gating")).toBeVisible();
+  await expect(page.getByText(/ADMITTED ON DEMONSTRATION LABELS — not release-eligible/).first()).toBeVisible();
   await expect(page.getByText("NOT CALIBRATED — diagnostic only").first()).toBeVisible();
   await expect(page.getByText(/never been calibrated/)).toBeVisible();
   await expect(page.getByRole("table", { name: /Confusion matrix/ }).first()).toBeVisible();
@@ -109,7 +109,7 @@ test("@mobile layout does not overflow and navigation works", async ({ page }) =
   expect(overflow).toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.getByRole("dialog").getByRole("link", { name: "Judges" }).click();
-  await expect(page.getByText("CALIBRATED — allowed for gating")).toBeVisible();
+  await expect(page.getByText(/ADMITTED ON DEMONSTRATION LABELS — not release-eligible/).first()).toBeVisible();
   for (const path of ["/experiments", "/compare/7", "/datasets/support/v1", "/gates"]) {
     await page.goto(path);
     const o = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
