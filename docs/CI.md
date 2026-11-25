@@ -17,6 +17,18 @@ measurement itself trustworthy?* Nothing here needs a model credential or a secr
 | Reports | `comparison.json`, `report.md`, `junit.xml`, `trace-diff.txt` and the throw-away DB (synthetic data only) are uploaded per suite, 14 days. |
 | A skipped comparison is not a pass | The required check `eval-gate-result` fails on any failed/cancelled job and prints "no agent comparison was performed" when nothing was compared. |
 
+## Verified on the real `main` (after the bootstrap merge, 2026-11-25)
+PR #6 was merged once by the owner's explicit authorisation (merge commit `995e63e`; history preserved, no force-push, no protection or check changed). The four scenarios were then repeated with disposable draft PRs whose **base is the actual `main`**, so the trusted evaluator is the one on `main`. None was merged; the PRs are closed and the branches deleted. Reports: [`evidence/ci-proofs-main/`](../evidence/ci-proofs-main/).
+
+| # | Scenario | Outcome on GitHub | Run |
+|---|---|---|---|
+| 1 | Compatible candidate (`support:v3` = v2 behaviour, new pin, distinct re-measurement evidence) | `pins`, all three `gate` suites and `eval-gate-result` **success** | [45580873274](https://github.com/errno404/agent-reliability-studio/actions/runs/45580873274) |
+| 2 | Regressed candidate (`support:v3` = v1 behaviour) | `gate (support)` **failure**, decision `significant_regression`; `eval-gate-result` **failure** | [45580877127](https://github.com/errno404/agent-reliability-studio/actions/runs/45580877127) |
+| 3 | Invalid comparison (model changed, undeclared) | `gate (support)` **failure**, decision `invalid` (`model_mismatch`); `eval-gate-result` **failure** | [45580879553](https://github.com/errno404/agent-reliability-studio/actions/runs/45580879553) |
+| 4 | Edit of frozen `support:v2` with its own pin rewritten | `pins` **failure** (`baseline pin rewritten`, frozen content differs, frozen files changed); `gate` skipped; `eval-gate-result` **failure** | [45580493494](https://github.com/errno404/agent-reliability-studio/actions/runs/45580493494) |
+
+PRs [#7](https://github.com/errno404/agent-reliability-studio/pull/7)-[#10](https://github.com/errno404/agent-reliability-studio/pull/10). The first attempt at scenario 1 (run [45580480206](https://github.com/errno404/agent-reliability-studio/actions/runs/45580480206)) was **rejected by `pins`** because my recipe re-cited the baseline's shared-dependency evidence; the gate correctly demanded *new* re-measurement evidence, I supplied it, and the retry passed. That is the gate working, not a flake.
+
 ## Staged migration (the trusted-base bootstrap)
 
 The gate measures a PR with scripts taken from the **base branch**, so the PR that first introduces the gate (PR #6) cannot be measured by a base that does not have it yet. The workflow now says this explicitly ("Trusted base has no eval gate") and **fails**: a bootstrap is never reported as a pass, and no threshold, check or branch-protection rule is relaxed.
@@ -24,7 +36,7 @@ The gate measures a PR with scripts taken from the **base branch**, so the PR th
 Safe order (each step is an owner action because it touches repository settings or merges a red check):
 
 1. Review PR #6. The checks that *can* run on it are green (python, web, e2e, docker); the evaluator code it changes is validated by those suites and by `evaluator-validation`.
-2. Merge it **once**, as the owner, before required checks exist. Branch protection is not enabled today, so no protection is bypassed; enabling it first would force a bypass, so do not.
+2. Merge it **once**, as the owner, before required checks exist (done 2026-11-25). Branch protection is not enabled today, so no protection is bypassed; enabling it first would force a bypass, so do not.
 3. Immediately enable branch protection on `main`: require `eval-gate-result`, `python`, `web`, `e2e`, `docker`, require Code Owners review (needs a second maintainer for independence).
 4. Prove the gate on the real base: open a disposable PR from `main` with a compatible new agent version and one with a regressed version (the four scenarios in `evidence/ci-proofs/` can be repeated verbatim); expect pass / reject.
 
