@@ -8,7 +8,7 @@ from ..harness import Reply
 from ..nlu import UNIT_RE, parse
 
 MODEL = "synthetic-sim-small"
-NOISE = {"dup_lookup": 0.03, "premature_stop": 0.02, "wrong_order_typo": 0.01}
+NOISE = {"dup_lookup": 0.0, "premature_stop": 0.02, "wrong_order_typo": 0.01}
 
 
 class SupportAgent:
