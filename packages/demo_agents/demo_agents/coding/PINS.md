@@ -12,14 +12,14 @@ behaviour-affecting dependencies must record new re-measurement evidence.
 | v1 | `f8be5991e20e79e9` | `bf9f8e136bd8068b` | frozen | 2026-11-24 |  |  |
 | v2 | `beb50ee3170de5af` | `58717bd6e4e27e8a` | frozen | 2026-11-24 |  |  |
 
-Shared-dependency hash: `b30195048b75b087` (evidence: docs/CI.md). It covers the harness/runtime, fixtures
+Shared-dependency hash: `b30195048b75b087` (evidence: ci-proof-invalid-2026-11-25 (gate run on this PR)). It covers the harness/runtime, fixtures
 and MCP server this agent's behaviour depends on, which are NOT inside any version directory.
 
 ```json ars-pins
 {
   "_shared": {
     "deps_hash": "b30195048b75b087",
-    "evidence": "docs/CI.md"
+    "evidence": "ci-proof-invalid-2026-11-25 (gate run on this PR)"
   },
   "v1": {
     "agent_hash": "f8be5991e20e79e9",

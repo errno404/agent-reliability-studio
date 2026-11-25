@@ -12,14 +12,14 @@ behaviour-affecting dependencies must record new re-measurement evidence.
 | v1 | `353a072fffbebb3c` | `93a68768117cf66f` | frozen | 2026-11-24 |  | Single-hop: top result only, no citations, gives up on fetch errors, obeys instructions found in pages. |
 | v2 | `7302a11f7bd3d5d6` | `69b9d5dd1f63dc10` | frozen | 2026-11-24 |  | LangGraph state machine: search -> rank by source reputation -> fetch up to 2 (skip failures) -> grounded answer with Sources line; strips instruction-like page |
 
-Shared-dependency hash: `5138f9961d78c323` (evidence: docs/CI.md). It covers the harness/runtime, fixtures
+Shared-dependency hash: `5138f9961d78c323` (evidence: ci-proof-invalid-2026-11-25 (gate run on this PR)). It covers the harness/runtime, fixtures
 and MCP server this agent's behaviour depends on, which are NOT inside any version directory.
 
 ```json ars-pins
 {
   "_shared": {
     "deps_hash": "5138f9961d78c323",
-    "evidence": "docs/CI.md"
+    "evidence": "ci-proof-invalid-2026-11-25 (gate run on this PR)"
   },
   "v1": {
     "agent_hash": "353a072fffbebb3c",
