@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import re
 from collections import Counter
 from dataclasses import dataclass, field
@@ -12,7 +13,9 @@ from typing import Any
 
 import yaml
 
-DEFAULT_CORPUS = Path(__file__).resolve().parents[3] / "fixtures" / "web" / "corpus-v1.yaml"
+DEFAULT_CORPUS = Path(
+    os.environ.get("FIXTURE_CORPUS") or Path(__file__).resolve().parents[3] / "fixtures" / "web" / "corpus-v1.yaml"
+)
 _TOKEN = re.compile(r"[a-z0-9$.%,]+")
 _STOP = frozenset(
     [

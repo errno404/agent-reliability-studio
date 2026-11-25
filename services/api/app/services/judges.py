@@ -119,3 +119,15 @@ def annotation_summary(s: Session, set_id: int) -> dict[str, Any]:
         "disagreements": find_disagreements(by_annot),
         "sources": sorted(sources),
     }
+
+
+def release_status(s: Session, judge_id: int):  # type: ignore[no-untyped-def]
+    """Release eligibility of the judge's latest calibration (None if never calibrated)."""
+    from evalcore.calibration import AdmissionPolicy, CalibrationMetrics, release_eligibility
+
+    c = latest_calibration(s, judge_id)
+    if c is None:
+        return None
+    m = CalibrationMetrics(**c.metrics)
+    pol = AdmissionPolicy(**{k: v for k, v in c.policy.items() if k in AdmissionPolicy.__dataclass_fields__})
+    return release_eligibility(c.admitted, m, c.reference_sources, pol)

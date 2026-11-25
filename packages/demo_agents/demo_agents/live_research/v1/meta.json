@@ -1,0 +1,2 @@
+{"agent": "research-live", "version": "v1", "role": "baseline", "created": "2026-11-25", "execution_kind": "live",
+ "notes": "Initial reasonable system prompt for a real LLM research agent (Claude Code CLI, fixture MCP tools only). Written BEFORE any evaluation; not tuned or crippled."}

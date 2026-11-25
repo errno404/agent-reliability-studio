@@ -14,6 +14,7 @@ import shutil
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -300,3 +301,253 @@ def result_from_langgraph_messages(messages: list[Any], model: str | None = None
                     call.result = content
     res.final_output = final
     return res
+
+
+# ------------------------------------------------- Claude Code as a tool-using research agent (live LLM)
+def _strip_mcp_prefix(name: str) -> str:
+    """`mcp__fixture__web_search` -> `web_search` (the server prefix is an transport detail, not the tool identity)."""
+    return name.split("__", 2)[2] if name.startswith("mcp__") and name.count("__") >= 2 else name
+
+
+def parse_claude_stream(
+    events: list[tuple[float, dict[str, Any]]], redactor: Any = None, model_requested: str | None = None
+) -> AgentResult:
+    """Convert Claude Code ``--output-format stream-json`` events into an :class:`AgentResult`.
+
+    ``events`` are ``(arrival_seconds_since_start, event_dict)``. Nothing is synthesized: tool calls come from real
+    ``tool_use`` blocks, results from the matching ``tool_result`` blocks, timings from event arrival, tokens/model from
+    the provider-reported ``result``/``modelUsage``. Reasoning/thinking content is never read or stored.
+    """
+    from . import semconv as sc
+    from .redaction import Redactor
+    from .tracing import TraceRecorder
+
+    rd = redactor or Redactor()
+    rec = TraceRecorder(rd)
+    res = AgentResult(model=None)
+    pending: dict[str, tuple[ToolCall, float]] = {}
+    init_model: str | None = None
+    final_text = ""
+    result_event: dict[str, Any] | None = None
+    t_prev = 0.0
+    with rec.span(
+        sc.span_name(sc.OP_INVOKE_AGENT, "claude-code-research"),
+        {sc.OPERATION_NAME: sc.OP_INVOKE_AGENT, sc.PROVIDER_NAME: "anthropic", sc.AGENT_NAME: "claude-code-research"},
+    ) as root:
+        for t, ev in events:
+            rec.advance(max(0.0, (t - t_prev) * 1000))
+            t_prev = t
+            typ = ev.get("type")
+            if typ == "system" and ev.get("subtype") == "init":
+                init_model = ev.get("model")
+            elif typ == "assistant":
+                for b in ev.get("message", {}).get("content") or []:
+                    if b.get("type") == "tool_use":
+                        call = ToolCall(
+                            name=_strip_mcp_prefix(str(b.get("name", ""))), arguments=dict(b.get("input") or {})
+                        )
+                        pending[str(b.get("id"))] = (call, t)
+                        res.tool_calls.append(call)
+                    elif b.get("type") == "text":
+                        final_text = str(b.get("text", ""))  # the last text block of the last assistant turn
+                res.steps += 1
+            elif typ == "user":
+                for b in (
+                    (ev.get("message", {}).get("content") or [])
+                    if isinstance(ev.get("message", {}).get("content"), list)
+                    else []
+                ):
+                    if b.get("type") != "tool_result":
+                        continue
+                    call, started = pending.pop(str(b.get("tool_use_id")), (None, t))
+                    if call is None:
+                        continue
+                    content = b.get("content")
+                    text = (
+                        content
+                        if isinstance(content, str)
+                        else "".join(c.get("text", "") for c in content or [] if isinstance(c, dict))
+                    )
+                    try:
+                        parsed: Any = json.loads(text)
+                        parsed = (
+                            json.loads(parsed["result"])
+                            if isinstance(parsed, dict) and isinstance(parsed.get("result"), str)
+                            else parsed
+                        )
+                    except (json.JSONDecodeError, TypeError, KeyError):
+                        parsed = text
+                    call.result = parsed
+                    if b.get("is_error") or (isinstance(parsed, dict) and parsed.get("ok") is False):
+                        call.error = str((parsed.get("error") if isinstance(parsed, dict) else parsed) or "tool error")[
+                            :300
+                        ]
+                    call.latency_ms = round((t - started) * 1000, 1)
+                    op = sc.OP_RETRIEVAL if call.name in ("web_search", "web_fetch") else sc.OP_EXECUTE_TOOL
+                    # tool span reconstructed from the REAL start/end arrival times
+                    with rec.span(
+                        sc.span_name(op, call.name),
+                        {sc.OPERATION_NAME: op, sc.TOOL_NAME: call.name, sc.TOOL_CALL_ARGUMENTS: call.arguments},
+                    ) as sp:
+                        rec.advance(0)
+                        rec.set_attr(sp, sc.TOOL_CALL_RESULT, call.result if not call.error else {"error": call.error})
+                        if call.error:
+                            rec.mark_error(sp, call.error)
+            elif typ == "result":
+                result_event = ev
+        usage = (result_event or {}).get("usage") or {}
+        mu = (result_event or {}).get("modelUsage") or {}
+        resolved = next(iter(mu), None) or init_model
+        res.model = resolved
+        res.input_tokens = (
+            int(usage.get("input_tokens", 0))
+            + int(usage.get("cache_read_input_tokens", 0))
+            + int(usage.get("cache_creation_input_tokens", 0))
+        )
+        res.output_tokens = int(usage.get("output_tokens", 0))
+        res.turns = int((result_event or {}).get("num_turns", 1))
+        res.latency_ms = float((result_event or {}).get("duration_ms") or (t_prev * 1000))
+        rec.set_attr(root, sc.REQUEST_MODEL, model_requested or "")
+        rec.set_attr(root, sc.RESPONSE_MODEL, resolved or "")
+        rec.set_attr(root, sc.INPUT_TOKENS, res.input_tokens)
+        rec.set_attr(root, sc.OUTPUT_TOKENS, res.output_tokens)
+    if result_event is None:
+        res.error, res.error_kind = "no result event in the CLI stream (process ended early)", "adapter"
+    elif result_event.get("is_error") or result_event.get("subtype") != "success":
+        res.error, res.error_kind = str(result_event.get("result") or result_event.get("subtype"))[:400], "provider"
+    else:
+        res.final_output = str(result_event.get("result") or final_text)
+    res.metadata = {
+        "execution_kind": "live",
+        "provider": "anthropic",
+        "model_requested": model_requested,
+        "model_resolved": resolved,
+        "api_equivalent_cost_usd": (result_event or {}).get("total_cost_usd"),
+        "duration_api_ms": (result_event or {}).get("duration_api_ms"),
+        "cost_note": "API-equivalent estimate reported by the CLI; subscription runs are not billed per token",
+    }
+    res.spans = rec.records()
+    return res
+
+
+class ClaudeCodeToolAgent:
+    """A real LLM agent: Claude Code with ONLY the supplied MCP tools (no shell, files or web), isolated from user settings.
+
+    The model's decisions and answers are the provider's; the tool environment is the frozen synthetic fixture web. Run with
+    the user's own authenticated CLI (no credentials are read or extracted). Local/admin execution only.
+    """
+
+    agent_hash: str = ""  # set by the factory: content hash of the frozen version directory
+    prompt_hash: str = ""
+    requested_model: str = ""
+
+    def __init__(
+        self,
+        name: str,
+        version: str,
+        system_prompt: str,
+        mcp_servers: dict[str, Any],
+        allowed_tools: list[str],
+        model: str = "haiku",
+        timeout_s: float = 180.0,
+        max_budget_usd: float = 0.50,
+        binary: str | None = None,
+        redactor: Any = None,
+    ):
+        self.name, self.version, self.system_prompt = name, version, system_prompt
+        self.mcp_servers, self.allowed_tools, self.model = mcp_servers, allowed_tools, model
+        self.timeout_s, self.max_budget_usd, self.redactor = timeout_s, max_budget_usd, redactor
+        self.binary = binary or os.environ.get("ARS_CLAUDE_BIN") or shutil.which("claude")
+
+    @property
+    def available(self) -> bool:
+        return bool(self.binary and Path(self.binary).exists())
+
+    def build_argv(self, prompt: str) -> list[str]:
+        assert self.binary
+        return [
+            self.binary,
+            "-p",  # the task text is sent on stdin, never as an argv element (a leading "-" cannot be parsed as a flag)
+            "--output-format",
+            "stream-json",
+            "--verbose",
+            "--mcp-config",
+            json.dumps({"mcpServers": self.mcp_servers}),
+            "--strict-mcp-config",
+            "--tools",
+            "",
+            "--allowedTools",
+            *self.allowed_tools,
+            "--model",
+            self.model,
+            "--no-session-persistence",
+            "--system-prompt",
+            self.system_prompt,
+            "--setting-sources",
+            "",
+            "--disable-slash-commands",
+            "--settings",
+            '{"hooks":{},"enabledPlugins":{}}',
+            "--max-budget-usd",
+            f"{self.max_budget_usd:.2f}",
+        ]
+
+    def run(self, case: Case, ctx: RunContext) -> AgentResult:
+        if not self.available:
+            return AgentResult(error="claude CLI not found", error_kind="adapter", metadata={"execution_kind": "live"})
+        with tempfile.TemporaryDirectory(prefix="ars-live-") as tmp:
+            events: list[tuple[float, dict[str, Any]]] = []
+            t0 = time.monotonic()
+            proc = subprocess.Popen(
+                self.build_argv(case.input),
+                cwd=tmp,
+                env=safe_env(),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                start_new_session=True,
+            )
+            try:
+                assert proc.stdin is not None
+                proc.stdin.write(case.input)
+                proc.stdin.close()
+            except (BrokenPipeError, OSError):
+                pass  # the process died early; its exit status is reported below
+            timer = threading.Timer(self.timeout_s, lambda: _kill_group(proc))
+            timer.start()
+            try:
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    line = line.strip()
+                    if line.startswith("{"):
+                        try:
+                            events.append((time.monotonic() - t0, json.loads(line)))
+                        except json.JSONDecodeError:
+                            continue
+                proc.wait()
+            finally:
+                timed_out = (
+                    not timer.is_alive()
+                    and proc.returncode not in (0, None)
+                    and (time.monotonic() - t0) >= self.timeout_s
+                )
+                timer.cancel()
+            if timed_out:
+                return AgentResult(
+                    error=f"timeout after {self.timeout_s}s",
+                    error_kind="timeout",
+                    latency_ms=(time.monotonic() - t0) * 1000,
+                    metadata={"execution_kind": "live"},
+                )
+            res = parse_claude_stream(events, self.redactor, self.model)
+            if res.error and proc.returncode not in (0, None) and not events:
+                res.error = (
+                    f"{res.error}; exit {proc.returncode}; stderr: {(proc.stderr.read() if proc.stderr else '')[-200:]}"
+                )
+            return res
+
+
+def _kill_group(proc: subprocess.Popen[str]) -> None:
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)

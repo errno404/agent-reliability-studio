@@ -76,7 +76,9 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=20260601)
     ap.add_argument("--policy", default="production", choices=["production", "demo-20", "demo-15", "demo-10"])
     ap.add_argument(
-        "--no-conservative", action="store_true", help="do not block on INCONCLUSIVE (still blocks invalid/regression)"
+        "--intent",
+        default="agent_change",
+        choices=["prompt_change", "agent_change", "model_change", "tool_change", "evaluator_change"],
     )
     ap.add_argument("--out-dir", type=Path, default=Path("gate-out"))
     a = ap.parse_args()
@@ -136,7 +138,7 @@ def main() -> int:
             policy_name=a.policy,
             name=f"{a.baseline_spec} -> {a.candidate_spec}",
         )
-        gate = comparisons.create_gate(s, comp, conservative=not a.no_conservative)
+        gate = comparisons.create_gate(s, comp, release=True)
         base, cand = s.get(Run, "gate-baseline"), s.get(Run, "gate-candidate")
         payload = {
             "name": comp.name,

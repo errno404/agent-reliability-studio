@@ -355,9 +355,8 @@ def create_run(
             dv=dv,
             samples=max(1, min(body.samples, 10)),
             seed=body.seed,
-            run_type="live",
-        )
-    except KeyError as exc:
+        )  # run_type / provenance are DERIVED from the resolved agent, never chosen by the caller
+    except (KeyError, ValueError) as exc:
         raise HTTPException(422, str(exc)) from exc
     s.commit()
     return queries.run_out(_get_run(s, run.id))

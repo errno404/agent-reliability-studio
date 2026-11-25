@@ -106,6 +106,51 @@ def _json_schema(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
     return Outcome(True, "schema-valid", "schema-valid", "output validates against schema")
 
 
+_URL = re.compile(r"https?://[^\s)\]>\"',`*<]+")
+_URL_TAIL = ".,;:!?*_`'\""
+
+
+def _surfaced_urls(r: AgentResult, upto: int | None = None) -> set[str]:
+    """URLs that really appeared in tool OUTPUT (search results / fetched pages) among the first ``upto`` calls."""
+    out: set[str] = set()
+    for t in r.tool_calls[:upto]:
+        out.update(u.rstrip(_URL_TAIL) for u in _URL.findall(json.dumps(t.result, default=str)))
+    return out
+
+
+def _urls_grounded(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
+    """Every URL in the final answer must have appeared in a tool result or argument (no fabricated citations)."""
+    allowed = _surfaced_urls(r) | {u for t in r.tool_calls for u in _URL.findall(json.dumps(t.arguments, default=str))}
+    allowed |= {u.rstrip(_URL_TAIL) for u in _URL.findall(c.input)}
+    cited = [u.rstrip(_URL_TAIL) for u in _URL.findall(r.final_output)]
+    bad = sorted({u for u in cited if u not in allowed})
+    return Outcome(
+        not bad,
+        "all cited URLs surfaced by tools",
+        bad or "all grounded",
+        f"ungrounded URLs: {bad}" if bad else f"{len(cited)} cited URL(s), all grounded",
+    )
+
+
+def _urls_surfaced_before_fetch(p: dict[str, Any], r: AgentResult, c: Case) -> Outcome:
+    """Every web_fetch URL must have been surfaced earlier (search result, prior page) or be given in the question."""
+    given = {u.rstrip(_URL_TAIL) for u in _URL.findall(c.input)}
+    tool = str(p.get("tool", "web_fetch"))
+    bad = []
+    for i, t in enumerate(r.tool_calls):
+        if t.name != tool:
+            continue
+        url = str(t.arguments.get("url", ""))
+        if url not in _surfaced_urls(r, i) and url not in given:
+            bad.append(url)
+    return Outcome(
+        not bad,
+        "fetch only surfaced URLs",
+        bad or "ok",
+        f"fetched URLs never surfaced by a search: {bad}" if bad else "all fetched URLs were surfaced first",
+    )
+
+
 # ------------------------------------------------------------------ tools ---
 def _calls(r: AgentResult, name: str | None) -> list[Any]:
     return [t for t in r.tool_calls if name is None or t.name == name]
@@ -316,6 +361,8 @@ REGISTRY: dict[str, Evaluator] = {
     "file_exists": _file_exists,
     "file_not_changed": _file_not_changed,
     "file_diff_max_files": _diff_max_files,
+    "urls_grounded": _urls_grounded,
+    "urls_surfaced_before_fetch": _urls_surfaced_before_fetch,
 }
 ASSERTION_TYPES = frozenset(REGISTRY)
 

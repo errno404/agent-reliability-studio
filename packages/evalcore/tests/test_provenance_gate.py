@@ -111,6 +111,7 @@ def test_end_to_end_sensitivity_exposes_selective_missingness():
     base = many(60, lambda i, j: True)
     cand = [samp(f"c{i}", 0, P if i < 50 else E) for i in range(60)]
     c = run(base=base, cand=cand)
+    assert c.bootstrap is not None and c.end_to_end is not None
     assert (
         c.bootstrap.delta == pytest.approx(0.0) or c.decision == Decision.INCONCLUSIVE
     )  # conditional view alone is misleading
@@ -171,7 +172,7 @@ def _judge_case(required):
         category="c",
         description="d",
         input="q",
-        assertions=[AssertionSpec(type="output_contains", value="x")],
+        assertions=[AssertionSpec.model_validate({"type": "output_contains", "value": "x"})],
         rubric={"judge": {"must": ["a"], "required": required, "gating": True}},
     )
 

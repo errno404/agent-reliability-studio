@@ -59,6 +59,8 @@ def fixture_hash_for(kind: str) -> str:
         parts["support_world"] = hash_obj(yaml.safe_load((REPO_ROOT / "fixtures/support/world.yaml").read_text()), 16)
     if kind in ("research", "redteam"):
         parts["web"] = load_corpus().content_hash
+    if kind == "research-live":
+        parts["web"] = load_corpus(REPO_ROOT / "fixtures/web/corpus-v2.yaml").content_hash
     if kind == "coding":
         parts["code"] = hash_obj(
             sorted(
@@ -72,25 +74,26 @@ def fixture_hash_for(kind: str) -> str:
 
 
 def sync_agent_version(s: Session, spec: str, role: str = "", notes: str = "") -> AgentVersion:
-    from demo_agents import agent_info
+    from ..registry import resolve
 
-    info = agent_info(spec)
-    agent = s.scalar(select(Agent).where(Agent.name == info["agent"]))
+    r = resolve(spec)
+    agent = s.scalar(select(Agent).where(Agent.name == r.agent))
     if agent is None:
-        agent = Agent(
-            name=info["agent"], description=f"Synthetic reference {info['agent']} system (scripted + seeded faults)"
+        desc = (
+            "LIVE LLM research agent (Claude Code CLI + frozen fixture MCP tools)"
+            if r.execution_kind == "live"
+            else f"Synthetic reference {r.agent} system (scripted + seeded faults)"
         )
+        agent = Agent(name=r.agent, description=desc)
         s.add(agent)
         s.flush()
-    av = s.scalar(
-        select(AgentVersion).where(AgentVersion.agent_id == agent.id, AgentVersion.version == info["version"])
-    )
+    av = s.scalar(select(AgentVersion).where(AgentVersion.agent_id == agent.id, AgentVersion.version == r.version))
     sha, _ = git_info()
     if av is None:
-        av = AgentVersion(agent_id=agent.id, version=info["version"], role=role, notes=notes)
+        av = AgentVersion(agent_id=agent.id, version=r.version, role=role, notes=notes)
         s.add(av)
-    av.agent_hash, av.prompt_hash = info["agent_hash"], info["prompt_hash"]
-    av.tool_schema_hash, av.model, av.git_commit = info["tool_schema_hash"], info["model"], sha
+    av.agent_hash, av.prompt_hash = r.agent_hash, r.prompt_hash
+    av.tool_schema_hash, av.model, av.git_commit = r.tool_schema_hash, r.model, sha
     if role:
         av.role = role
     if notes:
