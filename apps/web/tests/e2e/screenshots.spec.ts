@@ -50,8 +50,34 @@ test("capture", async ({ page, request }) => {
   await expect(page.getByText(/GATE (PASS|FAIL)/).first()).toBeVisible();
   await shot("gates.png");
 
+  // live experiment (real model) vs synthetic evidence: separate, labelled, never blended
+  const comps = (await (await request.get("/api/comparisons")).json()) as { id: number; name: string }[];
+  await page.goto("/experiments");
+  await expect(page.getByRole("heading", { name: /Experiment 001/ })).toBeVisible();
+  await shot("experiments-live.png", { fullPage: true });
+  await page.goto(`/compare/${comps.find((c) => /held-out/.test(c.name))!.id}`);
+  await expect(page.getByText("Provenance and controlled variables")).toBeVisible();
+  await shot("compare-live-heldout.png", { fullPage: true });
+  await page.goto(`/compare/${comps.find((c) => /\(dev\)/.test(c.name))!.id}`);
+  await expect(page.getByText(/Why this is INVALID/)).toBeVisible();
+  await shot("compare-live-invalid.png", { fullPage: true });
+  await page.addInitScript(() => localStorage.setItem("annotator", "shot-annotator"));
+  await page.goto("/judges/annotate");
+  await expect(page.getByText("Public annotation is untrusted.")).toBeVisible();
+  await shot("annotate-untrusted.png");
+
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");
   await page.evaluate(() => { document.documentElement.classList.remove("dark"); });
   await shot("dashboard-overview-light.png");
+});
+
+test.describe("mobile 390px", () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  test("capture mobile", async ({ page }) => {
+    await page.goto("/experiments");
+    await expect(page.getByRole("heading", { name: /Experiment 001/ })).toBeVisible();
+    await settle(page);
+    await page.screenshot({ path: path.join(OUT, "experiments-live-mobile.png"), fullPage: false });
+  });
 });

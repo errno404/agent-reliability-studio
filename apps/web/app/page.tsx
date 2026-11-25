@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { CategoryDeltaBars, CiPlot, FailureBars, TrendChart } from "@/components/charts";
-import { Badge, Card, CardHeader, DecisionBadge, Delta, EmptyState, ErrorState, PageHeader, Stat, SyntheticBadge } from "@/components/ui";
+import { Badge, Card, CardHeader, DecisionBadge, Delta, EmptyState, ErrorState, KindBadge, PageHeader, Stat, SyntheticBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { ms, num, pct, pts, usd } from "@/lib/format";
+import { splitKinds } from "@/lib/live";
 import type { Overview, Rate } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,8 @@ function Kpi({ label, r, base }: { label: string; r: Rate; base?: Rate }) {
 
 export default async function OverviewPage() {
   let o: Overview;
-  try { o = await api.overview(); } catch (e) { return <ErrorState error={e} />; }
+  let split: ReturnType<typeof splitKinds>;
+  try { [o, split] = await Promise.all([api.overview(), api.runs({ page_size: 100 }).then((r) => splitKinds(r.items))]); } catch (e) { return <ErrorState error={e} />; }
   if (o.empty) return <Card><EmptyState title="No data yet">Run <code>ars demo seed</code> to load the synthetic demo.</EmptyState></Card>;
   const { candidate: c, baseline: b } = o.kpis;
   const h = o.headline;
@@ -24,8 +26,9 @@ export default async function OverviewPage() {
       <PageHeader
         title="Did this agent change improve reliability?"
         sub="Evidence, not vibes: deterministic checks, trajectory analysis, repeated trials and a statistical gate. Below: the current baseline → candidate comparison."
-        right={<SyntheticBadge />}
+        right={<span className="flex items-center gap-2"><KindBadge kind="synthetic" /><SyntheticBadge /></span>}
       />
+      {split.live.runs > 0 && <p className="text-[13px] text-muted">Everything on this page is <b>synthetic</b> (scripted agents). Real-model evidence is separate: <Link className="text-accent hover:underline" href="/experiments">Experiment 001 — live runs →</Link></p>}
 
       <Card aria-labelledby="headline">
         <div className="grid gap-5 p-4 lg:grid-cols-[1.1fr_1fr]">
@@ -76,7 +79,7 @@ export default async function OverviewPage() {
           <Stat label="Latency p50 / p95" value={<>{ms(c.latency_p50_ms)}<span className="text-base text-muted"> / {ms(c.latency_p95_ms)}</span></>} sub="virtual clock (synthetic)" />
           <Stat label="Total tokens" value={num(c.total_tokens)} sub={`in ${num(c.input_tokens)} · out ${num(c.output_tokens)}`} />
           <Stat label="API-equivalent cost" value={usd(c.cost_usd)} sub={c.cost_usd === null ? "pricing unavailable" : "synthetic price table"} hint="Estimated from a versioned price table; not money spent." />
-          <Stat label="Evidence" value={num(o.totals.samples)} sub={`${o.totals.runs} runs · ${o.totals.comparisons} comparisons`} />
+          <Stat label="Evidence (synthetic)" value={num(split.synthetic.samples)} sub={`${split.synthetic.runs} synthetic runs · live evidence is separate: ${num(split.live.samples)} samples in ${split.live.runs} runs`} hint="Synthetic and live runs are never added together" />
         </div>
       </section>
 

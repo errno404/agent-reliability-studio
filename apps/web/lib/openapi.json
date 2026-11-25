@@ -82,17 +82,41 @@
         ],
         "summary": "Agents",
         "operationId": "agents_api_agents_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/AgentVersionOut"
                   },
-                  "type": "array",
                   "title": "Response Agents Api Agents Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -107,17 +131,41 @@
         ],
         "summary": "Datasets",
         "operationId": "datasets_api_datasets_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/DatasetVersionOut"
                   },
-                  "type": "array",
                   "title": "Response Datasets Api Datasets Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -149,6 +197,18 @@
             "schema": {
               "type": "string",
               "title": "Version"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
             }
           }
         ],
@@ -183,18 +243,42 @@
         ],
         "summary": "Distilled",
         "operationId": "distilled_api_candidates_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 300,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
                   "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
                   "title": "Response Distilled Api Candidates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -296,6 +380,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 10000,
               "minimum": 1,
               "default": 1,
               "title": "Page"
@@ -568,6 +653,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 10000,
               "minimum": 1,
               "default": 1,
               "title": "Page"
@@ -740,6 +826,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 10000,
               "minimum": 1,
               "default": 1,
               "title": "Page"
@@ -848,6 +935,20 @@
         ],
         "summary": "List Comparisons",
         "operationId": "list_comparisons_api_comparisons_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -859,6 +960,16 @@
                     "$ref": "#/components/schemas/ComparisonOut"
                   },
                   "title": "Response List Comparisons Api Comparisons Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -989,17 +1100,41 @@
         ],
         "summary": "Gates",
         "operationId": "gates_api_gates_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/GateOut"
                   },
-                  "type": "array",
                   "title": "Response Gates Api Gates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1186,6 +1321,7 @@
             "schema": {
               "type": "integer",
               "maximum": 50,
+              "minimum": 1,
               "default": 10,
               "title": "Page Size"
             }
@@ -1227,17 +1363,41 @@
         ],
         "summary": "Judges",
         "operationId": "judges_api_judges_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/JudgeOut"
                   },
-                  "type": "array",
                   "title": "Response Judges Api Judges Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1524,7 +1684,7 @@
           "judges"
         ],
         "summary": "Annotate",
-        "description": "Store a human label. Rate-limited and capped; seeded demo annotators are separate (source=synthetic_demo).",
+        "description": "PUBLIC, UNTRUSTED annotation. Handles are unauthenticated, so rows are stored as ``public_untrusted``: they are shown with\nthat label, never counted as human calibration evidence and never able to change a reference label or a gate. The trusted,\nauthenticated human workflow is ``POST /annotation/trusted`` (admin only).",
         "operationId": "annotate_api_annotation_post",
         "requestBody": {
           "content": {
@@ -1545,6 +1705,69 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Annotate Api Annotation Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/annotation/trusted": {
+      "post": {
+        "tags": [
+          "judges",
+          "judges"
+        ],
+        "summary": "Annotate Trusted",
+        "description": "AUTHENTICATED human annotation (admin token): the only path that creates ``source=\"human\"`` rows.",
+        "operationId": "annotate_trusted_api_annotation_trusted_post",
+        "parameters": [
+          {
+            "name": "x-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Annotate Trusted Api Annotation Trusted Post"
                 }
               }
             }
@@ -1613,7 +1836,7 @@
           "judges"
         ],
         "summary": "Adjudicate",
-        "description": "Record an adjudication. Same guards as /annotation: rate limit, capacity cap, reserved ids, append-only.\n\nAdjudication rows are stored separately (annotator ``adjudicator:<id>``) and never change a calibration set's\nreference labels or any gate decision.",
+        "description": "PUBLIC, UNTRUSTED adjudication: stored as ``public_untrusted`` and NOT flagged adjudicated (an anonymous handle cannot\nadjudicate). Never changes a reference label or a gate. Authenticated adjudication: ``POST /annotation/trusted/adjudicate``.",
         "operationId": "adjudicate_api_annotation_adjudicate_post",
         "requestBody": {
           "content": {
@@ -1650,6 +1873,68 @@
           }
         }
       }
+    },
+    "/api/annotation/trusted/adjudicate": {
+      "post": {
+        "tags": [
+          "judges"
+        ],
+        "summary": "Adjudicate Trusted",
+        "description": "AUTHENTICATED adjudication (admin token): the only path that creates ``adjudicated=True`` rows.",
+        "operationId": "adjudicate_trusted_api_annotation_trusted_adjudicate_post",
+        "parameters": [
+          {
+            "name": "x-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjudicationIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Adjudicate Trusted Api Annotation Trusted Adjudicate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1663,10 +1948,12 @@
           },
           "item_id": {
             "type": "string",
+            "maxLength": 48,
             "title": "Item Id"
           },
           "adjudicator": {
             "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{2,40}$",
             "title": "Adjudicator"
           },
           "label": {
@@ -1675,6 +1962,7 @@
           },
           "note": {
             "type": "string",
+            "maxLength": 500,
             "title": "Note",
             "default": ""
           }
@@ -1759,10 +2047,12 @@
           },
           "item_id": {
             "type": "string",
+            "maxLength": 48,
             "title": "Item Id"
           },
           "annotator": {
             "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{2,40}$",
             "title": "Annotator"
           },
           "label": {
@@ -1778,6 +2068,7 @@
           },
           "note": {
             "type": "string",
+            "maxLength": 500,
             "title": "Note",
             "default": ""
           }
@@ -2049,6 +2340,10 @@
             "type": "string",
             "title": "Mode"
           },
+          "intent": {
+            "type": "string",
+            "title": "Intent"
+          },
           "policy_name": {
             "type": "string",
             "title": "Policy Name"
@@ -2160,6 +2455,7 @@
           "baseline_label",
           "candidate_label",
           "mode",
+          "intent",
           "policy_name",
           "policy",
           "decision",
@@ -2208,6 +2504,10 @@
           "mode": {
             "type": "string",
             "title": "Mode"
+          },
+          "intent": {
+            "type": "string",
+            "title": "Intent"
           },
           "policy_name": {
             "type": "string",
@@ -2304,6 +2604,7 @@
           "baseline_label",
           "candidate_label",
           "mode",
+          "intent",
           "policy_name",
           "policy",
           "decision",
@@ -2786,6 +3087,10 @@
       },
       "RunDetail": {
         "properties": {
+          "execution_kind": {
+            "type": "string",
+            "title": "Execution Kind"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -2966,6 +3271,7 @@
         },
         "type": "object",
         "required": [
+          "execution_kind",
           "id",
           "name",
           "run_type",
@@ -3035,6 +3341,10 @@
       },
       "RunOut": {
         "properties": {
+          "execution_kind": {
+            "type": "string",
+            "title": "Execution Kind"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -3185,6 +3495,7 @@
         },
         "type": "object",
         "required": [
+          "execution_kind",
           "id",
           "name",
           "run_type",

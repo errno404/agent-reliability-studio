@@ -29,6 +29,9 @@ export interface Summary {
   execution_error_rate: number; latency_p50_ms: number; latency_p95_ms: number;
   total_tokens: number; input_tokens: number; output_tokens: number; cost_usd: number | null; cost_label: string;
   pass_hat_k: number; pass_at_k: number; k: number; single_run_pass_rate: number; single_run_ci: [number, number];
+  intended_k?: number; eligible_cases?: number; excluded_cases?: number; exclusion_reasons?: Record<string, number>;
+  mean_trial_pass_rate?: number | null; mean_trial_ci?: [number, number]; mean_trial_ci_method?: string;
+  execution_success_rate?: number; conditional_quality_rate?: number | null; end_to_end_success_rate?: number;
   flaky_cases: string[]; flips_by_category: Record<string, number>; failure_labels: Record<string, number>;
 }
 export interface Cluster {
@@ -65,8 +68,13 @@ export interface ComparisonResult {
   bootstrap: Bootstrap | null; mcnemar: { b: number; c: number; p_value: number; note: string } | null;
   baseline_summary: Summary; candidate_summary: Summary; category_deltas: Record<string, CategoryDelta>;
   case_changes: CaseChange[]; new_failure_labels: Record<string, number>; what_changed: string;
+  intent?: string; mode?: string; authorization?: string; execution_kind?: { baseline: string; candidate: string };
+  end_to_end?: { delta: number; ci_low: number; ci_high: number; n_cases: number; decision: string; note: string } | null;
+  coverage?: { baseline: Coverage; candidate: Coverage };
+  incomplete_reasons?: string[];
 }
-export interface Validity { valid: boolean; reasons: string[]; warnings: string[]; mode: string }
+export interface Coverage { expected: number; present: number; missing: number; execution_error: number; invalid: number; skipped: number; incomplete: number; incomplete_share: number }
+export interface Validity { valid: boolean; reasons: string[]; warnings: string[]; mode: string; intent?: string }
 export interface CalMetrics { n: number; n_pos: number; n_neg: number; tp: number; fp: number; tn: number; fn: number; accuracy: number; precision: number; recall: number; f1: number; kappa: number; fpr: number; fnr: number }
 export interface CalRun { id: number; n_items_used: number; admitted: boolean; reasons: string[]; metrics: CalMetrics; policy: Record<string, number | string>; reference_sources: Record<string, number>; created_at: string; set_id: number }
 export interface FailuresResp {
@@ -76,6 +84,7 @@ export interface FailuresResp {
 export interface AnnotationSummary {
   annotators: string[]; n_labels: number; kappa: number | null; items_compared: number; sources: string[];
   consensus_claimed: boolean; note: string;
+  annotator_sources?: Record<string, string>; untrusted_annotators?: string[]; untrusted_label_counts?: Record<string, number>;
   disagreement_queue: { item_id: string; labels: Record<string, boolean>; input: string; candidate_output: string; rubric: { must?: string[]; must_not?: string[] }; adjudicated: boolean }[];
 }
 export interface CaseDef {

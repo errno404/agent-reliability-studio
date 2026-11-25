@@ -18,7 +18,7 @@ export default async function TracesPage({ searchParams }: Props) {
         <Card>
           <CardHeader title={`${traces.total} traces`} right={
             <form className="flex flex-wrap items-center gap-2 text-xs">
-              <select name="run_id" defaultValue={q.run_id ?? ""} className="max-w-[260px] rounded border border-line bg-panel px-2 py-1" aria-label="Run"><option value="">all runs</option>{runs.items.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
+              <select name="run_id" defaultValue={q.run_id ?? ""} className="max-w-[260px] rounded border border-line bg-panel px-2 py-1" aria-label="Run"><option value="">all runs</option>{runs.items.map((r) => <option key={r.id} value={r.id}>{r.execution_kind === "live" ? "[LIVE] " : "[synthetic] "}{r.name}</option>)}</select>
               <select name="status" defaultValue={q.status ?? ""} className="rounded border border-line bg-panel px-2 py-1" aria-label="Status"><option value="">any status</option>{["passed", "failed", "execution_error"].map((s) => <option key={s}>{s}</option>)}</select>
               <button className="rounded border border-line px-2 py-1 hover:bg-panel2">Filter</button>
             </form>} />

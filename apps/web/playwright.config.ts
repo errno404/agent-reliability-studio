@@ -14,9 +14,11 @@ export default defineConfig({
   reporter: [["list"]],
   use: { baseURL: process.env.E2E_BASE_URL ?? `http://localhost:${WEB}`, trace: "retain-on-failure", channel: "chrome" },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 1440, height: 900 } }, grepInvert: /@mobile/ },
-    { name: "mobile", use: { ...devices["Pixel 7"], channel: "chrome" }, grep: /@mobile/ },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 1440, height: 900 } }, grepInvert: /@mobile|@tablet/ },
+    { name: "tablet", use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 768, height: 1024 } }, grep: /@tablet/ },
+    { name: "mobile", use: { ...devices["Pixel 7"], channel: "chrome", viewport: { width: 390, height: 844 } }, grep: /@mobile/ },
   ],
+
   webServer: external ? undefined : [
     { command: "bash ../../scripts/e2e_api.sh", url: `http://127.0.0.1:${API}/health`, reuseExistingServer: !process.env.CI, timeout: 180_000 },
     { command: `API_URL=http://127.0.0.1:${API} npx next start -p ${WEB}`, url: `http://localhost:${WEB}`, reuseExistingServer: !process.env.CI, timeout: 120_000 },

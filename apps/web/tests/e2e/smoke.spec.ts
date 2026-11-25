@@ -25,7 +25,7 @@ test("compare: decision, CI, validity and changed-case drill-down", async ({ pag
   await page.goto("/compare");
   await page.locator('a[href^="/compare/"]').filter({ has: page.getByRole("heading", { name: "Support v1 → v2", exact: true }) }).click();
   await page.waitForURL(/\/compare\/\d+$/);
-  await expect(page.getByText(/excludes zero/).first()).toBeVisible();
+  await expect(page.getByText(/entirely above zero/).first()).toBeVisible();
   await expect(page.getByText("Matched cases", { exact: true })).toBeVisible();
   await expect(page.getByText("Metric comparison")).toBeVisible();
   await page.getByRole("link", { name: "sup-17-address-unit-apt" }).click();
@@ -76,7 +76,7 @@ test("datasets: frozen indicator, hash and searchable cases", async ({ page }) =
 test("annotation: blind item, label, progress advances, labels are append-only", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("annotator", `e2e-${Math.random().toString(36).slice(2, 8)}`));
   await page.goto("/judges/annotate");
-  await expect(page.getByText("Candidate output")).toBeVisible();
+  await expect(page.getByText("Candidate output", { exact: true })).toBeVisible();
   await expect(page.getByText(/reference|judge verdict/i)).toHaveCount(0); // blind: no labels leak into the item view
   const first = await page.locator("main p").filter({ hasText: /.+/ }).nth(2).innerText();
   await page.getByRole("button", { name: /Pass/ }).click();
@@ -90,7 +90,7 @@ test("failures, gates and methodology pages explain themselves", async ({ page }
   await expect(page.getByText(/increased by/).first()).toBeVisible();
   await page.goto("/gates");
   await expect(page.getByText(/GATE (PASS|FAIL)/).first()).toBeVisible();
-  await expect(page.getByText(/not calibrated\/admitted/).first()).toBeVisible();
+  await expect(page.getByText(/not release-eligible/).first()).toBeVisible();
   await page.goto("/methodology");
   await expect(page.getByText("Non-inferiority margin").first()).toBeVisible();
   await expect(page.getByText("pass^k", { exact: true }).first()).toBeVisible();

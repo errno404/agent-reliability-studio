@@ -4,6 +4,7 @@ import { Check, SkipForward, X } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Badge, Card, CardHeader, ErrorState, Skeleton } from "@/components/ui";
 import { api } from "@/lib/api";
+import { annotationTrust } from "@/lib/live";
 import type { AnnotationSummary, BlindItem } from "@/lib/types";
 
 const ID_OK = /^[A-Za-z0-9_.-]{2,40}$/;
@@ -94,8 +95,12 @@ export function AnnotateClient({ initial }: { initial: AnnotationSummary }) {
 
       <Card><CardHeader title="Agreement & adjudication" sub={summary.note} />
         <div className="space-y-3 p-4 text-[13px]">
-          <div className="flex flex-wrap items-center gap-3"><span>Annotators: <b>{summary.annotators.join(", ") || "none"}</b></span>
-            {summary.consensus_claimed && summary.kappa !== null ? <Badge tone="info">mean pairwise κ {summary.kappa.toFixed(2)} over {summary.items_compared} shared items</Badge> : <Badge tone="warn">no consensus claimed (needs ≥ 2 annotators)</Badge>}
+          <p role="note" className="rounded-md border border-warn/30 bg-warn-soft px-3 py-2 text-[13px]"><b>Public annotation is untrusted.</b> Handles are unauthenticated, so labels submitted here are stored as <code className="font-mono text-xs">public_untrusted</code>: they never count as calibration evidence, never alter the ground-truth set or any gate, and are excluded from agreement statistics. Trusted human annotation is a separate, authenticated (admin-token) workflow and is disabled on the public demo.</p>
+          <div className="flex flex-wrap items-center gap-3"><span>Annotators:</span>
+            {summary.annotators.length === 0 && !(summary.untrusted_annotators ?? []).length && <b>none</b>}
+            {summary.annotators.map((a) => { const t = annotationTrust(summary.annotator_sources?.[a]); return <Badge key={a} tone={t.tone} title={t.title}>{a} · {t.label}</Badge>; })}
+            {(summary.untrusted_annotators ?? []).map((a) => { const t = annotationTrust("public_untrusted"); return <Badge key={a} tone={t.tone} title={t.title}>{a} · {t.label} · {summary.untrusted_label_counts?.[a] ?? 0} labels (excluded from agreement)</Badge>; })}
+            {summary.consensus_claimed && summary.kappa !== null ? <Badge tone="info">mean pairwise κ {summary.kappa.toFixed(2)} over {summary.items_compared} shared items</Badge> : <Badge tone="warn">no consensus claimed (needs ≥ 2 trusted annotators)</Badge>}
             {summary.sources.includes("synthetic_demo") && <Badge>includes seeded demo annotators (synthetic, not human)</Badge>}</div>
           <div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Disagreement queue ({summary.disagreement_queue.length})</div>
           <ul className="space-y-2">{summary.disagreement_queue.map((d) => <Adjudicate key={d.item_id} d={d} annotator={annotator} onDone={async () => setSummary(await api.annotationSummary())} />)}</ul>

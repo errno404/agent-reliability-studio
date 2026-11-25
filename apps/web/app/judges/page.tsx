@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge, Card, ErrorState, HashChip, PageHeader, Stat, SyntheticBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { pct, shortDate } from "@/lib/format";
+import { releaseScope, scopeLabel } from "@/lib/live";
 import type { CalRun, JudgeOut } from "@/lib/types";
 
 export const metadata = { title: "Judges" };
@@ -22,6 +23,7 @@ function JudgeCard({ j, errors }: { j: JudgeOut; errors: { item_id: string; cand
   const latest = j.latest as unknown as CalRun | null;
   const history = j.history as unknown as CalRun[];
   const m = latest?.metrics;
+  const rel = releaseScope(latest);
   return (
     <Card>
       <div className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 ${j.admitted ? "border-ok/30 bg-ok-soft" : "border-bad/30 bg-bad-soft"}`}>
@@ -36,7 +38,13 @@ function JudgeCard({ j, errors }: { j: JudgeOut; errors: { item_id: string; cand
             <Stat label="Items" value={m.n} sub={`${m.n_pos} pass · ${m.n_neg} fail`} hint="Class balance of reference labels" />
             <Stat label="Accuracy" value={pct(m.accuracy)} /><Stat label="Precision" value={pct(m.precision)} /><Stat label="Recall" value={pct(m.recall)} /><Stat label="F1" value={m.f1.toFixed(2)} />
             <Stat label="Cohen's κ" value={m.kappa.toFixed(2)} tone={m.kappa >= Number(latest.policy.min_kappa) ? "ok" : "bad"} sub={`need ≥ ${latest.policy.min_kappa}`} />
-            <Stat label="False-positive rate" value={pct(m.fpr)} tone={m.fpr <= Number(latest.policy.max_fpr) ? "ok" : "bad"} sub={`need ≤ ${pct(Number(latest.policy.max_fpr), 0)} · FNR ${pct(m.fnr)}`} />
+            <Stat label="False-positive rate" value={pct(m.fpr)} tone={m.fpr <= Number(latest.policy.max_fpr) ? "ok" : "bad"} sub={`need ≤ ${pct(Number(latest.policy.max_fpr), 0)} · FNR ${pct(m.fnr)} · upper ${rel.fprUpper === null ? "—" : pct(rel.fprUpper)}`} />
+          </div>
+          <div role="status" aria-label="Release eligibility" className={`rounded-md border px-3 py-2.5 text-[13px] ${rel.eligible ? "border-ok/30 bg-ok-soft" : "border-warn/30 bg-warn-soft"}`}>
+            <div className="flex flex-wrap items-center gap-2"><Badge tone={rel.eligible ? "ok" : "warn"} className="uppercase tracking-wide">{scopeLabel(rel.scope)}</Badge>
+              <span className="num">95% Wilson upper bound on FPR: <b>{rel.fprUpper === null ? "—" : pct(rel.fprUpper)}</b> <span className="text-muted">(point {pct(m.fpr)} from {m.fp} of {rel.nNegatives} negatives)</span></span></div>
+            {rel.reasons.length > 0 && <ul className="mt-1.5 list-inside list-disc text-muted">{rel.reasons.map((x) => <li key={x}>{x}</li>)}</ul>}
+            {rel.scope === "demonstration" && <p className="mt-1.5 text-xs text-muted">Synthetic fixture labels can demonstrate the calibration workflow but never authorise a release; a release needs ≥ {String(latest.policy.min_trusted_items ?? 50)} human/adjudicated labels and a FPR upper bound ≤ {pct(Number(latest.policy.max_fpr_upper ?? 0.1), 0)}.</p>}
           </div>
           <div className="grid gap-5 lg:grid-cols-[auto_1fr]">
             <div><div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-faint">Confusion matrix</div><Confusion m={m} /></div>

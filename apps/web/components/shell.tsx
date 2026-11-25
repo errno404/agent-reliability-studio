@@ -86,7 +86,7 @@ export function Shell({ children, demo }: { children: ReactNode; demo: boolean }
           <button type="button" className="rounded-md border border-line p-1.5 lg:hidden" aria-label="Open navigation" aria-expanded={open} onClick={() => setOpen(true)}><Menu size={16} /></button>
           <span className="text-[13px] font-semibold lg:hidden">ARS</span>
           <div className="ml-auto flex items-center gap-2">
-            {demo && <span className="hidden rounded border border-info/30 bg-info-soft px-2 py-0.5 text-[11px] font-medium text-info sm:inline">Demo data · synthetic fixture evidence</span>}
+            {demo && <span className="hidden rounded border border-info/30 bg-info-soft px-2 py-0.5 text-[11px] font-medium text-info sm:inline">Read-only demo · synthetic and live evidence are labelled per run</span>}
             <ThemeToggle />
           </div>
         </div>

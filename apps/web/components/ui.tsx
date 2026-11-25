@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ApiError } from "@/lib/api";
 import { decisionLabel, decisionTone, pct, statusLabel, statusTone, type Tone } from "@/lib/format";
+import { LIVE_NOTE } from "@/lib/live";
 
 const TONES: Record<Tone, string> = {
   ok: "bg-ok-soft text-ok border-ok/30",
@@ -22,6 +23,15 @@ export function Badge({ tone = "neutral", children, title, className }: { tone?:
 export const StatusBadge = ({ status }: { status: string }) => <Badge tone={statusTone(status)}>{statusLabel(status)}</Badge>;
 export const DecisionBadge = ({ decision }: { decision: string }) => <Badge tone={decisionTone(decision)} className="uppercase tracking-wide">{decisionLabel(decision)}</Badge>;
 export const SyntheticBadge = () => <Badge tone="info" title="Scripted, seeded reference agents. Not a benchmark of any real model.">synthetic fixture evidence</Badge>;
+/** SYNTHETIC vs LIVE is a first-class label: the two kinds are never blended in any number or chart. */
+export function KindBadge({ kind }: { kind: "live" | "synthetic" | "mixed" }) {
+  if (kind === "live") return <Badge tone="ok" title={LIVE_NOTE} className="uppercase tracking-wide">live · real model</Badge>;
+  if (kind === "mixed") return <Badge tone="bad" title="Baseline and candidate are different kinds; such a comparison is invalid." className="uppercase tracking-wide">mixed kinds</Badge>;
+  return <Badge tone="info" title="Scripted, seeded reference agents. Not a benchmark of any real model." className="uppercase tracking-wide">synthetic</Badge>;
+}
+export const LiveNote = () => (
+  <p role="note" className="rounded-md border border-ok/30 bg-ok-soft px-3 py-2 text-[13px] text-ok"><b>{LIVE_NOTE}</b> The model&apos;s decisions are real; the world it acts in is an invented, frozen document collection. Not a benchmark of the model or of the real web.</p>
+);
 
 export function Card({ children, className, as: Tag = "section", ...rest }: { children: ReactNode; className?: string; as?: "section" | "div" | "article" } & React.HTMLAttributes<HTMLElement>) {
   return <Tag className={clsx("min-w-0 rounded-lg border border-line bg-panel", className)} {...rest}>{children}</Tag>;
