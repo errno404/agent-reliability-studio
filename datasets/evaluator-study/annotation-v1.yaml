@@ -1,0 +1,735 @@
+name: evaluator-study
+version: v1
+dimension: factual_correctness
+published: true
+description: 64 templated outputs for BLIND human annotation. reference_label is the AUTHOR's label (synthetic_fixture), to
+  be compared with independent human labels; it is NOT human evidence.
+items:
+- id: es-01-valid
+  input: What is the size of the Harlow Rail fleet?
+  rubric:
+    must:
+    - '62'
+    must_not:
+    - '70'
+  label_source: synthetic_fixture
+  candidate_output: Harlow Rail has 62 trains, according to the official fact sheet.
+  reference_label: pass
+  notes: valid
+- id: es-01-valid_spelled_out
+  input: What is the size of the Harlow Rail fleet?
+  rubric:
+    must:
+    - '62'
+    must_not:
+    - '70'
+  label_source: synthetic_fixture
+  candidate_output: The count for Harlow Rail is sixty-two trains.
+  reference_label: pass
+  notes: valid_spelled_out
+- id: es-01-valid_refutes_decoy
+  input: What is the size of the Harlow Rail fleet?
+  rubric:
+    must:
+    - '62'
+    must_not:
+    - '70'
+  label_source: synthetic_fixture
+  candidate_output: A fan blog claims 70 trains, but the official figure for Harlow Rail is 62 trains.
+  reference_label: pass
+  notes: valid_refutes_decoy
+- id: es-01-unsupported_figure
+  input: What is the size of the Harlow Rail fleet?
+  rubric:
+    must:
+    - '62'
+    must_not:
+    - '70'
+  label_source: synthetic_fixture
+  candidate_output: Harlow Rail has 70 trains, according to its fact sheet.
+  reference_label: fail
+  notes: unsupported_figure
+- id: es-01-negated_correct_figure
+  input: What is the size of the Harlow Rail fleet?
+  rubric:
+    must:
+    - '62'
+    must_not:
+    - '70'
+  label_source: synthetic_fixture
+  candidate_output: It is not true that Harlow Rail has 62 trains; the real number is 70.
+  reference_label: fail
+  notes: negated_correct_figure
+- id: es-01-misleading_keyword_overlap
+  input: What is the size of the Harlow Rail fleet?
+  rubric:
+    must:
+    - '62'
+    must_not:
+    - '70'
+  label_source: synthetic_fixture
+  candidate_output: Harlow Rail serves 62 stations spread across its wider network and several regional branch lines nationwide.
+    The fleet figure was not stated in the sources I checked.
+  reference_label: fail
+  notes: misleading_keyword_overlap
+- id: es-01-incomplete_answer
+  input: What is the size of the Harlow Rail fleet and the maximum service speed of Harlow Rail trains?
+  rubric:
+    must:
+    - '62'
+    - '187'
+    must_not:
+    - '70'
+  label_source: synthetic_fixture
+  candidate_output: Harlow Rail has 62 trains.
+  reference_label: fail
+  notes: incomplete_answer
+- id: es-01-irrelevant_but_plausible
+  input: What is the size of the Harlow Rail fleet?
+  rubric:
+    must:
+    - '62'
+    must_not:
+    - '70'
+  label_source: synthetic_fixture
+  candidate_output: Harlow Rail is a well-regarded organisation, and many similar bodies are investing in modernisation and
+    visitor experience.
+  reference_label: fail
+  notes: irrelevant_but_plausible
+- id: es-02-valid
+  input: What is the number of volumes held by Pelham Public Library?
+  rubric:
+    must:
+    - 2,310,000
+    must_not:
+    - 3,000,000
+  label_source: synthetic_fixture
+  candidate_output: Pelham Public Library has 2,310,000 volumes, according to the official fact sheet.
+  reference_label: pass
+  notes: valid
+- id: es-02-valid_spelled_out
+  input: What is the number of volumes held by Pelham Public Library?
+  rubric:
+    must:
+    - 2,310,000
+    must_not:
+    - 3,000,000
+  label_source: synthetic_fixture
+  candidate_output: The count for Pelham Public Library is two million three hundred ten thousand volumes.
+  reference_label: pass
+  notes: valid_spelled_out
+- id: es-02-valid_refutes_decoy
+  input: What is the number of volumes held by Pelham Public Library?
+  rubric:
+    must:
+    - 2,310,000
+    must_not:
+    - 3,000,000
+  label_source: synthetic_fixture
+  candidate_output: A fan blog claims 3,000,000 volumes, but the official figure for Pelham Public Library is 2,310,000 volumes.
+  reference_label: pass
+  notes: valid_refutes_decoy
+- id: es-02-unsupported_figure
+  input: What is the number of volumes held by Pelham Public Library?
+  rubric:
+    must:
+    - 2,310,000
+    must_not:
+    - 3,000,000
+  label_source: synthetic_fixture
+  candidate_output: Pelham Public Library has 3,000,000 volumes, according to its fact sheet.
+  reference_label: fail
+  notes: unsupported_figure
+- id: es-02-negated_correct_figure
+  input: What is the number of volumes held by Pelham Public Library?
+  rubric:
+    must:
+    - 2,310,000
+    must_not:
+    - 3,000,000
+  label_source: synthetic_fixture
+  candidate_output: It is not true that Pelham Public Library has 2,310,000 volumes; the real number is 3,000,000.
+  reference_label: fail
+  notes: negated_correct_figure
+- id: es-02-misleading_keyword_overlap
+  input: What is the number of volumes held by Pelham Public Library?
+  rubric:
+    must:
+    - 2,310,000
+    must_not:
+    - 3,000,000
+  label_source: synthetic_fixture
+  candidate_output: Pelham Public Library welcomed 2,310,000 visitors across all of its busy reading rooms and event spaces
+    last year. The volumes figure was not stated in the sources I checked.
+  reference_label: fail
+  notes: misleading_keyword_overlap
+- id: es-02-incomplete_answer
+  input: What is the number of volumes held by Pelham Public Library and the number of branches of the Pelham library system?
+  rubric:
+    must:
+    - 2,310,000
+    - '17'
+    must_not:
+    - 3,000,000
+  label_source: synthetic_fixture
+  candidate_output: Pelham Public Library has 2,310,000 volumes.
+  reference_label: fail
+  notes: incomplete_answer
+- id: es-02-irrelevant_but_plausible
+  input: What is the number of volumes held by Pelham Public Library?
+  rubric:
+    must:
+    - 2,310,000
+    must_not:
+    - 3,000,000
+  label_source: synthetic_fixture
+  candidate_output: Pelham Public Library is a well-regarded organisation, and many similar bodies are investing in modernisation
+    and visitor experience.
+  reference_label: fail
+  notes: irrelevant_but_plausible
+- id: es-03-valid
+  input: What is the number of turbines at Tarn Wind Farm?
+  rubric:
+    must:
+    - '48'
+    must_not:
+    - '36'
+  label_source: synthetic_fixture
+  candidate_output: Tarn Wind Farm has 48 turbines, according to the official fact sheet.
+  reference_label: pass
+  notes: valid
+- id: es-03-valid_spelled_out
+  input: What is the number of turbines at Tarn Wind Farm?
+  rubric:
+    must:
+    - '48'
+    must_not:
+    - '36'
+  label_source: synthetic_fixture
+  candidate_output: The count for Tarn Wind Farm is forty-eight turbines.
+  reference_label: pass
+  notes: valid_spelled_out
+- id: es-03-valid_refutes_decoy
+  input: What is the number of turbines at Tarn Wind Farm?
+  rubric:
+    must:
+    - '48'
+    must_not:
+    - '36'
+  label_source: synthetic_fixture
+  candidate_output: A fan blog claims 36 turbines, but the official figure for Tarn Wind Farm is 48 turbines.
+  reference_label: pass
+  notes: valid_refutes_decoy
+- id: es-03-unsupported_figure
+  input: What is the number of turbines at Tarn Wind Farm?
+  rubric:
+    must:
+    - '48'
+    must_not:
+    - '36'
+  label_source: synthetic_fixture
+  candidate_output: Tarn Wind Farm has 36 turbines, according to its fact sheet.
+  reference_label: fail
+  notes: unsupported_figure
+- id: es-03-negated_correct_figure
+  input: What is the number of turbines at Tarn Wind Farm?
+  rubric:
+    must:
+    - '48'
+    must_not:
+    - '36'
+  label_source: synthetic_fixture
+  candidate_output: It is not true that Tarn Wind Farm has 48 turbines; the real number is 36.
+  reference_label: fail
+  notes: negated_correct_figure
+- id: es-03-misleading_keyword_overlap
+  input: What is the number of turbines at Tarn Wind Farm?
+  rubric:
+    must:
+    - '48'
+    must_not:
+    - '36'
+  label_source: synthetic_fixture
+  candidate_output: Tarn Wind Farm generates 48 gigawatt-hours during each of its windiest winter months according to site
+    engineers. The turbines figure was not stated in the sources I checked.
+  reference_label: fail
+  notes: misleading_keyword_overlap
+- id: es-03-incomplete_answer
+  input: What is the number of turbines at Tarn Wind Farm and the installed capacity of Tarn Wind Farm?
+  rubric:
+    must:
+    - '48'
+    - '144'
+    must_not:
+    - '36'
+  label_source: synthetic_fixture
+  candidate_output: Tarn Wind Farm has 48 turbines.
+  reference_label: fail
+  notes: incomplete_answer
+- id: es-03-irrelevant_but_plausible
+  input: What is the number of turbines at Tarn Wind Farm?
+  rubric:
+    must:
+    - '48'
+    must_not:
+    - '36'
+  label_source: synthetic_fixture
+  candidate_output: Tarn Wind Farm is a well-regarded organisation, and many similar bodies are investing in modernisation
+    and visitor experience.
+  reference_label: fail
+  notes: irrelevant_but_plausible
+- id: es-04-valid
+  input: What is the number of beds at Vesper General Hospital?
+  rubric:
+    must:
+    - '620'
+    must_not:
+    - '800'
+  label_source: synthetic_fixture
+  candidate_output: Vesper General Hospital has 620 beds, according to the official fact sheet.
+  reference_label: pass
+  notes: valid
+- id: es-04-valid_spelled_out
+  input: What is the number of beds at Vesper General Hospital?
+  rubric:
+    must:
+    - '620'
+    must_not:
+    - '800'
+  label_source: synthetic_fixture
+  candidate_output: The count for Vesper General Hospital is six hundred twenty beds.
+  reference_label: pass
+  notes: valid_spelled_out
+- id: es-04-valid_refutes_decoy
+  input: What is the number of beds at Vesper General Hospital?
+  rubric:
+    must:
+    - '620'
+    must_not:
+    - '800'
+  label_source: synthetic_fixture
+  candidate_output: A fan blog claims 800 beds, but the official figure for Vesper General Hospital is 620 beds.
+  reference_label: pass
+  notes: valid_refutes_decoy
+- id: es-04-unsupported_figure
+  input: What is the number of beds at Vesper General Hospital?
+  rubric:
+    must:
+    - '620'
+    must_not:
+    - '800'
+  label_source: synthetic_fixture
+  candidate_output: Vesper General Hospital has 800 beds, according to its fact sheet.
+  reference_label: fail
+  notes: unsupported_figure
+- id: es-04-negated_correct_figure
+  input: What is the number of beds at Vesper General Hospital?
+  rubric:
+    must:
+    - '620'
+    must_not:
+    - '800'
+  label_source: synthetic_fixture
+  candidate_output: It is not true that Vesper General Hospital has 620 beds; the real number is 800.
+  reference_label: fail
+  notes: negated_correct_figure
+- id: es-04-misleading_keyword_overlap
+  input: What is the number of beds at Vesper General Hospital?
+  rubric:
+    must:
+    - '620'
+    must_not:
+    - '800'
+  label_source: synthetic_fixture
+  candidate_output: Vesper General Hospital treated 620 patients in its emergency department on the busiest single weekend
+    of the year. The beds figure was not stated in the sources I checked.
+  reference_label: fail
+  notes: misleading_keyword_overlap
+- id: es-04-incomplete_answer
+  input: What is the number of beds at Vesper General Hospital and the number of operating theatres at Vesper General Hospital?
+  rubric:
+    must:
+    - '620'
+    - '14'
+    must_not:
+    - '800'
+  label_source: synthetic_fixture
+  candidate_output: Vesper General Hospital has 620 beds.
+  reference_label: fail
+  notes: incomplete_answer
+- id: es-04-irrelevant_but_plausible
+  input: What is the number of beds at Vesper General Hospital?
+  rubric:
+    must:
+    - '620'
+    must_not:
+    - '800'
+  label_source: synthetic_fixture
+  candidate_output: Vesper General Hospital is a well-regarded organisation, and many similar bodies are investing in modernisation
+    and visitor experience.
+  reference_label: fail
+  notes: irrelevant_but_plausible
+- id: es-05-valid
+  input: What is the length of Calder Bridge in metres?
+  rubric:
+    must:
+    - 1,240
+    must_not:
+    - 1,190
+  label_source: synthetic_fixture
+  candidate_output: Calder Bridge has 1,240 metres, according to the official fact sheet.
+  reference_label: pass
+  notes: valid
+- id: es-05-valid_spelled_out
+  input: What is the length of Calder Bridge in metres?
+  rubric:
+    must:
+    - 1,240
+    must_not:
+    - 1,190
+  label_source: synthetic_fixture
+  candidate_output: The count for Calder Bridge is one thousand two hundred forty metres.
+  reference_label: pass
+  notes: valid_spelled_out
+- id: es-05-valid_refutes_decoy
+  input: What is the length of Calder Bridge in metres?
+  rubric:
+    must:
+    - 1,240
+    must_not:
+    - 1,190
+  label_source: synthetic_fixture
+  candidate_output: A fan blog claims 1,190 metres, but the official figure for Calder Bridge is 1,240 metres.
+  reference_label: pass
+  notes: valid_refutes_decoy
+- id: es-05-unsupported_figure
+  input: What is the length of Calder Bridge in metres?
+  rubric:
+    must:
+    - 1,240
+    must_not:
+    - 1,190
+  label_source: synthetic_fixture
+  candidate_output: Calder Bridge has 1,190 metres, according to its fact sheet.
+  reference_label: fail
+  notes: unsupported_figure
+- id: es-05-negated_correct_figure
+  input: What is the length of Calder Bridge in metres?
+  rubric:
+    must:
+    - 1,240
+    must_not:
+    - 1,190
+  label_source: synthetic_fixture
+  candidate_output: It is not true that Calder Bridge has 1,240 metres; the real number is 1,190.
+  reference_label: fail
+  notes: negated_correct_figure
+- id: es-05-misleading_keyword_overlap
+  input: What is the length of Calder Bridge in metres?
+  rubric:
+    must:
+    - 1,240
+    must_not:
+    - 1,190
+  label_source: synthetic_fixture
+  candidate_output: Calder Bridge carries 1,240 vehicles through the crossing in the single hour of the heaviest weekday morning
+    peak. The length figure was not stated in the sources I checked.
+  reference_label: fail
+  notes: misleading_keyword_overlap
+- id: es-05-incomplete_answer
+  input: What is the length of Calder Bridge in metres and the opening year of Calder Bridge?
+  rubric:
+    must:
+    - 1,240
+    - '2009'
+    must_not:
+    - 1,190
+  label_source: synthetic_fixture
+  candidate_output: Calder Bridge has 1,240 metres.
+  reference_label: fail
+  notes: incomplete_answer
+- id: es-05-irrelevant_but_plausible
+  input: What is the length of Calder Bridge in metres?
+  rubric:
+    must:
+    - 1,240
+    must_not:
+    - 1,190
+  label_source: synthetic_fixture
+  candidate_output: Calder Bridge is a well-regarded organisation, and many similar bodies are investing in modernisation
+    and visitor experience.
+  reference_label: fail
+  notes: irrelevant_but_plausible
+- id: es-06-valid
+  input: What is the launch mass of the Ondra Probe in kilograms?
+  rubric:
+    must:
+    - 1,850
+    must_not:
+    - 2,400
+  label_source: synthetic_fixture
+  candidate_output: Ondra Probe has 1,850 kilograms, according to the official fact sheet.
+  reference_label: pass
+  notes: valid
+- id: es-06-valid_spelled_out
+  input: What is the launch mass of the Ondra Probe in kilograms?
+  rubric:
+    must:
+    - 1,850
+    must_not:
+    - 2,400
+  label_source: synthetic_fixture
+  candidate_output: The count for Ondra Probe is one thousand eight hundred fifty kilograms.
+  reference_label: pass
+  notes: valid_spelled_out
+- id: es-06-valid_refutes_decoy
+  input: What is the launch mass of the Ondra Probe in kilograms?
+  rubric:
+    must:
+    - 1,850
+    must_not:
+    - 2,400
+  label_source: synthetic_fixture
+  candidate_output: A fan blog claims 2,400 kilograms, but the official figure for Ondra Probe is 1,850 kilograms.
+  reference_label: pass
+  notes: valid_refutes_decoy
+- id: es-06-unsupported_figure
+  input: What is the launch mass of the Ondra Probe in kilograms?
+  rubric:
+    must:
+    - 1,850
+    must_not:
+    - 2,400
+  label_source: synthetic_fixture
+  candidate_output: Ondra Probe has 2,400 kilograms, according to its fact sheet.
+  reference_label: fail
+  notes: unsupported_figure
+- id: es-06-negated_correct_figure
+  input: What is the launch mass of the Ondra Probe in kilograms?
+  rubric:
+    must:
+    - 1,850
+    must_not:
+    - 2,400
+  label_source: synthetic_fixture
+  candidate_output: It is not true that Ondra Probe has 1,850 kilograms; the real number is 2,400.
+  reference_label: fail
+  notes: negated_correct_figure
+- id: es-06-misleading_keyword_overlap
+  input: What is the launch mass of the Ondra Probe in kilograms?
+  rubric:
+    must:
+    - 1,850
+    must_not:
+    - 2,400
+  label_source: synthetic_fixture
+  candidate_output: The Ondra Probe team numbered 1,850 engineers, technicians and contractors at the peak of the integration
+    campaign. The mass figure was not stated in the sources I checked.
+  reference_label: fail
+  notes: misleading_keyword_overlap
+- id: es-06-incomplete_answer
+  input: What is the launch mass of the Ondra Probe in kilograms and the number of instruments on the Ondra Probe?
+  rubric:
+    must:
+    - 1,850
+    - '6'
+    must_not:
+    - 2,400
+  label_source: synthetic_fixture
+  candidate_output: Ondra Probe has 1,850 kilograms.
+  reference_label: fail
+  notes: incomplete_answer
+- id: es-06-irrelevant_but_plausible
+  input: What is the launch mass of the Ondra Probe in kilograms?
+  rubric:
+    must:
+    - 1,850
+    must_not:
+    - 2,400
+  label_source: synthetic_fixture
+  candidate_output: Ondra Probe is a well-regarded organisation, and many similar bodies are investing in modernisation and
+    visitor experience.
+  reference_label: fail
+  notes: irrelevant_but_plausible
+- id: es-07-valid
+  input: What is the number of students at Mireth University?
+  rubric:
+    must:
+    - 18,400
+    must_not:
+    - 25,000
+  label_source: synthetic_fixture
+  candidate_output: Mireth University has 18,400 students, according to the official fact sheet.
+  reference_label: pass
+  notes: valid
+- id: es-07-valid_spelled_out
+  input: What is the number of students at Mireth University?
+  rubric:
+    must:
+    - 18,400
+    must_not:
+    - 25,000
+  label_source: synthetic_fixture
+  candidate_output: The count for Mireth University is eighteen thousand four hundred students.
+  reference_label: pass
+  notes: valid_spelled_out
+- id: es-07-valid_refutes_decoy
+  input: What is the number of students at Mireth University?
+  rubric:
+    must:
+    - 18,400
+    must_not:
+    - 25,000
+  label_source: synthetic_fixture
+  candidate_output: A fan blog claims 25,000 students, but the official figure for Mireth University is 18,400 students.
+  reference_label: pass
+  notes: valid_refutes_decoy
+- id: es-07-unsupported_figure
+  input: What is the number of students at Mireth University?
+  rubric:
+    must:
+    - 18,400
+    must_not:
+    - 25,000
+  label_source: synthetic_fixture
+  candidate_output: Mireth University has 25,000 students, according to its fact sheet.
+  reference_label: fail
+  notes: unsupported_figure
+- id: es-07-negated_correct_figure
+  input: What is the number of students at Mireth University?
+  rubric:
+    must:
+    - 18,400
+    must_not:
+    - 25,000
+  label_source: synthetic_fixture
+  candidate_output: It is not true that Mireth University has 18,400 students; the real number is 25,000.
+  reference_label: fail
+  notes: negated_correct_figure
+- id: es-07-misleading_keyword_overlap
+  input: What is the number of students at Mireth University?
+  rubric:
+    must:
+    - 18,400
+    must_not:
+    - 25,000
+  label_source: synthetic_fixture
+  candidate_output: Mireth University received 18,400 applications for its undergraduate programmes during the most recent
+    admissions season. The students figure was not stated in the sources I checked.
+  reference_label: fail
+  notes: misleading_keyword_overlap
+- id: es-07-incomplete_answer
+  input: What is the number of students at Mireth University and the number of campuses of Mireth University?
+  rubric:
+    must:
+    - 18,400
+    - '3'
+    must_not:
+    - 25,000
+  label_source: synthetic_fixture
+  candidate_output: Mireth University has 18,400 students.
+  reference_label: fail
+  notes: incomplete_answer
+- id: es-07-irrelevant_but_plausible
+  input: What is the number of students at Mireth University?
+  rubric:
+    must:
+    - 18,400
+    must_not:
+    - 25,000
+  label_source: synthetic_fixture
+  candidate_output: Mireth University is a well-regarded organisation, and many similar bodies are investing in modernisation
+    and visitor experience.
+  reference_label: fail
+  notes: irrelevant_but_plausible
+- id: es-08-valid
+  input: What is the number of regions in which Lumen Cloud operates?
+  rubric:
+    must:
+    - '9'
+    must_not:
+    - '14'
+  label_source: synthetic_fixture
+  candidate_output: Lumen Cloud has 9 regions, according to the official fact sheet.
+  reference_label: pass
+  notes: valid
+- id: es-08-valid_spelled_out
+  input: What is the number of regions in which Lumen Cloud operates?
+  rubric:
+    must:
+    - '9'
+    must_not:
+    - '14'
+  label_source: synthetic_fixture
+  candidate_output: The count for Lumen Cloud is nine regions.
+  reference_label: pass
+  notes: valid_spelled_out
+- id: es-08-valid_refutes_decoy
+  input: What is the number of regions in which Lumen Cloud operates?
+  rubric:
+    must:
+    - '9'
+    must_not:
+    - '14'
+  label_source: synthetic_fixture
+  candidate_output: A fan blog claims 14 regions, but the official figure for Lumen Cloud is 9 regions.
+  reference_label: pass
+  notes: valid_refutes_decoy
+- id: es-08-unsupported_figure
+  input: What is the number of regions in which Lumen Cloud operates?
+  rubric:
+    must:
+    - '9'
+    must_not:
+    - '14'
+  label_source: synthetic_fixture
+  candidate_output: Lumen Cloud has 14 regions, according to its fact sheet.
+  reference_label: fail
+  notes: unsupported_figure
+- id: es-08-negated_correct_figure
+  input: What is the number of regions in which Lumen Cloud operates?
+  rubric:
+    must:
+    - '9'
+    must_not:
+    - '14'
+  label_source: synthetic_fixture
+  candidate_output: It is not true that Lumen Cloud has 9 regions; the real number is 14.
+  reference_label: fail
+  notes: negated_correct_figure
+- id: es-08-misleading_keyword_overlap
+  input: What is the number of regions in which Lumen Cloud operates?
+  rubric:
+    must:
+    - '9'
+    must_not:
+    - '14'
+  label_source: synthetic_fixture
+  candidate_output: Lumen Cloud documentation lists 9 certified partner programmes for resellers, integrators and managed
+    service providers worldwide. The regions figure was not stated in the sources I checked.
+  reference_label: fail
+  notes: misleading_keyword_overlap
+- id: es-08-incomplete_answer
+  input: What is the number of regions in which Lumen Cloud operates and the monthly uptime SLA of Lumen Cloud?
+  rubric:
+    must:
+    - '9'
+    - '99.95'
+    must_not:
+    - '14'
+  label_source: synthetic_fixture
+  candidate_output: Lumen Cloud has 9 regions.
+  reference_label: fail
+  notes: incomplete_answer
+- id: es-08-irrelevant_but_plausible
+  input: What is the number of regions in which Lumen Cloud operates?
+  rubric:
+    must:
+    - '9'
+    must_not:
+    - '14'
+  label_source: synthetic_fixture
+  candidate_output: Lumen Cloud is a well-regarded organisation, and many similar bodies are investing in modernisation and
+    visitor experience.
+  reference_label: fail
+  notes: irrelevant_but_plausible

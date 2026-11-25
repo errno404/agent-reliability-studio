@@ -32,10 +32,24 @@ measurement itself trustworthy?* Nothing here needs a model credential or a secr
 4. Do not allow bypassing the above (including for administrators) and block force pushes and deletions.
 Until then, merges depend on the sole owner's discipline; the workflow still reports honestly but cannot force a block.
 
-## Verified on GitHub
-See the table in the repository README (workflow run links for: compatible candidate reaches the real comparison; deliberately
-regressed candidate rejected; invalid comparison rejected; unauthorised edit of a frozen version rejected). The proof branches and PRs
-were disposable and are closed; their workflow runs and artifacts are linked, not recreated.
+## Verified on GitHub (disposable branches/PRs, 2026-11-25)
+Four disposable PRs (base = the engineering branch, which carries the trusted evaluator) exercised the real path. They were never
+merged; the PRs are closed, the branches deleted, and the workflow runs below remain. Reports were saved to
+[`evidence/ci-proofs/`](../evidence/ci-proofs/) (CI artifacts expire after 14 days).
+
+| # | Scenario | What the candidate was | Outcome on GitHub | Run |
+|---|---|---|---|---|
+| 1 | Compatible candidate reaches the real baseline/candidate path | `support:v3` with behaviour identical to v2 (new pin, matching hash, evidence cited) | `gate (support)` **success**, decision `no_meaningful_regression`; required check `eval-gate-result` **success** | [run 45522330283](https://github.com/errno404/agent-reliability-studio/actions/runs/45522330283) |
+| 2 | Deliberately regressed candidate is rejected | `support:v3` = v1 behaviour | `gate (support)` **failure**, decision `significant_regression`; `eval-gate-result` **failure** | [run 45522334340](https://github.com/errno404/agent-reliability-studio/actions/runs/45522334340) |
+| 3 | Invalid comparison is rejected | `support:v3` = v2 behaviour but `MODEL` changed and the change not declared | `gate (support)` **failure**, decision `invalid` (`model_mismatch` ... controlled for intent `agent_change`); `eval-gate-result` **failure** | [run 45522338959](https://github.com/errno404/agent-reliability-studio/actions/runs/45522338959) |
+| 4 | Unauthorised edit of a frozen version is rejected | edited `support/v2/agent.py` **and rewrote its own pin to match** (passes the PR's own local check) | `pins` **failure** (`baseline pin rewritten`, `frozen in the baseline but on-disk content differs`, `frozen but files ... changed`); `gate` **skipped**; `eval-gate-result` **failure** | [run 45522337133](https://github.com/errno404/agent-reliability-studio/actions/runs/45522337133) |
+
+PRs: [#2](https://github.com/errno404/agent-reliability-studio/pull/2), [#3](https://github.com/errno404/agent-reliability-studio/pull/3), [#4](https://github.com/errno404/agent-reliability-studio/pull/4), [#5](https://github.com/errno404/agent-reliability-studio/pull/5).
+Notes: the proofs touch `demo_agents/__init__.py` (shared registry), so the research and coding suites also re-measured their *same*
+version with base code vs PR code and passed; that is the shared-dependency path working, not noise.
+**Two real bugs in my own CI code were found by these proofs and fixed before the runs above** (and have regression tests): the
+pin checker flagged a *new* version's files as "edits to a frozen version" (it consulted the PR's pins, not the baseline's), and my
+first patch for that silently did not apply until a local reproduction caught it.
 
 ## Re-measurement log (evidence cited by `PINS.md` shared-dependency records)
 Shared behaviour-affecting code changed on 2026-11-24 (coding harness hardening: trusted test commands, workspace path checks,

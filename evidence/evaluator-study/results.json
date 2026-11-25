@@ -1,0 +1,662 @@
+{
+  "by_class": {
+    "A_naive_lexical": {
+      "incomplete_answer": {
+        "correct": 0,
+        "label": "fail",
+        "n": 8
+      },
+      "irrelevant_but_plausible": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "misleading_keyword_overlap": {
+        "correct": 0,
+        "label": "fail",
+        "n": 8
+      },
+      "negated_correct_figure": {
+        "correct": 0,
+        "label": "fail",
+        "n": 8
+      },
+      "unsupported_figure": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "valid": {
+        "correct": 8,
+        "label": "pass",
+        "n": 8
+      },
+      "valid_refutes_decoy": {
+        "correct": 8,
+        "label": "pass",
+        "n": 8
+      },
+      "valid_spelled_out": {
+        "correct": 0,
+        "label": "pass",
+        "n": 8
+      }
+    },
+    "B_keyword_judge": {
+      "incomplete_answer": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "irrelevant_but_plausible": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "misleading_keyword_overlap": {
+        "correct": 0,
+        "label": "fail",
+        "n": 8
+      },
+      "negated_correct_figure": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "unsupported_figure": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "valid": {
+        "correct": 8,
+        "label": "pass",
+        "n": 8
+      },
+      "valid_refutes_decoy": {
+        "correct": 0,
+        "label": "pass",
+        "n": 8
+      },
+      "valid_spelled_out": {
+        "correct": 0,
+        "label": "pass",
+        "n": 8
+      }
+    },
+    "C_stronger_deterministic": {
+      "incomplete_answer": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "irrelevant_but_plausible": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "misleading_keyword_overlap": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "negated_correct_figure": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "unsupported_figure": {
+        "correct": 8,
+        "label": "fail",
+        "n": 8
+      },
+      "valid": {
+        "correct": 8,
+        "label": "pass",
+        "n": 8
+      },
+      "valid_refutes_decoy": {
+        "correct": 8,
+        "label": "pass",
+        "n": 8
+      },
+      "valid_spelled_out": {
+        "correct": 8,
+        "label": "pass",
+        "n": 8
+      }
+    }
+  },
+  "evaluators": {
+    "A_naive_lexical": {
+      "accuracy": 0.5,
+      "errors": [
+        {
+          "class": "valid_spelled_out",
+          "id": "es-01-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Harlow Rail is sixty-two trains."
+        },
+        {
+          "class": "negated_correct_figure",
+          "id": "es-01-negated_correct_figure",
+          "kind": "false_pass",
+          "output": "It is not true that Harlow Rail has 62 trains; the real number is 70."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-01-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Harlow Rail serves 62 stations spread across its wider network and several regional branch lines nationwide. The fleet figure was not stated in the sources I checked."
+        },
+        {
+          "class": "incomplete_answer",
+          "id": "es-01-incomplete_answer",
+          "kind": "false_pass",
+          "output": "Harlow Rail has 62 trains."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-02-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Pelham Public Library is two million three hundred ten thousand volumes."
+        },
+        {
+          "class": "negated_correct_figure",
+          "id": "es-02-negated_correct_figure",
+          "kind": "false_pass",
+          "output": "It is not true that Pelham Public Library has 2,310,000 volumes; the real number is 3,000,000."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-02-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Pelham Public Library welcomed 2,310,000 visitors across all of its busy reading rooms and event spaces last year. The volumes figure was not stated in the sources I checked."
+        },
+        {
+          "class": "incomplete_answer",
+          "id": "es-02-incomplete_answer",
+          "kind": "false_pass",
+          "output": "Pelham Public Library has 2,310,000 volumes."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-03-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Tarn Wind Farm is forty-eight turbines."
+        },
+        {
+          "class": "negated_correct_figure",
+          "id": "es-03-negated_correct_figure",
+          "kind": "false_pass",
+          "output": "It is not true that Tarn Wind Farm has 48 turbines; the real number is 36."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-03-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Tarn Wind Farm generates 48 gigawatt-hours during each of its windiest winter months according to site engineers. The turbines figure was not stated in the sources I checked."
+        },
+        {
+          "class": "incomplete_answer",
+          "id": "es-03-incomplete_answer",
+          "kind": "false_pass",
+          "output": "Tarn Wind Farm has 48 turbines."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-04-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Vesper General Hospital is six hundred twenty beds."
+        },
+        {
+          "class": "negated_correct_figure",
+          "id": "es-04-negated_correct_figure",
+          "kind": "false_pass",
+          "output": "It is not true that Vesper General Hospital has 620 beds; the real number is 800."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-04-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Vesper General Hospital treated 620 patients in its emergency department on the busiest single weekend of the year. The beds figure was not stated in the sources I checked."
+        },
+        {
+          "class": "incomplete_answer",
+          "id": "es-04-incomplete_answer",
+          "kind": "false_pass",
+          "output": "Vesper General Hospital has 620 beds."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-05-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Calder Bridge is one thousand two hundred forty metres."
+        },
+        {
+          "class": "negated_correct_figure",
+          "id": "es-05-negated_correct_figure",
+          "kind": "false_pass",
+          "output": "It is not true that Calder Bridge has 1,240 metres; the real number is 1,190."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-05-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Calder Bridge carries 1,240 vehicles through the crossing in the single hour of the heaviest weekday morning peak. The length figure was not stated in the sources I checked."
+        },
+        {
+          "class": "incomplete_answer",
+          "id": "es-05-incomplete_answer",
+          "kind": "false_pass",
+          "output": "Calder Bridge has 1,240 metres."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-06-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Ondra Probe is one thousand eight hundred fifty kilograms."
+        },
+        {
+          "class": "negated_correct_figure",
+          "id": "es-06-negated_correct_figure",
+          "kind": "false_pass",
+          "output": "It is not true that Ondra Probe has 1,850 kilograms; the real number is 2,400."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-06-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "The Ondra Probe team numbered 1,850 engineers, technicians and contractors at the peak of the integration campaign. The mass figure was not stated in the sources I checked."
+        },
+        {
+          "class": "incomplete_answer",
+          "id": "es-06-incomplete_answer",
+          "kind": "false_pass",
+          "output": "Ondra Probe has 1,850 kilograms."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-07-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Mireth University is eighteen thousand four hundred students."
+        },
+        {
+          "class": "negated_correct_figure",
+          "id": "es-07-negated_correct_figure",
+          "kind": "false_pass",
+          "output": "It is not true that Mireth University has 18,400 students; the real number is 25,000."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-07-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Mireth University received 18,400 applications for its undergraduate programmes during the most recent admissions season. The students figure was not stated in the sources I checked."
+        },
+        {
+          "class": "incomplete_answer",
+          "id": "es-07-incomplete_answer",
+          "kind": "false_pass",
+          "output": "Mireth University has 18,400 students."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-08-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Lumen Cloud is nine regions."
+        },
+        {
+          "class": "negated_correct_figure",
+          "id": "es-08-negated_correct_figure",
+          "kind": "false_pass",
+          "output": "It is not true that Lumen Cloud has 9 regions; the real number is 14."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-08-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Lumen Cloud documentation lists 9 certified partner programmes for resellers, integrators and managed service providers worldwide. The regions figure was not stated in the sources I checked."
+        },
+        {
+          "class": "incomplete_answer",
+          "id": "es-08-incomplete_answer",
+          "kind": "false_pass",
+          "output": "Lumen Cloud has 9 regions."
+        }
+      ],
+      "false_fail_rate": 0.3333333333333333,
+      "false_pass_rate": 0.6,
+      "false_pass_rate_wilson95": [
+        0.44595893660346186,
+        0.7365167431570808
+      ],
+      "fn": 8,
+      "fp": 24,
+      "tn": 16,
+      "tp": 16
+    },
+    "B_keyword_judge": {
+      "accuracy": 0.625,
+      "errors": [
+        {
+          "class": "valid_spelled_out",
+          "id": "es-01-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Harlow Rail is sixty-two trains."
+        },
+        {
+          "class": "valid_refutes_decoy",
+          "id": "es-01-valid_refutes_decoy",
+          "kind": "false_fail",
+          "output": "A fan blog claims 70 trains, but the official figure for Harlow Rail is 62 trains."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-01-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Harlow Rail serves 62 stations spread across its wider network and several regional branch lines nationwide. The fleet figure was not stated in the sources I checked."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-02-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Pelham Public Library is two million three hundred ten thousand volumes."
+        },
+        {
+          "class": "valid_refutes_decoy",
+          "id": "es-02-valid_refutes_decoy",
+          "kind": "false_fail",
+          "output": "A fan blog claims 3,000,000 volumes, but the official figure for Pelham Public Library is 2,310,000 volumes."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-02-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Pelham Public Library welcomed 2,310,000 visitors across all of its busy reading rooms and event spaces last year. The volumes figure was not stated in the sources I checked."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-03-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Tarn Wind Farm is forty-eight turbines."
+        },
+        {
+          "class": "valid_refutes_decoy",
+          "id": "es-03-valid_refutes_decoy",
+          "kind": "false_fail",
+          "output": "A fan blog claims 36 turbines, but the official figure for Tarn Wind Farm is 48 turbines."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-03-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Tarn Wind Farm generates 48 gigawatt-hours during each of its windiest winter months according to site engineers. The turbines figure was not stated in the sources I checked."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-04-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Vesper General Hospital is six hundred twenty beds."
+        },
+        {
+          "class": "valid_refutes_decoy",
+          "id": "es-04-valid_refutes_decoy",
+          "kind": "false_fail",
+          "output": "A fan blog claims 800 beds, but the official figure for Vesper General Hospital is 620 beds."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-04-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Vesper General Hospital treated 620 patients in its emergency department on the busiest single weekend of the year. The beds figure was not stated in the sources I checked."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-05-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Calder Bridge is one thousand two hundred forty metres."
+        },
+        {
+          "class": "valid_refutes_decoy",
+          "id": "es-05-valid_refutes_decoy",
+          "kind": "false_fail",
+          "output": "A fan blog claims 1,190 metres, but the official figure for Calder Bridge is 1,240 metres."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-05-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Calder Bridge carries 1,240 vehicles through the crossing in the single hour of the heaviest weekday morning peak. The length figure was not stated in the sources I checked."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-06-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Ondra Probe is one thousand eight hundred fifty kilograms."
+        },
+        {
+          "class": "valid_refutes_decoy",
+          "id": "es-06-valid_refutes_decoy",
+          "kind": "false_fail",
+          "output": "A fan blog claims 2,400 kilograms, but the official figure for Ondra Probe is 1,850 kilograms."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-06-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "The Ondra Probe team numbered 1,850 engineers, technicians and contractors at the peak of the integration campaign. The mass figure was not stated in the sources I checked."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-07-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Mireth University is eighteen thousand four hundred students."
+        },
+        {
+          "class": "valid_refutes_decoy",
+          "id": "es-07-valid_refutes_decoy",
+          "kind": "false_fail",
+          "output": "A fan blog claims 25,000 students, but the official figure for Mireth University is 18,400 students."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-07-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Mireth University received 18,400 applications for its undergraduate programmes during the most recent admissions season. The students figure was not stated in the sources I checked."
+        },
+        {
+          "class": "valid_spelled_out",
+          "id": "es-08-valid_spelled_out",
+          "kind": "false_fail",
+          "output": "The count for Lumen Cloud is nine regions."
+        },
+        {
+          "class": "valid_refutes_decoy",
+          "id": "es-08-valid_refutes_decoy",
+          "kind": "false_fail",
+          "output": "A fan blog claims 14 regions, but the official figure for Lumen Cloud is 9 regions."
+        },
+        {
+          "class": "misleading_keyword_overlap",
+          "id": "es-08-misleading_keyword_overlap",
+          "kind": "false_pass",
+          "output": "Lumen Cloud documentation lists 9 certified partner programmes for resellers, integrators and managed service providers worldwide. The regions figure was not stated in the sources I checked."
+        }
+      ],
+      "false_fail_rate": 0.6666666666666666,
+      "false_pass_rate": 0.2,
+      "false_pass_rate_wilson95": [
+        0.10499989725437704,
+        0.347573063463995
+      ],
+      "fn": 16,
+      "fp": 8,
+      "tn": 32,
+      "tp": 8
+    },
+    "C_stronger_deterministic": {
+      "accuracy": 1.0,
+      "errors": [],
+      "false_fail_rate": 0.0,
+      "false_pass_rate": 0.0,
+      "false_pass_rate_wilson95": [
+        0.0,
+        0.08762160119728664
+      ],
+      "fn": 0,
+      "fp": 0,
+      "tn": 40,
+      "tp": 24
+    }
+  },
+  "n_items": 64,
+  "n_should_fail": 40,
+  "n_should_pass": 24,
+  "note": "Author-labelled templated items; NOT human adjudication; not a prevalence estimate.",
+  "stress_set": {
+    "evaluators": {
+      "A_naive_lexical": {
+        "accuracy": 0.4166666666666667,
+        "errors": [
+          {
+            "class": "retraction / sarcasm",
+            "id": "stress-03",
+            "kind": "false_pass",
+            "output": "It has 62 trains. Just kidding, it is 70."
+          },
+          {
+            "class": "digit superstring",
+            "id": "stress-06",
+            "kind": "false_pass",
+            "output": "There are 620 trains in the fleet."
+          },
+          {
+            "class": "decimal near-miss",
+            "id": "stress-07",
+            "kind": "false_pass",
+            "output": "62.5 trains make up the fleet."
+          },
+          {
+            "class": "figure belongs to a sub-population",
+            "id": "stress-08",
+            "kind": "false_pass",
+            "output": "62 of the trains in the fleet are electric."
+          },
+          {
+            "class": "refuses to commit",
+            "id": "stress-10",
+            "kind": "false_pass",
+            "output": "I could not verify the fleet size; some say 62 trains, others 70."
+          },
+          {
+            "class": "spelled out with a space",
+            "id": "stress-11",
+            "kind": "false_fail",
+            "output": "Sixty two trains operate in the fleet."
+          },
+          {
+            "class": "stale correct figure",
+            "id": "stress-12",
+            "kind": "false_pass",
+            "output": "The fleet had 62 trains in 2015 but the figure is outdated and the fleet is now 70 trains."
+          }
+        ],
+        "false_fail_rate": 0.2,
+        "false_pass_rate": 0.8571428571428571,
+        "false_pass_rate_wilson95": [
+          0.4868721707256811,
+          0.9743203756552565
+        ],
+        "fn": 1,
+        "fp": 6,
+        "tn": 1,
+        "tp": 4
+      },
+      "B_keyword_judge": {
+        "accuracy": 0.5,
+        "errors": [
+          {
+            "class": "negates the decoy, asserts the truth",
+            "id": "stress-04",
+            "kind": "false_fail",
+            "output": "Not 70 - the fleet is 62 trains."
+          },
+          {
+            "class": "digit superstring",
+            "id": "stress-06",
+            "kind": "false_pass",
+            "output": "There are 620 trains in the fleet."
+          },
+          {
+            "class": "decimal near-miss",
+            "id": "stress-07",
+            "kind": "false_pass",
+            "output": "62.5 trains make up the fleet."
+          },
+          {
+            "class": "figure belongs to a sub-population",
+            "id": "stress-08",
+            "kind": "false_pass",
+            "output": "62 of the trains in the fleet are electric."
+          },
+          {
+            "class": "future decoy plus current truth",
+            "id": "stress-09",
+            "kind": "false_fail",
+            "output": "The fleet will grow to 70 trains next year; today it has 62 trains."
+          },
+          {
+            "class": "spelled out with a space",
+            "id": "stress-11",
+            "kind": "false_fail",
+            "output": "Sixty two trains operate in the fleet."
+          }
+        ],
+        "false_fail_rate": 0.6,
+        "false_pass_rate": 0.42857142857142855,
+        "false_pass_rate_wilson95": [
+          0.15821985525146975,
+          0.7495416354723428
+        ],
+        "fn": 3,
+        "fp": 3,
+        "tn": 4,
+        "tp": 2
+      },
+      "C_stronger_deterministic": {
+        "accuracy": 0.75,
+        "errors": [
+          {
+            "class": "negates the decoy, asserts the truth",
+            "id": "stress-04",
+            "kind": "false_fail",
+            "output": "Not 70 - the fleet is 62 trains."
+          },
+          {
+            "class": "figure belongs to a sub-population",
+            "id": "stress-08",
+            "kind": "false_pass",
+            "output": "62 of the trains in the fleet are electric."
+          },
+          {
+            "class": "future decoy plus current truth",
+            "id": "stress-09",
+            "kind": "false_fail",
+            "output": "The fleet will grow to 70 trains next year; today it has 62 trains."
+          }
+        ],
+        "false_fail_rate": 0.4,
+        "false_pass_rate": 0.14285714285714285,
+        "false_pass_rate_wilson95": [
+          0.02567962434474355,
+          0.5131278292743189
+        ],
+        "fn": 2,
+        "fp": 1,
+        "tn": 6,
+        "tp": 3
+      }
+    },
+    "note": "12 phrasings written AFTER evaluator C was frozen; C was not modified to fit them."
+  }
+}
